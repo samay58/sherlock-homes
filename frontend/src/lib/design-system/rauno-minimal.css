@@ -1,0 +1,106 @@
+/* Rauno-Inspired Minimal Effects */
+/* Clean, purposeful interactions without excess */
+
+/* Subtle Hover Effect */
+.hover-subtle {
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.hover-subtle:hover {
+  opacity: 0.7;
+}
+
+/* Clean Lift Effect */
+.hover-lift {
+  transition: transform var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Simple Scale */
+.hover-scale {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Clean Button */
+.btn-clean {
+  background: var(--color-text);
+  color: var(--color-background);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--duration-fast) var(--ease-out);
+  cursor: pointer;
+}
+
+.btn-clean:hover {
+  background: var(--color-text-secondary);
+  transform: translateY(-1px);
+}
+
+/* Minimal Card */
+.card-minimal {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.card-minimal:hover {
+  border-color: var(--color-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Single Accent Color Usage */
+.accent {
+  color: var(--color-accent);
+}
+
+.accent-bg {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* Clean Focus States */
+.focus-minimal:focus {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+/* Smooth Fade */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fade-in var(--duration-normal) var(--ease-out);
+}
+
+/* Minimal Loading State */
+.skeleton-minimal {
+  background: var(--color-gray-100);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

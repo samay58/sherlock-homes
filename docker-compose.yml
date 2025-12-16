@@ -1,0 +1,45 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sherlock-api
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/sherlock}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sherlock-frontend
+    environment:
+      - VITE_API_TARGET=http://api:8000
+    ports:
+      - "5173:5173"
+    # comment out live bind mount to avoid node_modules mismatch
+    # volumes:
+    #   - ./frontend:/app
+    command: yarn dev --host 0.0.0.0
+
+  db:
+    image: postgres:16-alpine
+    container_name: sherlock-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sherlock
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  db_data:

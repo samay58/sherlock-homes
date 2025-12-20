@@ -143,8 +143,18 @@
           </div>
         {/if}
 
-        <!-- Match Narrative (if available) -->
-        {#if listing.match_narrative}
+        <!-- Why this matched -->
+        {#if (listing.match_reasons && listing.match_reasons.length) || listing.match_tradeoff}
+          <div class="dossier-why">
+            {#if listing.match_reasons && listing.match_reasons.length}
+              <span class="why-label">WHY</span>
+              <span class="why-text">{listing.match_reasons.join(' · ')}</span>
+            {/if}
+            {#if listing.match_tradeoff}
+              <span class="why-tradeoff">Tradeoff: {listing.match_tradeoff}</span>
+            {/if}
+          </div>
+        {:else if listing.match_narrative}
           <p class="dossier-narrative">{listing.match_narrative}</p>
         {/if}
       </div>
@@ -429,6 +439,29 @@
     line-height: var(--line-height-normal, 1.5);
     margin: 0;
     margin-top: var(--space-2, 8px);
+  }
+
+  .dossier-why {
+    margin-top: var(--space-2, 8px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .why-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--color-text-tertiary, #999);
+  }
+
+  .why-text {
+    font-size: 0.85rem;
+    color: var(--color-ink, #000);
+  }
+
+  .why-tradeoff {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary, #666);
   }
 
   /* Skeleton State */

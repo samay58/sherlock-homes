@@ -62,6 +62,8 @@ export interface PropertyListing {
   match_score?: number | null;
   match_narrative?: string | null;
   feature_scores?: Record<string, any> | null;
+  match_reasons?: string[] | null;
+  match_tradeoff?: string | null;
 
   photos: string[] | null;
   last_updated: string | null;
@@ -74,12 +76,19 @@ export interface Criteria {
     is_active: boolean | null;
     price_min: number | null;
     price_max: number | null;
+    price_soft_max?: number | null;
     beds_min: number | null;
     baths_min: number | null;
     sqft_min: number | null;
     require_natural_light: boolean | null;
     require_high_ceilings: boolean | null;
     require_outdoor_space: boolean | null;
+    preferred_neighborhoods?: string[] | null;
+    avoid_neighborhoods?: string[] | null;
+    neighborhood_mode?: string | null;
+    max_days_on_market?: number | null;
+    recency_mode?: string | null;
+    avoid_busy_streets?: boolean | null;
 }
 
 // Add other types as needed (e.g., User, Auth responses) 

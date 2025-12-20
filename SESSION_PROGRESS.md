@@ -1,6 +1,6 @@
 # Sherlock Homes: Session Progress Log
 
-**Master Progress Tracker** - Last Updated: December 6, 2025
+**Master Progress Tracker** - Last Updated: December 20, 2025
 
 ---
 
@@ -8,13 +8,15 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Database | SQLite | `sherlock.db` - 41 listings |
+| Database | SQLite | `sherlock.db` (listing count varies with ingestion) |
 | API | Running | `./run_local.sh` → http://localhost:8000 |
 | Frontend | SvelteKit | `./run_frontend.sh` → http://localhost:5173 |
-| Visual Scoring | **Active** | 41/41 listings scored via Claude Vision |
+| Visual Scoring | **Active** | Runs when `ANTHROPIC_API_KEY` is set; coverage varies |
 | Docker | Available | Fallback via `.env.docker` |
+| Alerts | **Available** | iMessage (macOS relay), email (SMTP), SMS fallback, webhook |
 
-### Visual Scoring Stats
+### Visual Scoring Stats (Session 4 snapshot)
+- These numbers were captured during Session 4 and will vary with current data.
 - **Coverage**: 100% (41/41 listings)
 - **Average Score**: 82.3/100
 - **Score Range**: 39-94
@@ -23,6 +25,109 @@
 ---
 
 ## Session History
+
+### Session 9: December 20, 2025 - Docs Polish + Local Install Reliability
+
+**Objective**: Keep docs fresh and make local installs resilient to dependency changes.
+
+**Completed**:
+- [x] Rewrote README with updated voice and current features
+- [x] Added end-to-end smoke test steps to Development guide
+- [x] Made `run_local.sh` re-install when `requirements.txt` changes
+- [x] Documented focus shift in 10x spec
+
+**Files Updated**:
+| File | Purpose |
+|------|---------|
+| `README.md` | Updated product overview |
+| `docs/DEVELOPMENT.md` | Smoke test steps + install behavior |
+| `run_local.sh` | Requirements hash check |
+| `docs/10X_SPEC.md` | Focus note |
+
+### Session 5: December 20, 2025 - 10x Spec + Alert Delivery
+
+**Objective**: Define the 10x roadmap and implement real alert delivery (iMessage/email/SMS/webhook).
+
+**Completed**:
+- [x] Authored comprehensive 10x product spec
+- [x] Added alert delivery service (iMessage, SMTP email, Twilio SMS, webhook)
+- [x] Integrated scout alerts with real delivery channels
+- [x] Added alert configuration settings
+
+**Files Updated**:
+| File | Purpose |
+|------|---------|
+| `docs/10X_SPEC.md` | 10x roadmap and spec |
+| `app/services/alerts.py` | Alert delivery (iMessage/email/SMS/webhook) |
+| `app/services/scout.py` | Uses real alert delivery |
+| `app/core/config.py` | Alert config settings |
+
+### Session 6: December 20, 2025 - Listing Change Tracking
+
+**Objective**: Add listing snapshots + events with history endpoints.
+
+**Completed**:
+- [x] Snapshot + event models for listing changes
+- [x] Event creation during ingestion upserts
+- [x] Listing history and change feed endpoints
+- [x] Alembic migration for new tables
+
+**Files Updated**:
+| File | Purpose |
+|------|---------|
+| `app/models/listing_event.py` | Snapshot + event models |
+| `app/services/persistence.py` | Create snapshots + events |
+| `app/routes/listings.py` | History + change feed endpoints |
+| `app/schemas/listing_event.py` | API schemas for events |
+| `migrations/versions/20251220_add_listing_events.py` | Alembic migration |
+
+### Session 7: December 20, 2025 - Matching Quality Tuning
+
+**Objective**: Reduce noise by enforcing budget caps, neighborhood focus, and recency-aware scoring.
+
+**Completed**:
+- [x] Added neighborhood normalization + SF focus mapping
+- [x] Added soft budget cap + recency weighting in scoring
+- [x] Enforced strict neighborhood filtering mode
+- [x] Added minimal, focused criteria UI for budget/neighborhood/recency
+- [x] Added criteria fields + migration for matching quality tuning
+
+**Files Updated**:
+| File | Purpose |
+|------|---------|
+| `app/services/neighborhoods.py` | Neighborhood normalization and mapping |
+| `app/services/ingestion.py` | Neighborhood normalization on ingest |
+| `app/services/persistence.py` | Neighborhood fallback |
+| `app/models/criteria.py` | Soft cap + neighborhood/recency fields |
+| `app/services/advanced_matching.py` | Budget + recency scoring, strict neighborhoods |
+| `app/services/vibe_presets.py` | Added default weights |
+| `app/schemas/criteria.py` | New criteria fields |
+| `frontend/src/routes/criteria/+page.svelte` | Minimal criteria UI |
+| `frontend/src/lib/types.ts` | Updated types |
+| `migrations/versions/20251220_add_matching_quality_fields.py` | Alembic migration |
+
+### Session 8: December 20, 2025 - Why This Matched + Stability Fixes
+
+**Objective**: Add explicit match explanations and fix local dev errors.
+
+**Completed**:
+- [x] Added match reasons + tradeoff explanations to matching output
+- [x] Rendered “Why this matched” in match cards
+- [x] Fixed ingestion status timezone error
+- [x] Pinned bcrypt to fix passlib startup error
+- [x] Refreshed README and API documentation
+
+**Files Updated**:
+| File | Purpose |
+|------|---------|
+| `app/services/advanced_matching.py` | Match explanations + recency reasoning |
+| `app/schemas/property.py` | Match reason fields in API |
+| `frontend/src/lib/components/DossierCard.svelte` | “Why this matched” UI |
+| `requirements.txt` | bcrypt pin |
+| `app/routes/listings.py` | Ingestion status fix |
+| `README.md` | Updated product doc |
+| `docs/API.md` | Updated API doc |
+| `docs/DEVELOPMENT.md` | Troubleshooting |
 
 ### Session 4: December 6, 2025 - Visual Scoring Activation
 

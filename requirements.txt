@@ -11,5 +11,6 @@ beautifulsoup4==4.12.3
 apscheduler==3.10.4
 spacy==3.7.4
 passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
 python-jose[cryptography]==3.3.0
-pydantic-settings==2.3.4 
+pydantic-settings==2.3.4

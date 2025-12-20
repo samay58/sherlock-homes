@@ -77,5 +77,7 @@ class PropertyListing(PropertyListingBase):
     match_score: Optional[float] = None
     match_narrative: Optional[str] = None
     feature_scores: Optional[Dict[str, Any]] = None
+    match_reasons: Optional[List[str]] = None
+    match_tradeoff: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

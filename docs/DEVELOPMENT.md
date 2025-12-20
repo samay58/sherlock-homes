@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Docker & Docker Compose
-- Python 3.11+
+- Python 3.11 or 3.12 (spaCy wheels)
 - Node.js 18+
 - PostgreSQL client (optional)
 
@@ -53,6 +53,79 @@ isort app/
 
 # Create new migration
 make migrate-create
+```
+
+### Faster local installs (optional)
+If `uv` is installed, `./run_local.sh` will use it automatically for venv creation and dependency installs (default venv: `.venv`). Set `VENV_DIR` to override.
+If `requirements.txt` changes, `./run_local.sh` will reinstall dependencies automatically.
+
+### Alerts (optional)
+Set these in `.env.local` if you want notifications:
+
+```env
+# iMessage (macOS relay)
+IMESSAGE_ENABLED=false
+IMESSAGE_TARGET=
+
+# Email (SMTP)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_USE_TLS=true
+ALERT_EMAIL_FROM=
+ALERT_EMAIL_TO=
+
+# SMS fallback (Twilio)
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+TWILIO_TO_NUMBER=
+```
+
+Notes:
+- iMessage requires a logged-in macOS session with Messages access.
+- Email requires valid SMTP credentials.
+
+### Troubleshooting
+- **bcrypt error on startup**: rebuild the venv after installing `bcrypt==3.2.2`.
+  ```bash
+  rm -rf .venv
+  ./run_local.sh
+  ```
+
+### Local Smoke Test (End-to-End)
+```bash
+# 1) Start API (Terminal 1)
+./run_local.sh
+
+# 2) Health check (Terminal 2)
+curl http://localhost:8000/ping
+
+# 3) Ingest fresh listings
+curl -X POST http://localhost:8000/admin/ingestion/run
+
+# 4) Verify ingestion status
+curl http://localhost:8000/ingestion/status
+
+# 5) Set criteria (budget + neighborhoods + recency)
+curl -X POST http://localhost:8000/criteria/test-user \\
+  -H \"Content-Type: application/json\" \\
+  -d '{\"name\":\"Focused\",\"price_soft_max\":3000000,\"price_max\":3500000,\"preferred_neighborhoods\":[\"Dolores Heights\",\"Potrero Hill\",\"Cole Valley\",\"Haight-Ashbury\",\"NoPa\"],\"avoid_neighborhoods\":[\"Pacific Heights\"],\"neighborhood_mode\":\"strict\",\"recency_mode\":\"balanced\",\"require_natural_light\":true,\"require_outdoor_space\":true,\"avoid_busy_streets\":true}'
+
+# 6) Fetch matches (includes why-this-matched fields)
+curl http://localhost:8000/matches/test-user
+
+# 7) Create scout
+curl -X POST http://localhost:8000/scouts/ \\
+  -H \"Content-Type: application/json\" \\
+  -d '{\"name\":\"Daily Scout\",\"description\":\"Bright 2-3 bed, quiet, outdoor space\",\"alert_frequency\":\"instant\",\"alert_sms\":true,\"alert_email\":false,\"max_results_per_alert\":5}'
+
+# 8) Run scout (replace ID)
+curl -X POST http://localhost:8000/scouts/1/run
+
+# 9) Recent changes feed
+curl http://localhost:8000/changes?limit=5
 ```
 
 ### Frontend Development

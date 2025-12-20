@@ -6,7 +6,10 @@ from datetime import datetime, timezone
 
 from app.dependencies import get_db
 from app.models.listing import PropertyListing
+from app.models.listing_event import ListingEvent
 from app.schemas.property import PropertyListing as PropertyListingSchema # Use property.py schema
+from app.schemas.listing_event import ListingEvent as ListingEventSchema
+from app.schemas.listing_event import ListingEventFeed as ListingEventFeedSchema
 from app.models.criteria import Criteria
 from app.services.criteria import get_or_create_user_criteria, TEST_USER_ID
 from app.services.matching import find_matches
@@ -89,10 +92,17 @@ def read_matches_for_test_user(db: Session = Depends(get_db)):
 def get_ingestion_status():
     """Get the current status of data ingestion including last update time."""
     now = datetime.now(timezone.utc)
+
+    def ensure_aware(value: Optional[datetime]) -> Optional[datetime]:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
     
     status_info = {
-        "last_run_start_time": ingestion_state.last_run_start_time,
-        "last_run_end_time": ingestion_state.last_run_end_time,
+        "last_run_start_time": ensure_aware(ingestion_state.last_run_start_time),
+        "last_run_end_time": ensure_aware(ingestion_state.last_run_end_time),
         "last_run_summary_count": ingestion_state.last_run_summary_count,
         "last_run_detail_calls": ingestion_state.last_run_detail_calls,
         "last_run_upsert_count": ingestion_state.last_run_upsert_count,
@@ -100,8 +110,8 @@ def get_ingestion_status():
         "status": "never_run"
     }
     
-    if ingestion_state.last_run_end_time:
-        time_since_update = now - ingestion_state.last_run_end_time
+    if status_info["last_run_end_time"]:
+        time_since_update = now - status_info["last_run_end_time"]
         hours_ago = time_since_update.total_seconds() / 3600
         
         status_info["hours_since_update"] = round(hours_ago, 1)
@@ -109,3 +119,72 @@ def get_ingestion_status():
         status_info["last_update_display"] = f"{round(hours_ago, 1)} hours ago" if hours_ago < 24 else f"{round(hours_ago / 24, 1)} days ago"
     
     return status_info 
+
+
+@router.get("/listings/{listing_id}/history", response_model=List[ListingEventSchema])
+def read_listing_history(
+    listing_id: int,
+    db: Session = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=500),
+):
+    """Retrieve change history for a single listing."""
+    listing = db.get(PropertyListing, listing_id)
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    query = (
+        select(ListingEvent)
+        .where(ListingEvent.listing_id == listing_id)
+        .order_by(ListingEvent.created_at.desc())
+        .limit(limit)
+    )
+    events = db.scalars(query).all()
+    return list(events)
+
+
+@router.get("/changes", response_model=List[ListingEventFeedSchema])
+def read_recent_changes(
+    db: Session = Depends(get_db),
+    since: Optional[datetime] = Query(default=None),
+    event_types: Optional[str] = Query(default=None, description="Comma-separated event types"),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """Retrieve recent listing changes across the catalog."""
+    query = (
+        select(
+            ListingEvent,
+            PropertyListing.address,
+            PropertyListing.price,
+            PropertyListing.url,
+        )
+        .join(PropertyListing, PropertyListing.id == ListingEvent.listing_id)
+        .order_by(ListingEvent.created_at.desc())
+        .limit(limit)
+    )
+
+    if since:
+        query = query.where(ListingEvent.created_at >= since)
+
+    if event_types:
+        types = [item.strip() for item in event_types.split(",") if item.strip()]
+        if types:
+            query = query.where(ListingEvent.event_type.in_(types))
+
+    rows = db.execute(query).all()
+    response: List[ListingEventFeedSchema] = []
+    for event, address, price, url in rows:
+        response.append(
+            ListingEventFeedSchema(
+                id=event.id,
+                listing_id=event.listing_id,
+                event_type=event.event_type,
+                old_value=event.old_value,
+                new_value=event.new_value,
+                details=event.details,
+                created_at=event.created_at,
+                address=address,
+                price=price,
+                url=url,
+            )
+        )
+    return response

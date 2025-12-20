@@ -1,10 +1,14 @@
 # Sherlock Homes
 
-An SF real estate matcher that actually thinks. It scores properties against your criteria using NLP, geospatial analysis, and Claude Vision photo scoring.
+SF real estate is a nightmare. This makes it slightly less of one.
 
-**The problem**: Zillow shows you what's for sale. It doesn't tell you what's worth your time.
+Sherlock Homes ranks listings against your criteria using NLP, geospatial signals, and Claude Vision. Because staring at 47 identical "sun-drenched" listings should not be a full-time job.
 
-**The solution**: Sherlock Homes analyzes 200+ signals per listing and ranks them by fit. It catches things humans miss: north-facing units, proximity to fire stations, staging that hides maintenance issues.
+## The Problem
+
+Zillow tells you what exists. It does not tell you what is good. The north-facing "garden unit" with the $15k/year HOA and a fire station next door? Zillow will show it. We will not.
+
+Sherlock Homes reviews 200+ signals per listing so you do not learn the obvious after a 40-minute drive.
 
 ## Quick Start
 
@@ -16,27 +20,43 @@ An SF real estate matcher that actually thinks. It scores properties against you
 ./run_frontend.sh
 ```
 
-**API**: http://localhost:8000
-**Frontend**: http://localhost:5173
+API: http://localhost:8000
+Frontend: http://localhost:5173
 
-## What It Does
+Python 3.11/3.12 recommended. If `uv` is installed, `./run_local.sh` will use it automatically.
 
-**NLP Scoring**: Extracts 32+ keywords per feature category. Natural light, views, outdoor space, high ceilings, parking. Catches red flags too: busy streets, foundation issues, HOA problems.
+## What It Actually Does
 
-**Visual Scoring**: Claude Vision analyzes listing photos. Rates modernity, condition, brightness, staging, and cleanliness. Flags water stains. Spots professional staging vs cluttered owner photos.
+**NLP Scoring**
+Reads descriptions like a suspicious buyer. Extracts 32+ keywords across categories: natural light, views, outdoor space, high ceilings, parking. Flags the bad stuff too. "Cozy" usually means small.
 
-**Tranquility Score**: Calculates distance to busy streets, freeways, and fire stations. No external API needed. Uses static SF data and Haversine distance calculations.
+**Visual Scoring**
+Claude Vision looks at listing photos. Rates modernity, condition, brightness, staging, cleanliness. Catches water stains, tired fixtures, and the telltale signs of a flipper who watched too much HGTV.
 
-**Light Potential**: Estimates natural light from description keywords. Top floor? Corner unit? South-facing? It tracks all of it. Penalizes north-facing and basement units.
+**Tranquility Score**
+How close is this place to things that make noise? Freeways, busy streets, fire stations. No API calls. Just local SF data and geometry. Some of us have meetings.
 
-**Vibe Presets**: Three personality modes. Light Chaser maximizes natural light and views. Urban Professional optimizes walkability. Deal Hunter prioritizes price drops and motivated sellers.
+**Light Potential**
+Estimates how much natural light you will actually get. Top floor, corner unit, south-facing equals good. North-facing basement equals lamps.
+
+**Why This Matched**
+Every match includes explicit reasons (budget fit, neighborhood focus, recency, light, quiet) plus one tradeoff. No black-box scores.
+
+**Change Tracking**
+Detects meaningful listing changes like price drops, status flips, and photo updates so you do not miss the quiet gems.
+
+## Vibe Presets
+
+- **Light Chaser**: For people who need sunlight to function.
+- **Urban Professional**: Walkability uber alles.
+- **Deal Hunter**: Watches for price drops like a hawk.
 
 ## How It Works
 
-1. **Ingestion**: Pulls listings from Zillow via ZenRows. Runs every 6 hours.
-2. **Enrichment**: Each listing gets NLP flags, geospatial scores, and visual analysis.
-3. **Matching**: At query time, applies weighted multi-factor scoring against your criteria.
-4. **Ranking**: Returns top matches with narratives explaining why each scored well.
+1. **Ingestion**: Scrapes Zillow via ZenRows every 6 hours.
+2. **Enrichment**: NLP, geospatial, and visual scoring per listing.
+3. **Matching**: Weighted scoring against your preferences with soft and hard caps.
+4. **Ranking**: Top matches, with explanations of why.
 
 ## Architecture
 
@@ -61,21 +81,26 @@ sherlock-homes/
 
 | Endpoint | What it does |
 |----------|--------------|
-| `GET /matches/test-user` | Ranked matches with scores and narratives |
+| `GET /matches/test-user` | Your ranked matches |
 | `GET /listings` | All listings, paginated |
-| `GET /listings/{id}` | Single listing detail |
-| `POST /admin/ingestion/run` | Trigger data refresh |
+| `GET /listings/{id}` | Single listing |
+| `GET /listings/{id}/history` | Change history for a listing |
+| `GET /changes` | Recent listing changes |
+| `POST /admin/ingestion/run` | Force a data refresh |
+| `GET /ingestion/status` | Ingestion status |
 | `GET /ping` | Health check |
 
 ## Development
 
-**Reset database**:
+Burn it down and start over:
+
 ```bash
 ./nuke_db.sh && ./run_local.sh
 python scripts/import_from_json.py
 ```
 
-**Run visual scoring**:
+Run visual analysis:
+
 ```bash
 python -m app.scripts.analyze_visual_scores
 ```
@@ -83,19 +108,20 @@ python -m app.scripts.analyze_visual_scores
 ## Configuration
 
 Create `.env.local`:
+
 ```env
 DATABASE_URL=sqlite:///./sherlock.db
 ZENROWS_API_KEY=your_key
 ANTHROPIC_API_KEY=your_key
 ```
 
-## Tech Stack
+Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`.
+
+## Stack
 
 - **Backend**: FastAPI, SQLAlchemy, Pydantic
 - **Frontend**: SvelteKit, Svelte 5
-- **Database**: SQLite (local), PostgreSQL (Docker)
-- **AI**: Claude Vision for photo analysis
+- **Database**: SQLite local, PostgreSQL in Docker
+- **AI**: Claude Vision
 
-## License
-
-MIT
+MIT licensed. Do whatever.

@@ -12,6 +12,8 @@ from app.models.criteria import Criteria
 from app.models.listing import PropertyListing
 from app.services.advanced_matching import PropertyMatcher
 from app.services.nlp import extract_flags, calculate_text_quality_score
+from app.services.alerts import send_scout_alerts
+from app.services.neighborhoods import normalize_neighborhood_name
 
 logger = logging.getLogger(__name__)
 
@@ -150,17 +152,21 @@ class ScoutService:
         sf_neighborhoods = [
             "pacific heights", "presidio heights", "nob hill", "russian hill",
             "marina", "cow hollow", "hayes valley", "noe valley", "castro",
-            "mission", "potrero hill", "dogpatch", "soma", "south beach",
-            "richmond", "sunset", "cole valley", "haight", "fillmore",
-            "japantown", "western addition", "bernal heights", "glen park"
+            "mission", "potrero hill", "potrero", "dogpatch", "soma", "south beach",
+            "richmond", "sunset", "cole valley", "haight", "haight-ashbury",
+            "japantown", "western addition", "bernal heights", "glen park",
+            "dolores heights", "nopa", "no pa", "north of panhandle"
         ]
         
         preferred = []
         for neighborhood in sf_neighborhoods:
             if neighborhood in desc_lower:
-                preferred.append(neighborhood.title())
+                canonical = normalize_neighborhood_name(neighborhood)
+                if canonical:
+                    preferred.append(canonical)
         if preferred:
             criteria.preferred_neighborhoods = preferred
+            criteria.neighborhood_mode = "strict"
         
         # Avoid certain streets
         if "van ness" in desc_lower or "geary" in desc_lower or "19th ave" in desc_lower:
@@ -229,13 +235,19 @@ class ScoutService:
                 limit=100,
                 min_score=scout.min_match_score or 30.0
             )
+            run.listings_evaluated = len(matches)
             
             # Filter out previously seen listings
             seen_ids = set(scout.seen_listing_ids or [])
             new_matches = []
             all_matches = []
             
-            for listing, score in matches:
+            for match in matches:
+                if not isinstance(match, (list, tuple)) or len(match) < 2:
+                    continue
+                listing = match[0]
+                score = match[1]
+                intelligence = match[2] if len(match) > 2 and isinstance(match[2], dict) else {}
                 match_data = {
                     "listing_id": listing.listing_id,
                     "score": score,
@@ -243,6 +255,8 @@ class ScoutService:
                     "address": listing.address,
                     "price": listing.price
                 }
+                if intelligence.get("narrative"):
+                    match_data["narrative"] = intelligence["narrative"]
                 all_matches.append(match_data)
                 
                 if listing.listing_id not in seen_ids:
@@ -288,20 +302,9 @@ class ScoutService:
     
     async def _send_alerts(self, scout: Scout, matches: List[Dict[str, Any]]):
         """Send alerts for new matches."""
-        # This is a placeholder for actual alert sending logic
-        # In production, this would integrate with email, SMS, or webhook services
-        
-        if scout.alert_email:
-            # Send email alert
-            logger.info(f"Would send email alert for {len(matches)} matches")
-        
-        if scout.alert_sms:
-            # Send SMS alert
-            logger.info(f"Would send SMS alert for {len(matches)} matches")
-        
-        if scout.alert_webhook:
-            # Send webhook
-            logger.info(f"Would send webhook to {scout.alert_webhook}")
+        results = await send_scout_alerts(scout, matches)
+        if results:
+            logger.info("Scout alert results: %s", results)
     
     def get_active_scouts(self) -> List[Scout]:
         """Get all active scouts that need to run."""

@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError # Import SQLAlchemyError
 from app.models.criteria import Criteria
 from app.models.user import User # Need user model for relationship
 from app.schemas.criteria import CriteriaCreate # Only import CriteriaCreate
+from app.services.neighborhoods import normalize_neighborhood_list
 
 logger = logging.getLogger(__name__) # Setup logger
 
@@ -74,6 +75,27 @@ def update_user_criteria(db: Session, user_id: int, criteria_in: CriteriaCreate)
         update_data = criteria_in.model_dump(exclude_unset=True)
         logger.debug(f"Applying update data: {update_data}")
         needs_update = False
+        if "preferred_neighborhoods" in update_data:
+            update_data["preferred_neighborhoods"] = normalize_neighborhood_list(
+                update_data.get("preferred_neighborhoods")
+            )
+        if "avoid_neighborhoods" in update_data:
+            update_data["avoid_neighborhoods"] = normalize_neighborhood_list(
+                update_data.get("avoid_neighborhoods")
+            )
+        if "price_soft_max" in update_data and "price_max" in update_data:
+            soft_cap = update_data.get("price_soft_max")
+            hard_cap = update_data.get("price_max")
+            if soft_cap and hard_cap and soft_cap > hard_cap:
+                update_data["price_soft_max"] = hard_cap
+        if "neighborhood_mode" in update_data:
+            mode = update_data.get("neighborhood_mode")
+            if mode not in {"strict", "boost", None}:
+                update_data["neighborhood_mode"] = None
+        if "recency_mode" in update_data:
+            mode = update_data.get("recency_mode")
+            if mode not in {"fresh", "balanced", "hidden_gems", None}:
+                update_data["recency_mode"] = None
         for key, value in update_data.items():
             if getattr(db_criteria, key) != value:
                  setattr(db_criteria, key, value)

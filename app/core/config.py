@@ -19,6 +19,23 @@ class Settings(BaseSettings):
     VISUAL_SCORING_ENABLED: bool = Field(default=True)
     VISUAL_PHOTOS_SAMPLE_SIZE: int = Field(default=3)  # Number of photos to analyze per listing
 
+    # Alerting (email/SMS/iMessage)
+    SMTP_HOST: Optional[str] = Field(default=None)
+    SMTP_PORT: int = Field(default=587)
+    SMTP_USERNAME: Optional[str] = Field(default=None)
+    SMTP_PASSWORD: Optional[str] = Field(default=None)
+    SMTP_USE_TLS: bool = Field(default=True)
+    ALERT_EMAIL_FROM: Optional[str] = Field(default=None)
+    ALERT_EMAIL_TO: Optional[str] = Field(default=None)
+
+    IMESSAGE_ENABLED: bool = Field(default=False)
+    IMESSAGE_TARGET: Optional[str] = Field(default=None)
+
+    TWILIO_ACCOUNT_SID: Optional[str] = Field(default=None)
+    TWILIO_AUTH_TOKEN: Optional[str] = Field(default=None)
+    TWILIO_FROM_NUMBER: Optional[str] = Field(default=None)
+    TWILIO_TO_NUMBER: Optional[str] = Field(default=None)
+
     # JWT Settings
     # Use `openssl rand -hex 32` to generate a suitable secret key
     SECRET_KEY: str = Field(default="PLEASE_CHANGE_ME_IN_ENV") 

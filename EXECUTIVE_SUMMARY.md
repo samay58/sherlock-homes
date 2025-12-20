@@ -1,7 +1,7 @@
 # Sherlock Homes: Executive Summary
 
 **Status**: Fully Operational
-**Last Updated**: December 2025
+**Last Updated**: December 20, 2025
 
 ## What It Does
 
@@ -10,15 +10,16 @@ Intelligent SF real estate matcher that scores properties against your criteria 
 - Multi-factor scoring (0-100 scale with 13+ weighted features)
 - Claude Vision photo analysis (visual quality scoring)
 - Geospatial intelligence (Tranquility Score for noise exposure)
+- Explicit match explanations (why it matched + one tradeoff)
 
 ## Current State
 
 | Metric | Value |
 |--------|-------|
-| Listings | 41 SF properties |
-| Visual Scoring | 100% coverage (avg 82.3/100) |
-| Database | SQLite (local, fast) |
-| Top Match | 1319 Lyon St - 80.2/100 |
+| Listings | Varies with ingestion runs |
+| Visual Scoring | Enabled when `ANTHROPIC_API_KEY` set |
+| Database | SQLite (local) or PostgreSQL (Docker) |
+| Match Output | Scores + reasons + tradeoff |
 
 ## Quick Start
 

@@ -232,5 +232,7 @@ DEFAULT_FEATURE_WEIGHTS = {
     "deal_quality": 3,
     "price_position": 5,
     "days_on_market_bonus": 2,
+    "budget_fit": 7,
+    "recency": 4,
     "visual_quality": 8,  # Visual appeal from Claude Vision photo analysis
 }

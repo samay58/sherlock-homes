@@ -18,6 +18,7 @@ class Criteria(Base):
     # Quantitative Filters
     price_min = Column(Float, nullable=True)
     price_max = Column(Float, nullable=True)
+    price_soft_max = Column(Float, nullable=True)
     beds_min = Column(Integer, nullable=True)
     beds_max = Column(Integer, nullable=True)
     baths_min = Column(Float, nullable=True)
@@ -39,6 +40,7 @@ class Criteria(Base):
     max_transit_distance = Column(Integer, nullable=True)  # in minutes walk
     preferred_neighborhoods = Column(JSON, nullable=True)  # list of neighborhood names
     avoid_neighborhoods = Column(JSON, nullable=True)  # list of neighborhoods to avoid
+    neighborhood_mode = Column(String(20), nullable=True)  # "strict" or "boost"
 
     # Property Type Preferences
     property_types = Column(JSON, nullable=True)  # ["single_family", "condo", "townhouse", "loft"]
@@ -54,6 +56,7 @@ class Criteria(Base):
     include_price_reduced = Column(Boolean, nullable=False, default=True)
     include_new_listings = Column(Boolean, nullable=False, default=True)
     max_days_on_market = Column(Integer, nullable=True)
+    recency_mode = Column(String(20), nullable=True)  # "fresh", "balanced", "hidden_gems"
     
     # Red Flags (things to avoid)
     avoid_busy_streets = Column(Boolean, nullable=False, default=True)

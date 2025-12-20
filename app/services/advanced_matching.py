@@ -10,7 +10,7 @@ Sherlock Homes Deduction Engine:
 
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_
 import logging
 
 from app.models.criteria import Criteria
@@ -69,6 +69,8 @@ FEATURE_DISPLAY_NAMES = {
     "light_potential": "light potential",
     "neighborhood_match": "preferred neighborhood",
     "visual_quality": "visual appeal",
+    "budget_fit": "budget fit",
+    "recency": "recency",
 }
 
 
@@ -79,6 +81,7 @@ def generate_match_narrative(
     tranquility_data: Optional[Dict] = None,
     light_data: Optional[Dict] = None,
     visual_data: Optional[Dict] = None,
+    recency_data: Optional[Dict] = None,
 ) -> str:
     """
     Generate a human-readable narrative explaining WHY this property matched.
@@ -182,6 +185,17 @@ def generate_match_narrative(
         elif visual_score <= 45:
             callouts.append("May need cosmetic updates.")
 
+    # Recency callout
+    if recency_data and recency_data.get("days_on_market") is not None:
+        days = recency_data["days_on_market"]
+        signal = recency_data.get("signal")
+        if signal == "fresh" and days <= 7:
+            callouts.append(f"New listing ({days} days on market).")
+        elif signal == "overlooked":
+            callouts.append(f"Longer on market ({days} days) with value potential.")
+        elif signal == "older" and days >= 60:
+            callouts.append(f"Longer on market ({days} days) — worth a closer look.")
+
     # Combine narrative with callouts
     if callouts:
         narrative = narrative + " " + " ".join(callouts)
@@ -253,6 +267,162 @@ class PropertyMatcher:
             base_weights.update(self.criteria.feature_weights)
 
         return base_weights
+
+    def _get_days_on_market(self, listing: PropertyListing) -> Optional[int]:
+        if listing.days_on_market is not None:
+            return listing.days_on_market
+        return None
+
+    def _recency_info(self, listing: PropertyListing) -> Dict[str, Any]:
+        days = self._get_days_on_market(listing)
+        mode = self.criteria.recency_mode or "balanced"
+        score = 0.5
+        signal = "unknown"
+
+        if days is None:
+            return {"days_on_market": None, "score": score, "signal": signal, "mode": mode}
+
+        if mode == "fresh":
+            if days <= 7:
+                score = 1.0
+                signal = "fresh"
+            elif days <= 14:
+                score = 0.85
+                signal = "recent"
+            elif days <= 30:
+                score = 0.6
+                signal = "recent"
+            elif days <= 60:
+                score = 0.35
+                signal = "older"
+            else:
+                score = 0.2
+                signal = "older"
+        elif mode == "hidden_gems":
+            if days <= 7:
+                score = 0.6
+                signal = "fresh"
+            elif days <= 21:
+                score = 0.7
+                signal = "recent"
+            elif days <= 45:
+                score = 0.85
+                signal = "recent"
+            elif days <= 90:
+                score = 1.0
+                signal = "overlooked"
+            else:
+                score = 0.75
+                signal = "older"
+        else:
+            if days <= 7:
+                score = 1.0
+                signal = "fresh"
+            elif days <= 21:
+                score = 0.85
+                signal = "recent"
+            elif days <= 45:
+                score = 0.65
+                signal = "recent"
+            elif days <= 90:
+                score = 0.45
+                signal = "older"
+            else:
+                score = 0.3
+                signal = "older"
+
+        if listing.is_price_reduced and days >= 30:
+            score = min(1.0, score + 0.15)
+            if signal != "fresh":
+                signal = "overlooked"
+
+        return {"days_on_market": days, "score": score, "signal": signal, "mode": mode}
+
+    def _budget_fit(self, listing: PropertyListing) -> Optional[float]:
+        if listing.price is None or self.criteria.price_soft_max is None:
+            return None
+        soft_cap = self.criteria.price_soft_max
+        hard_cap = self.criteria.price_max or soft_cap
+        if hard_cap < soft_cap:
+            hard_cap = soft_cap
+
+        if listing.price <= soft_cap:
+            return 1.0
+        if listing.price >= hard_cap:
+            return 0.0
+        return 1.0 - ((listing.price - soft_cap) / (hard_cap - soft_cap))
+
+    def _format_currency(self, value: Optional[float]) -> str:
+        if value is None:
+            return "n/a"
+        if value >= 1_000_000:
+            compact = f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".")
+            return f"${compact}M"
+        return f"${value:,.0f}"
+
+    def _build_match_explanation(
+        self,
+        listing: PropertyListing,
+        intelligence: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        reasons: List[str] = []
+        tradeoff: Optional[str] = None
+
+        if listing.neighborhood and self.criteria.preferred_neighborhoods:
+            if listing.neighborhood in self.criteria.preferred_neighborhoods:
+                reasons.append(f"{listing.neighborhood} focus area")
+
+        if listing.price is not None:
+            if self.criteria.price_soft_max and listing.price <= self.criteria.price_soft_max:
+                reasons.append(f"Under soft cap ({self._format_currency(self.criteria.price_soft_max)})")
+            elif self.criteria.price_max and listing.price <= self.criteria.price_max:
+                reasons.append(f"Within hard cap ({self._format_currency(self.criteria.price_max)})")
+
+        recency_info = intelligence.get("recency") or self._recency_info(listing)
+        days_on_market = recency_info.get("days_on_market")
+        if days_on_market is not None:
+            signal = recency_info.get("signal")
+            if signal == "fresh":
+                reasons.append(f"Fresh ({days_on_market}d)")
+            elif signal == "recent":
+                reasons.append(f"Recent ({days_on_market}d)")
+            elif signal == "overlooked":
+                reasons.append(f"Overlooked ({days_on_market}d)")
+
+        if listing.has_natural_light_keywords:
+            reasons.append("Natural light signals")
+        if listing.has_outdoor_space_keywords:
+            reasons.append("Outdoor space")
+        if listing.tranquility_score and listing.tranquility_score >= 80:
+            reasons.append("Quiet area")
+        if listing.visual_quality_score and listing.visual_quality_score >= 85:
+            reasons.append("Strong visual condition")
+
+        if listing.price is not None and self.criteria.price_soft_max:
+            if listing.price > self.criteria.price_soft_max:
+                delta = listing.price - self.criteria.price_soft_max
+                tradeoff = f"Above soft cap by {self._format_currency(delta)}"
+
+        if tradeoff is None and self.criteria.preferred_neighborhoods and self.criteria.neighborhood_mode != "strict":
+            if not listing.neighborhood or listing.neighborhood not in self.criteria.preferred_neighborhoods:
+                tradeoff = "Outside focus neighborhoods"
+
+        if tradeoff is None and days_on_market is not None and days_on_market >= 60:
+            tradeoff = f"Longer on market ({days_on_market}d)"
+
+        if tradeoff is None and listing.tranquility_score is not None and listing.tranquility_score < 50:
+            tradeoff = "Noisier street exposure"
+
+        if tradeoff is None and listing.light_potential_score is not None and listing.light_potential_score < 40:
+            tradeoff = "Limited light potential"
+
+        if tradeoff is None and listing.visual_quality_score is not None and listing.visual_quality_score < 60:
+            tradeoff = "Needs visual updates"
+
+        return {
+            "reasons": reasons[:2],
+            "tradeoff": tradeoff,
+        }
     
     def find_matches(
         self,
@@ -337,6 +507,10 @@ class PropertyMatcher:
                         red_flags = visual_data.get("red_flags", [])
                         score = max(0, score - len(red_flags) * 3)
 
+                    # Recency / market timing
+                    recency_info = self._recency_info(listing)
+                    intelligence["recency"] = recency_info
+
                     # Generate match narrative
                     narrative = generate_match_narrative(
                         listing=listing,
@@ -345,8 +519,14 @@ class PropertyMatcher:
                         tranquility_data=intelligence.get("tranquility"),
                         light_data=intelligence.get("light_potential"),
                         visual_data=intelligence.get("visual_quality"),
+                        recency_data=intelligence.get("recency"),
                     )
                     intelligence["narrative"] = narrative
+
+                    explanation = self._build_match_explanation(listing, intelligence)
+                    listing.match_narrative = narrative
+                    listing.match_reasons = explanation["reasons"]
+                    listing.match_tradeoff = explanation["tradeoff"]
 
                 # Apply vibe-specific keyword adjustments
                 if listing.description:
@@ -401,8 +581,11 @@ class PropertyMatcher:
         
         # Neighborhood filters
         if self.criteria.preferred_neighborhoods:
-            # Soft preference - will boost score but not exclude
-            pass
+            if self.criteria.neighborhood_mode == "strict":
+                filters.append(PropertyListing.neighborhood.in_(self.criteria.preferred_neighborhoods))
+            else:
+                # Soft preference - will boost score but not exclude
+                pass
         if self.criteria.avoid_neighborhoods:
             filters.append(
                 or_(
@@ -427,6 +610,19 @@ class PropertyMatcher:
         # Days on market filter
         if self.criteria.max_days_on_market is not None:
             filters.append(PropertyListing.days_on_market <= self.criteria.max_days_on_market)
+
+        # Listing status filter: exclude inactive statuses but keep unknowns
+        inactive_statuses = ["pending", "contingent", "sold", "off market", "off_market"]
+        status_filters = [
+            ~case_insensitive_like(PropertyListing.listing_status, f"%{status}%")
+            for status in inactive_statuses
+        ]
+        filters.append(
+            or_(
+                PropertyListing.listing_status.is_(None),
+                and_(*status_filters)
+            )
+        )
         
         # Apply all filters
         if filters:
@@ -498,6 +694,13 @@ class PropertyMatcher:
                 price_score = (1 - price_position) * self.weights.get("price_match", 10)
                 score += price_score
                 max_score += self.weights.get("price_match", 10)
+
+        # Budget fit scoring (soft cap preference)
+        budget_fit = self._budget_fit(listing)
+        if budget_fit is not None:
+            budget_weight = self.weights.get("budget_fit", 8)
+            score += budget_fit * budget_weight
+            max_score += budget_weight
         
         # Deal quality scoring
         if listing.is_price_reduced:
@@ -505,6 +708,12 @@ class PropertyMatcher:
         if listing.is_back_on_market:
             score += self.weights.get("deal_quality", 5) * 0.5
         max_score += self.weights.get("deal_quality", 5)
+
+        # Recency scoring
+        recency_info = self._recency_info(listing)
+        recency_weight = self.weights.get("recency", 4)
+        score += recency_info["score"] * recency_weight
+        max_score += recency_weight
         
         # Text quality scoring (if description available)
         if listing.description:
@@ -523,7 +732,7 @@ class PropertyMatcher:
             elif self.criteria.parking_type == "any" and listing.parking_type:
                 score += 3
             max_score += 5
-        
+
         # Penalize red flags that weren't filtered out
         if listing.has_foundation_issues_keywords:
             score -= 10
@@ -560,7 +769,11 @@ class PropertyMatcher:
         for feature, has_it in features.items():
             if has_it:
                 breakdown[feature] = self.weights.get(feature, 1)
-        
+
+        if self.criteria.preferred_neighborhoods and listing.neighborhood:
+            if listing.neighborhood in self.criteria.preferred_neighborhoods:
+                breakdown["neighborhood_match"] = self.weights.get("neighborhood_match", 9)
+
         # Add other scoring factors
         if listing.walk_score and self.criteria.min_walk_score:
             if listing.walk_score >= self.criteria.min_walk_score:
@@ -568,6 +781,13 @@ class PropertyMatcher:
         
         if listing.is_price_reduced:
             breakdown["price_reduced"] = self.weights.get("deal_quality", 5)
+
+        budget_fit = self._budget_fit(listing)
+        if budget_fit is not None:
+            breakdown["budget_fit"] = round(budget_fit * self.weights.get("budget_fit", 8), 2)
+
+        recency_info = self._recency_info(listing)
+        breakdown["recency"] = round(recency_info["score"] * self.weights.get("recency", 4), 2)
         
         return breakdown
 
@@ -620,6 +840,7 @@ def find_advanced_matches(
             "tranquility": intelligence.get("tranquility"),
             "light_potential": intelligence.get("light_potential"),
             "visual_quality": intelligence.get("visual_quality"),
+            "recency": intelligence.get("recency"),
         }
         results.append(result)
 
@@ -630,7 +851,10 @@ def find_advanced_matches(
     if criteria.beds_min:
         filters_applied.append(f"{criteria.beds_min}+ beds")
     if criteria.preferred_neighborhoods:
-        filters_applied.append(f"in {', '.join(criteria.preferred_neighborhoods[:2])}")
+        if criteria.neighborhood_mode == "strict":
+            filters_applied.append(f"only {', '.join(criteria.preferred_neighborhoods[:2])}")
+        else:
+            filters_applied.append(f"in {', '.join(criteria.preferred_neighborhoods[:2])}")
     if criteria.avoid_busy_streets:
         filters_applied.append("quiet streets")
     if criteria.require_natural_light:

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-from datetime import datetime # Import datetime
+from datetime import datetime, timezone # Import datetime
 from typing import List, Dict, Any, Tuple
 
 # Local modules
@@ -10,6 +10,7 @@ from app.providers.zillow import ZillowProvider
 from app.services.persistence import upsert_listings
 from app.services.nlp import extract_flags, estimate_light_potential
 from app.services.geospatial import calculate_tranquility_score
+from app.services.neighborhoods import resolve_neighborhood
 from app.state import ingestion_state # Import shared state
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ def _generate_tiles(bbox: Tuple[float, float, float, float]):
 
 async def run_ingestion_job():
     # ---> Record Start Time & Clear State <---
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     ingestion_state.last_run_start_time = start_time
     ingestion_state.last_run_end_time = None
     ingestion_state.last_run_summary_count = 0
@@ -128,6 +129,12 @@ async def run_ingestion_job():
                                 listing_to_add["tranquility_factors"] = tranquility["factors"]
                             except Exception as e:
                                 logger.debug(f"Could not calculate tranquility for {listing_id}: {e}")
+                        
+                        # Neighborhood normalization (use coords if needed)
+                        neighborhood = listing_to_add.get("neighborhood")
+                        normalized = resolve_neighborhood(neighborhood, lat, lon)
+                        if normalized:
+                            listing_to_add["neighborhood"] = normalized
 
                         # Calculate Light Potential Score (NLP)
                         flags = listing_to_add.get("flags", {})
@@ -165,7 +172,7 @@ async def run_ingestion_job():
         ingestion_state.last_run_error = f"Unhandled error: {e}"
     finally:
         # ---> Record End Time & Ensure provider cleanup <---
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         ingestion_state.last_run_end_time = end_time
         duration = (end_time - start_time).total_seconds()
         logger.info(f"Closing provider connection. Job finished at {end_time.isoformat()}Z (Duration: {duration:.2f}s)")

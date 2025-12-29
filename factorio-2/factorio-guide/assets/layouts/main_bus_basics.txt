@@ -1,0 +1,16 @@
+MAIN BUS BASICS (STARTER)
+
+    ══╦═══╦═══╦═══╦══════════════►  Iron plates (4 belts)
+      ║   ║   ║   ║
+    ══╬═══╬═══╬═══╬══════════════►  Copper plates (4 belts)
+      ║   ║   ║   ║
+    ══╬═══╬═══╬═══╬══════════════►  Steel (2 belts)
+      ║   ║   ║   ║
+    ══╬═══╬═══╬═══╬══════════════►  Green circuits (4 belts)
+      ▼   ▼   ▼   ▼
+    (branches split off with underground belts + splitters)
+
+Rules of thumb:
+- Leave 2-tile gaps between lanes (for undergrounds)
+- Build the bus longer than you think
+- Tap off the side; keep the spine flowing

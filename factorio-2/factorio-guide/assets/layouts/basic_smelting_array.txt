@@ -1,0 +1,18 @@
+BASIC SMELTING ARRAY (TILEABLE)
+
+    ORE IN (belt)
+    ══════════════════════════════════
+    ┃ F ◄─┨  ┃ F ◄─┨  ┃ F ◄─┨
+    ┃   ──┨  ┃   ──┨  ┃   ──┨
+    ══════════════════════════════════
+    PLATE OUT (belt)
+
+Legend:
+  F  = Furnace
+  ◄  = Inserter (input)
+  ─  = Inserter (output)
+
+Notes:
+- Mirror to make a full column (12/24/48 furnaces)
+- Leave room to upgrade to steel/electric furnaces
+- Feed ore from one side, take plates from the other

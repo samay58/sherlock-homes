@@ -8,8 +8,16 @@ depends_on = None
 
 
 def upgrade():
-    op.alter_column("property_listings", "price", existing_type=sa.Float(), nullable=True)
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("property_listings") as batch:
+            batch.alter_column("price", existing_type=sa.Float(), nullable=True)
+    else:
+        op.alter_column("property_listings", "price", existing_type=sa.Float(), nullable=True)
 
 
 def downgrade():
-    op.alter_column("property_listings", "price", existing_type=sa.Float(), nullable=False) 
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("property_listings") as batch:
+            batch.alter_column("price", existing_type=sa.Float(), nullable=False)
+    else:
+        op.alter_column("property_listings", "price", existing_type=sa.Float(), nullable=False)

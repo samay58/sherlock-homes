@@ -6,7 +6,7 @@ No external APIs required - uses static datasets for SF noise sources.
 """
 
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 
@@ -338,6 +338,51 @@ def get_tranquility_tier(score: int) -> str:
         return "Noisy"
     else:
         return "Very Noisy"
+
+
+def apply_location_modifiers(
+    address: Optional[str],
+    description: Optional[str],
+    modifiers: Dict[str, Any],
+    has_busy_street: bool = False,
+    noise_hits: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Apply street-level boosts/penalties and conditions from buyer config."""
+    address_lower = (address or "").lower()
+    text_lower = (description or "").lower()
+    evidence: List[str] = []
+    adjustment = 0.0
+
+    penalized_street = False
+
+    for street in modifiers.get("boost_streets", []) or []:
+        if street.lower() in address_lower:
+            adjustment += 1.5
+            evidence.append(f"boost street {street}")
+
+    for street in modifiers.get("penalize_streets", []) or []:
+        if street.lower() in address_lower:
+            penalized_street = True
+            adjustment -= 1.5
+            evidence.append(f"penalize street {street}")
+
+    conditions = set(modifiers.get("penalize_conditions", []) or [])
+    if "adjacent_to_bar" in conditions and (noise_hits or "bar" in text_lower or "nightlife" in text_lower):
+        adjustment -= 1.5
+        evidence.append("adjacent to nightlife")
+    if "on_major_thoroughfare" in conditions and (has_busy_street or penalized_street):
+        adjustment -= 1.5
+        evidence.append("major thoroughfare exposure")
+    if "first_floor_busy_street" in conditions:
+        if ("first floor" in text_lower or "ground floor" in text_lower) and (has_busy_street or penalized_street):
+            adjustment -= 1.0
+            evidence.append("first floor on busy street")
+
+    return {
+        "adjustment": adjustment,
+        "evidence": evidence,
+        "penalized_street": penalized_street,
+    }
 
 
 # =============================================================================

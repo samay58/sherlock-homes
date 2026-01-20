@@ -10,6 +10,10 @@ export interface PropertyListing {
   property_type: string | null;
   url: string | null;
   listing_id: string | null;
+  source: string | null;
+  source_listing_id: string | null;
+  sources_seen: string[] | null;
+  last_seen_at: string | null;
   lat: number | null;
   lon: number | null;
   year_built: number | null;
@@ -64,6 +68,14 @@ export interface PropertyListing {
   feature_scores?: Record<string, any> | null;
   match_reasons?: string[] | null;
   match_tradeoff?: string | null;
+  score_points?: number | null;
+  score?: number | null;
+  score_percent?: string | null;
+  score_tier?: string | null;
+  top_positives?: string[] | null;
+  key_tradeoff?: string | null;
+  signals?: Record<string, any> | null;
+  why_now?: string | null;
 
   photos: string[] | null;
   last_updated: string | null;

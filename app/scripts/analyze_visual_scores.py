@@ -1,7 +1,7 @@
 """
 Batch Visual Scoring Script for Sherlock Homes
 
-Analyzes property photos using Claude Vision and updates database with visual scores.
+Analyzes property photos using OpenAI Vision and updates database with visual scores.
 
 Usage:
     # Inside Docker container:
@@ -10,13 +10,14 @@ Usage:
     # With options:
     python -m app.scripts.analyze_visual_scores --all        # Re-analyze all listings
     python -m app.scripts.analyze_visual_scores --limit 10   # Analyze only 10 listings
+    python -m app.scripts.analyze_visual_scores --top-matches 10  # Analyze top 10 matches
     python -m app.scripts.analyze_visual_scores --dry-run    # Preview without API calls
 """
 
 import asyncio
 import argparse
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select, or_
@@ -29,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.db.session import SessionLocal
 from app.models.listing import PropertyListing
+from app.services.advanced_matching import PropertyMatcher
 from app.services.visual_scoring import (
     analyze_listing_photos,
     compute_photos_hash,
@@ -50,6 +52,7 @@ async def analyze_batch(
     db: Session,
     analyze_all: bool = False,
     limit: Optional[int] = None,
+    top_matches: Optional[int] = None,
     dry_run: bool = False
 ) -> dict:
     """
@@ -71,19 +74,30 @@ async def analyze_batch(
         "analyzed": 0,
         "skipped": 0,
         "failed": 0,
-        "estimated_cost": 0.0
+        "estimated_cost": None
     }
 
-    # Query all listings with photos
-    query = select(PropertyListing).where(
-        PropertyListing.photos.isnot(None)
-    ).order_by(PropertyListing.id)
+    listings = []
+    if top_matches:
+        matcher = PropertyMatcher(criteria=None, db=db, include_intelligence=False)
+        scored = matcher.find_matches(limit=top_matches, min_score=0.0)
+        listings = [listing for listing, _, _ in scored]
+    else:
+        query = select(PropertyListing).where(
+            PropertyListing.photos.isnot(None)
+        ).order_by(PropertyListing.id)
 
-    if limit:
-        query = query.limit(limit * 2)  # Get extra to account for skips
+        if limit:
+            query = query.limit(limit * 2)  # Get extra to account for skips
 
-    listings = db.scalars(query).all()
+        listings = db.scalars(query).all()
+
     stats["total_listings"] = len(listings)
+    if top_matches:
+        logger.info("Selected top %d matches for visual scoring", top_matches)
+
+    cost_per_image = settings.OPENAI_VISION_COST_PER_IMAGE_USD
+    sample_size = settings.VISUAL_PHOTOS_SAMPLE_SIZE
 
     # Filter to those needing analysis
     to_analyze = []
@@ -106,16 +120,19 @@ async def analyze_batch(
 
         to_analyze.append(listing)
         stats["needs_analysis"] += 1
+        if cost_per_image is not None:
+            photo_count = min(len(listing.photos or []), sample_size)
+            stats["estimated_cost"] = (stats["estimated_cost"] or 0.0) + (photo_count * cost_per_image)
 
         if limit and len(to_analyze) >= limit:
             break
 
-    # Cost estimate: $0.003 per image, 3 images per listing
-    stats["estimated_cost"] = len(to_analyze) * 3 * 0.003
-
     logger.info(f"Found {stats['total_listings']} listings, {stats['with_photos']} with photos")
     logger.info(f"Need to analyze: {len(to_analyze)}, skipping {stats['skipped']} (cached)")
-    logger.info(f"Estimated cost: ${stats['estimated_cost']:.2f}")
+    if stats["estimated_cost"] is not None:
+        logger.info(f"Estimated cost: ${stats['estimated_cost']:.2f}")
+    else:
+        logger.info("Estimated cost: n/a (set OPENAI_VISION_COST_PER_IMAGE_USD)")
 
     if dry_run:
         logger.info("DRY RUN - not making API calls")
@@ -127,14 +144,21 @@ async def analyze_batch(
         return stats
 
     # Check API key
-    if not settings.ANTHROPIC_API_KEY:
-        logger.error("ANTHROPIC_API_KEY not configured. Set it in .env file.")
+    if not settings.OPENAI_API_KEY:
+        logger.error("OPENAI_API_KEY not configured. Set it in .env.local file.")
         return stats
+
+    running_cost = 0.0
 
     # Analyze each listing
     for i, listing in enumerate(to_analyze):
         try:
             logger.info(f"[{i+1}/{len(to_analyze)}] Analyzing: {listing.address[:50]}...")
+            if cost_per_image is not None:
+                photo_count = min(len(listing.photos or []), sample_size)
+                listing_cost = photo_count * cost_per_image
+                running_cost += listing_cost
+                logger.info(f"  Est. cost: ${listing_cost:.2f} (running ${running_cost:.2f})")
 
             # Run visual analysis
             result = await analyze_listing_photos(
@@ -153,7 +177,7 @@ async def analyze_batch(
                     "confidence": result.get("confidence", "unknown")
                 }
                 listing.photos_hash = compute_photos_hash(listing.photos)
-                listing.visual_analyzed_at = datetime.utcnow()
+                listing.visual_analyzed_at = datetime.now(timezone.utc)
 
                 db.commit()
 
@@ -180,6 +204,7 @@ def main():
     parser = argparse.ArgumentParser(description="Batch visual scoring for property listings")
     parser.add_argument("--all", action="store_true", help="Re-analyze all listings (ignore cache)")
     parser.add_argument("--limit", type=int, help="Maximum listings to analyze")
+    parser.add_argument("--top-matches", type=int, help="Analyze top N matches (uses scoring engine)")
     parser.add_argument("--dry-run", action="store_true", help="Preview without API calls")
     args = parser.parse_args()
 
@@ -193,6 +218,7 @@ def main():
             db=db,
             analyze_all=args.all,
             limit=args.limit,
+            top_matches=args.top_matches,
             dry_run=args.dry_run
         ))
 
@@ -205,7 +231,10 @@ def main():
         print(f"Analyzed:          {stats['analyzed']}")
         print(f"Skipped (cached):  {stats['skipped']}")
         print(f"Failed:            {stats['failed']}")
-        print(f"Estimated cost:    ${stats['estimated_cost']:.2f}")
+        if stats["estimated_cost"] is not None:
+            print(f"Estimated cost:    ${stats['estimated_cost']:.2f}")
+        else:
+            print("Estimated cost:    n/a")
 
     finally:
         db.close()

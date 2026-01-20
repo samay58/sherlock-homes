@@ -12,6 +12,10 @@ class PropertyListingBase(BaseModel):
     property_type: Optional[str] = None
     url: Optional[HttpUrl] = None
     listing_id: Optional[str] = None
+    source: Optional[str] = None
+    source_listing_id: Optional[str] = None
+    sources_seen: Optional[List[str]] = None
+    last_seen_at: Optional[datetime] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
     year_built: Optional[int] = None
@@ -79,5 +83,13 @@ class PropertyListing(PropertyListingBase):
     feature_scores: Optional[Dict[str, Any]] = None
     match_reasons: Optional[List[str]] = None
     match_tradeoff: Optional[str] = None
+    score_points: Optional[float] = None
+    score: Optional[float] = None
+    score_percent: Optional[str] = None
+    score_tier: Optional[str] = None
+    top_positives: Optional[List[str]] = None
+    key_tradeoff: Optional[str] = None
+    signals: Optional[Dict[str, Any]] = None
+    why_now: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

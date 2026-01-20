@@ -1,0 +1,10 @@
+sources:
+  - name: "Priya Agarwal"
+    listings:
+      - url: "https://example.com/listing/123-main-st"
+        address: "123 Main St, San Francisco, CA 94107"
+        price: 1500000
+        beds: 3
+        baths: 2.5
+        sqft: 1800
+        description: "Example placeholder listing for curated ingestion."

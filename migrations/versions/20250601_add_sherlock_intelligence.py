@@ -24,22 +24,28 @@ depends_on = None
 
 def upgrade():
     # Add Sherlock Homes intelligence columns
-    op.add_column(
-        'property_listings',
-        sa.Column('tranquility_score', sa.Integer(), nullable=True)
-    )
-    op.add_column(
-        'property_listings',
-        sa.Column('tranquility_factors', sa.JSON(), nullable=True)
-    )
-    op.add_column(
-        'property_listings',
-        sa.Column('light_potential_score', sa.Integer(), nullable=True)
-    )
-    op.add_column(
-        'property_listings',
-        sa.Column('light_potential_signals', sa.JSON(), nullable=True)
-    )
+    inspector = sa.inspect(op.get_bind())
+    columns = {col["name"] for col in inspector.get_columns("property_listings")}
+    if "tranquility_score" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('tranquility_score', sa.Integer(), nullable=True)
+        )
+    if "tranquility_factors" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('tranquility_factors', sa.JSON(), nullable=True)
+        )
+    if "light_potential_score" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('light_potential_score', sa.Integer(), nullable=True)
+        )
+    if "light_potential_signals" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('light_potential_signals', sa.JSON(), nullable=True)
+        )
 
 
 def downgrade():

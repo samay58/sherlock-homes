@@ -120,6 +120,32 @@ def _send_imessage(message: str, target: str) -> bool:
         return False
 
 
+def _send_sms_twilio_sync(message: str, to_number: str) -> bool:
+    if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
+        logger.warning("Twilio credentials missing; SMS alert skipped")
+        return False
+    if not settings.TWILIO_FROM_NUMBER or not to_number:
+        logger.warning("Twilio from/to number missing; SMS alert skipped")
+        return False
+
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.TWILIO_ACCOUNT_SID}/Messages.json"
+    data = {
+        "From": settings.TWILIO_FROM_NUMBER,
+        "To": to_number,
+        "Body": message,
+    }
+    auth = (settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+
+    try:
+        with httpx.Client(timeout=20.0) as client:
+            response = client.post(url, data=data, auth=auth)
+            response.raise_for_status()
+        return True
+    except Exception as exc:
+        logger.warning("SMS alert failed: %s", exc)
+        return False
+
+
 async def _send_sms_twilio(message: str, to_number: str) -> bool:
     if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
         logger.warning("Twilio credentials missing; SMS alert skipped")
@@ -155,6 +181,78 @@ async def _send_webhook(url: str, payload: Dict[str, Any]) -> bool:
     except Exception as exc:
         logger.warning("Webhook alert failed: %s", exc)
         return False
+
+
+def _build_listing_alert_content(alert_type: str, alerts: List[Dict[str, Any]]) -> Tuple[str, str]:
+    count = len(alerts)
+    label = alert_type.replace("_", " ").title()
+    subject = f"[Sherlock Homes] {label} alert: {count} listing{'s' if count != 1 else ''}"
+
+    lines = [
+        f"Alert type: {label}",
+        f"Listings: {count}",
+        "",
+    ]
+
+    for alert in alerts:
+        address = alert.get("address") or "Address n/a"
+        price = _format_price(alert.get("price"))
+        score_percent = alert.get("score_percent")
+        score_points = alert.get("score_points")
+        tier = alert.get("tier") or ""
+        reason = alert.get("reason") or ""
+        url = alert.get("url") or ""
+
+        if isinstance(score_percent, (int, float)):
+            score_percent_text = f"{score_percent:.1f}%"
+        elif isinstance(score_percent, str):
+            score_percent_text = score_percent
+        else:
+            score_percent_text = "n/a"
+
+        if isinstance(score_points, (int, float)):
+            score_points_text = f"{score_points:.1f} pts"
+        else:
+            score_points_text = "n/a"
+
+        tier_text = f"{tier}" if tier else "tier n/a"
+        line = f"- {address} — {price} — {score_percent_text} ({score_points_text}, {tier_text})"
+        if reason:
+            line = f"{line} — {reason}"
+        if url:
+            line = f"{line} — {url}"
+        lines.append(line)
+
+        details = []
+        top = alert.get("top_positives") or []
+        if top:
+            details.append(f"Top: {', '.join(top[:3])}")
+        tradeoff = alert.get("tradeoff")
+        if tradeoff:
+            details.append(f"Tradeoff: {tradeoff}")
+        why_now = alert.get("why_now")
+        if why_now:
+            details.append(f"Why now: {why_now}")
+        if details:
+            lines.append("  " + " | ".join(details))
+
+    body = "\n".join(lines)
+    return subject, body
+
+
+def send_listing_alerts(alert_type: str, alerts: List[Dict[str, Any]]) -> Dict[str, bool]:
+    subject, body = _build_listing_alert_content(alert_type, alerts)
+    results: Dict[str, bool] = {}
+
+    if settings.IMESSAGE_ENABLED and settings.IMESSAGE_TARGET:
+        results["imessage"] = _send_imessage(body, settings.IMESSAGE_TARGET)
+    elif settings.TWILIO_TO_NUMBER:
+        results["sms"] = _send_sms_twilio_sync(body, settings.TWILIO_TO_NUMBER)
+
+    if settings.ALERT_EMAIL_TO:
+        results["email"] = _send_email(subject, body, settings.ALERT_EMAIL_TO)
+
+    return results
 
 
 async def send_scout_alerts(

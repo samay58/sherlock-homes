@@ -3,7 +3,7 @@
 // Assuming the correct content is what we last edited in api.js
 // Simple API client utility using fetch
 
-const SERVER_BASE_URL = 'http://api:8000'; // For SSR within Docker
+const SSR_BASE_URL = import.meta.env.VITE_API_TARGET || 'http://localhost:8000';
 
 // Define a type for the fetch function signature SvelteKit uses
 type FetchFn = (info: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -14,10 +14,12 @@ async function request(endpoint: string, fetchFn: FetchFn = fetch, options: Requ
   const isSSR = import.meta.env.SSR; // Store in variable
   console.log(`>>> API Request Context: SSR=${isSSR}`); // Log SSR status
 
-  if (isSSR) {
-      url = endpoint.startsWith('http') ? endpoint : `${SERVER_BASE_URL}${endpoint}`;
+  if (endpoint.startsWith('http')) {
+    url = endpoint;
+  } else if (isSSR) {
+    url = `${SSR_BASE_URL}${endpoint}`;
   } else {
-      url = endpoint; 
+    url = endpoint;
   }
   console.log(`>>> API Request URL: ${url}`); // Log the final URL being used
   

@@ -1,7 +1,7 @@
 """
 Visual Quality Scoring Service for Sherlock Homes
 
-Analyzes property photos using Claude Vision to score visual appeal,
+Analyzes property photos using OpenAI Vision to score visual appeal,
 modernity, condition, brightness, staging, and cleanliness.
 
 This follows the same pattern as geospatial.py and nlp.py for intelligence scoring.
@@ -12,6 +12,7 @@ import hashlib
 import logging
 import base64
 import httpx
+import socket
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
@@ -24,49 +25,73 @@ logger = logging.getLogger(__name__)
 # VISION API PROMPT
 # =============================================================================
 
-VISUAL_SCORING_PROMPT = """Analyze this property photo for a real estate listing. Rate each dimension on a scale of 0-100:
+VISUAL_SCORING_PROMPT = """Analyze this property photo for buyer-focused quality. Rate each dimension on a scale of 0-100:
 
-1. **Modernity** (0-100): How modern are the finishes, fixtures, and design?
-   - 90-100: Brand new or recently renovated (2020s), designer finishes
-   - 70-89: Modern/updated (2010s), contemporary fixtures
-   - 50-69: Dated but acceptable (2000s), functional
-   - 30-49: Clearly dated (1990s or earlier), needs cosmetic updates
-   - 0-29: Very dated, original from 1970s or earlier
+1. Modernity (0-100): finishes, fixtures, and design recency.
+2. Condition (0-100): visible maintenance and repair state.
+3. Brightness (0-100): natural + artificial light quality.
+4. Staging (0-100): presentation quality (not over-staging).
+5. Cleanliness (0-100): cleanliness and tidiness.
 
-2. **Condition** (0-100): What is the visible maintenance and repair state?
-   - 90-100: Immaculate, no visible wear
-   - 70-89: Well-maintained, minor wear
-   - 50-69: Average condition, some wear visible
-   - 30-49: Needs repairs, visible damage or heavy wear
-   - 0-29: Poor condition, significant damage
+Also identify specific observations using ONLY these tokens:
 
-3. **Brightness** (0-100): How well-lit is the space (natural + artificial)?
-   - 90-100: Abundant natural light, bright and airy
-   - 70-89: Good lighting, pleasant
-   - 50-69: Adequate lighting
-   - 30-49: Dim, limited light
-   - 0-29: Dark, poorly lit
+Red flags:
+- flipper_gray_palette
+- lvp_flooring
+- staged_furniture
+- over_staged
+- dark_interior
+- deferred_maintenance
+- ultra_wide_distortion
+- visible_damage
+- worn_finishes
 
-4. **Staging** (0-100): How well is the space presented?
-   - 90-100: Professionally staged, magazine-quality
-   - 70-89: Well-arranged, clean presentation
-   - 50-69: Lived-in but tidy
-   - 30-49: Cluttered or messy
-   - 0-29: Poorly presented, distracting mess
-
-5. **Cleanliness** (0-100): How clean and tidy is the space?
-   - 90-100: Spotless, pristine
-   - 70-89: Clean, well-kept
-   - 50-69: Acceptable, minor untidiness
-   - 30-49: Dirty or neglected areas visible
-   - 0-29: Very dirty, needs deep cleaning
-
-Also identify specific observations:
-- **Red flags**: Issues that would concern a buyer (e.g., "water_stains", "outdated_appliances", "visible_damage", "worn_flooring", "popcorn_ceiling")
-- **Highlights**: Positive features visible (e.g., "modern_kitchen", "hardwood_floors", "abundant_light", "designer_bathroom", "professional_staging")
+Highlights:
+- natural_light_visible
+- outdoor_greenery
+- original_details
+- warm_materials
+- high_ceilings_visible
+- open_layout
+- quality_kitchen
 
 Respond with ONLY a valid JSON object, no other text:
 {"modernity": <0-100>, "condition": <0-100>, "brightness": <0-100>, "staging": <0-100>, "cleanliness": <0-100>, "red_flags": ["flag1", ...], "highlights": ["highlight1", ...]}"""
+
+
+def _extract_output_text(payload: Dict[str, Any]) -> Optional[str]:
+    if isinstance(payload.get("output_text"), str):
+        return payload["output_text"]
+
+    for item in payload.get("output", []) or []:
+        for content in item.get("content", []) or []:
+            if content.get("type") in {"output_text", "text"}:
+                return content.get("text")
+
+    for choice in payload.get("choices", []) or []:
+        message = choice.get("message", {})
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            for block in content:
+                if block.get("type") in {"text", "output_text"}:
+                    return block.get("text")
+
+    return None
+
+
+def _parse_json_response(content: str) -> Optional[Dict[str, Any]]:
+    cleaned = content.strip()
+    if "```json" in cleaned:
+        cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+    elif "```" in cleaned:
+        cleaned = cleaned.split("```")[1].split("```")[0].strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        logger.warning("Failed to parse vision response JSON: %s", exc)
+        return None
 
 
 # =============================================================================
@@ -137,63 +162,75 @@ def sample_photo_indices(total_photos: int, sample_size: int = 3) -> List[int]:
 
 async def analyze_single_photo(photo_url: str) -> Optional[Dict[str, Any]]:
     """
-    Analyze a single photo using Claude Vision API.
+    Analyze a single photo using OpenAI Vision (Responses API).
 
     Returns dict with scores and signals, or None if analysis fails.
     """
-    if not settings.ANTHROPIC_API_KEY:
-        logger.warning("ANTHROPIC_API_KEY not configured, skipping visual analysis")
+    if not settings.OPENAI_API_KEY:
+        logger.warning("OPENAI_API_KEY not configured, skipping visual analysis")
         return None
+
+    def build_request(image_url: str) -> Dict[str, Any]:
+        return {
+            "model": settings.OPENAI_VISION_MODEL,
+            "temperature": 0.2,
+            "max_output_tokens": settings.OPENAI_VISION_MAX_OUTPUT_TOKENS,
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": VISUAL_SCORING_PROMPT},
+                        {"type": "input_image", "image_url": image_url},
+                    ],
+                }
+            ],
+        }
+
+    async def call_openai(client: httpx.AsyncClient, image_url: str) -> httpx.Response:
+        return await client.post(
+            "https://api.openai.com/v1/responses",
+            headers={
+                "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                "content-type": "application/json",
+            },
+            json=build_request(image_url),
+        )
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": settings.ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
-                },
-                json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": 500,
-                    "messages": [{
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "url",
-                                    "url": photo_url
-                                }
-                            },
-                            {
-                                "type": "text",
-                                "text": VISUAL_SCORING_PROMPT
-                            }
-                        ]
-                    }]
-                }
-            )
+            response = await call_openai(client, photo_url)
+            if response.status_code >= 400:
+                error_detail = response.text[:500]
+                logger.warning("Vision request failed (%s): %s", response.status_code, error_detail)
+                if response.status_code in {400, 422}:
+                    try:
+                        image_response = await client.get(photo_url)
+                        image_response.raise_for_status()
+                        content_type = image_response.headers.get("content-type", "image/jpeg")
+                        b64 = base64.b64encode(image_response.content).decode("ascii")
+                        data_url = f"data:{content_type};base64,{b64}"
+                        response = await call_openai(client, data_url)
+                    except Exception as exc:
+                        logger.warning("Failed to fetch image for base64 fallback: %s", exc)
+                        return None
+
             response.raise_for_status()
 
             result = response.json()
-            content = result["content"][0]["text"]
+            content = _extract_output_text(result)
+            if not content:
+                logger.warning("No output text in vision response for %s", photo_url)
+                return None
 
-            # Parse JSON response
-            # Handle potential markdown code blocks
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
-
-            return json.loads(content)
+            return _parse_json_response(content)
 
     except httpx.HTTPStatusError as e:
         logger.warning(f"HTTP error analyzing photo {photo_url}: {e.response.status_code}")
         return None
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse vision response for {photo_url}: {e}")
+    except httpx.RequestError as e:
+        if isinstance(e.__cause__, socket.gaierror):
+            logger.warning("Network error contacting OpenAI (DNS resolution failed).")
+        logger.warning(f"Request error analyzing photo {photo_url}: {e}")
         return None
     except Exception as e:
         logger.warning(f"Error analyzing photo {photo_url}: {e}")
@@ -249,6 +286,31 @@ def aggregate_photo_scores(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
     composite = sum(averaged.get(k, 50) * w for k, w in weights.items())
 
+    penalty_map = {
+        "flipper_gray_palette": 5,
+        "lvp_flooring": 5,
+        "staged_furniture": 3,
+        "over_staged": 2,
+        "dark_interior": 5,
+        "deferred_maintenance": 7,
+        "ultra_wide_distortion": 2,
+        "visible_damage": 6,
+        "worn_finishes": 4,
+    }
+    bonus_map = {
+        "natural_light_visible": 4,
+        "outdoor_greenery": 3,
+        "original_details": 4,
+        "warm_materials": 3,
+        "high_ceilings_visible": 3,
+        "open_layout": 2,
+        "quality_kitchen": 3,
+    }
+
+    penalty = sum(penalty_map.get(flag, 0) for flag in all_red_flags)
+    bonus = sum(bonus_map.get(flag, 0) for flag in all_highlights)
+    composite = composite + bonus - penalty
+
     # Confidence based on photos analyzed
     photos_analyzed = len(analyses)
     if photos_analyzed >= 3:
@@ -259,7 +321,7 @@ def aggregate_photo_scores(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
         confidence = "low"
 
     return {
-        "score": int(round(composite)),
+        "score": max(0, min(100, int(round(composite)))),
         "dimensions": averaged,
         "red_flags": list(all_red_flags),
         "highlights": list(all_highlights),
@@ -296,8 +358,8 @@ async def analyze_listing_photos(
             "note": "No photos available"
         }
 
-    if not settings.ANTHROPIC_API_KEY:
-        logger.warning("ANTHROPIC_API_KEY not configured")
+    if not settings.OPENAI_API_KEY:
+        logger.warning("OPENAI_API_KEY not configured")
         return {
             "score": None,
             "dimensions": {},

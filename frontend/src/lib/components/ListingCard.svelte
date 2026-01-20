@@ -22,9 +22,15 @@
     if (sqft == null || sqft === 0) return '';
     return `${new Intl.NumberFormat('en-US').format(sqft)} sqft`;
   };
+
+  const calculatePricePerSqft = (price, sqft) => {
+    if (!price || !sqft) return null;
+    return Math.round(price / sqft);
+  };
   
-  const detailUrl = `/listings/${listing?.id}`;
-  const primaryPhoto = listing?.photos?.[0] || '/placeholder-image.svg';
+  $: detailUrl = `/listings/${listing?.id}`;
+  $: primaryPhoto = listing?.photos?.[0] || '/placeholder-image.svg';
+  $: pricePerSqft = calculatePricePerSqft(listing?.price, listing?.sqft);
   
   const handleImageLoad = () => {
     imageLoaded = true;
@@ -36,11 +42,15 @@
   };
   
   // Extract key features for tags
-  const features = [];
-  if (listing?.natural_light_flag) features.push('Natural Light');
-  if (listing?.high_ceilings_flag) features.push('High Ceilings');
-  if (listing?.outdoor_space_flag) features.push('Outdoor Space');
-  if (listing?.modern_kitchen_flag) features.push('Modern Kitchen');
+  $: features = [
+    listing?.has_natural_light_keywords ? 'Natural Light' : null,
+    listing?.has_high_ceiling_keywords ? 'High Ceilings' : null,
+    listing?.has_outdoor_space_keywords ? 'Outdoor Space' : null,
+    listing?.has_parking_keywords ? 'Parking' : null,
+    listing?.has_view_keywords ? 'Views' : null,
+    listing?.has_updated_systems_keywords ? 'Updated' : null,
+    listing?.has_architectural_details_keywords ? 'Character' : null,
+  ].filter(Boolean);
   
   // Get score display info
   const getScoreColor = (score) => {
@@ -108,8 +118,8 @@
       <div class="info">
         <div class="price-row">
           <h3 class="price">{formatPrice(listing.price)}</h3>
-          {#if listing.price_per_sqft}
-            <span class="price-per-sqft">${listing.price_per_sqft}/sqft</span>
+          {#if pricePerSqft}
+            <span class="price-per-sqft">${pricePerSqft}/sqft</span>
           {/if}
         </div>
         

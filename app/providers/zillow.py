@@ -31,7 +31,7 @@ class ZillowProvider(BaseProvider):
                  baths_min: Optional[float] = None,
                  sqft_min: Optional[int] = None,
                  property_types: Optional[List[str]] = None):
-        api_key = os.getenv(API_KEY_ENV)
+        api_key = os.getenv(API_KEY_ENV) or settings.ZENROWS_API_KEY
         if not api_key:
             raise RuntimeError("ZENROWS_API_KEY env var required for ZillowProvider")
 
@@ -45,7 +45,7 @@ class ZillowProvider(BaseProvider):
         self.baths_min = baths_min if baths_min is not None else settings.SEARCH_BATHS_MIN
         self.sqft_min = sqft_min if sqft_min is not None else settings.SEARCH_SQFT_MIN
         self.property_types = property_types or ["single-family", "condo", "townhouse"]
-        self.client = httpx.AsyncClient(timeout=20)
+        self.client = httpx.AsyncClient(timeout=settings.ZENROWS_TIMEOUT_SECONDS)
         self.sem = asyncio.Semaphore(concurrency)
 
         # Log the configured search parameters
@@ -53,17 +53,37 @@ class ZillowProvider(BaseProvider):
                    f"price_min={self.price_min}, price_max={self.price_max}, beds_min={self.beds_min}, "
                    f"baths_min={self.baths_min}, sqft_min={self.sqft_min}")
 
+    async def _zenrows_get(self, endpoint: str, params: Dict[str, Any], label: str) -> str:
+        attempts = 3
+        for attempt in range(1, attempts + 1):
+            try:
+                async with self.sem:
+                    r = await self.client.get(endpoint, params=params)
+                    r.raise_for_status()
+                    return r.text
+            except httpx.TimeoutException:
+                if attempt >= attempts:
+                    raise
+                backoff = min(2.0 * attempt, 6.0)
+                logger.warning(
+                    "Zillow %s request timed out (attempt %d/%d). Retrying in %.1fs",
+                    label,
+                    attempt,
+                    attempts,
+                    backoff,
+                )
+                await asyncio.sleep(backoff)
+
+        raise RuntimeError(f"Zillow {label} request failed after retries")
+
     async def _zenrows_get_discovery(self, url: str) -> str: # Renamed for clarity
         """Call ZenRows Zillow discovery endpoint which returns structured JSON."""
         params = {
             "apikey": self.api_key,
             "url": url,
         }
-        async with self.sem:
-            # Use REAL_ESTATE_DISCOVERY_ENDPOINT here
-            r = await self.client.get(REAL_ESTATE_DISCOVERY_ENDPOINT, params=params)
-            r.raise_for_status()
-            return r.text
+        # Use REAL_ESTATE_DISCOVERY_ENDPOINT here
+        return await self._zenrows_get(REAL_ESTATE_DISCOVERY_ENDPOINT, params, "discovery")
 
     async def _zenrows_get_property_details(self, zpid: str) -> str:
         """Call ZenRows Zillow property detail endpoint for a given ZPID."""
@@ -72,11 +92,12 @@ class ZillowProvider(BaseProvider):
             "apikey": self.api_key,
             "country": "us" # Optional parameter added back based on docs example
         }
-        async with self.sem:
-            logger.debug(f"Making HTTP GET request to ZenRows Property Detail API for ZPID: {zpid} at URL: {detail_url}")
-            r = await self.client.get(detail_url, params=params)
-            r.raise_for_status()
-            return r.text
+        logger.debug(
+            "Making HTTP GET request to ZenRows Property Detail API for ZPID: %s at URL: %s",
+            zpid,
+            detail_url,
+        )
+        return await self._zenrows_get(detail_url, params, "detail")
 
     def _build_search_url(self, page: int = 1, keyword: Optional[str] = None) -> str:
         base = f"https://www.zillow.com/{self.location_slug}/"
@@ -139,6 +160,8 @@ class ZillowProvider(BaseProvider):
                 continue
             items.append(
                 {
+                    "source": "zillow",
+                    "source_listing_id": str(identifier),
                     "listing_id": str(identifier),
                     "address": res.get("property_address"),
                     "lat": res.get("latitude"),
@@ -206,6 +229,8 @@ class ZillowProvider(BaseProvider):
             neighborhood = details_json.get("neighborhood") or details_json.get("city")
 
             return {
+                "source": "zillow",
+                "source_listing_id": str(listing_id),
                 "description": description,
                 "year_built": year_built,
                 "lat": latitude,

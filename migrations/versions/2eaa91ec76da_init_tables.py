@@ -8,54 +8,51 @@ depends_on = None
 
 
 def upgrade():
-    # Idempotent base creation (handles partially created DBs)
-    op.execute(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255) NOT NULL UNIQUE,
-            hashed_password VARCHAR(255) NOT NULL
-        );
-        """
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    tables = set(inspector.get_table_names())
 
-    op.execute(
-        """
-        CREATE TABLE IF NOT EXISTS criteria (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            name VARCHAR(100) NOT NULL DEFAULT 'My Criteria',
-            is_active BOOLEAN NOT NULL DEFAULT TRUE,
-            price_min FLOAT,
-            price_max FLOAT,
-            beds_min INTEGER,
-            baths_min FLOAT,
-            sqft_min INTEGER,
-            require_natural_light BOOLEAN NOT NULL DEFAULT FALSE,
-            require_high_ceilings BOOLEAN NOT NULL DEFAULT FALSE,
-            require_outdoor_space BOOLEAN NOT NULL DEFAULT FALSE
-        );
-        """
-    )
+    if "users" not in tables:
+        op.create_table(
+            "users",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("email", sa.String(length=255), nullable=False, unique=True),
+            sa.Column("hashed_password", sa.String(length=255), nullable=False),
+        )
 
-    op.execute(
-        """
-        CREATE TABLE IF NOT EXISTS property_listings (
-            id SERIAL PRIMARY KEY,
-            address VARCHAR(255) NOT NULL,
-            price FLOAT NOT NULL,
-            beds INTEGER,
-            baths FLOAT,
-            sqft INTEGER,
-            property_type VARCHAR(50),
-            url VARCHAR(500) NOT NULL,
-            description TEXT,
-            status VARCHAR(20) DEFAULT 'active',
-            days_on_market INTEGER,
-            last_updated TIMESTAMP
-        );
-        """
-    )
+    if "criteria" not in tables:
+        op.create_table(
+            "criteria",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("name", sa.String(length=100), nullable=False, server_default=sa.text("'My Criteria'")),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("price_min", sa.Float(), nullable=True),
+            sa.Column("price_max", sa.Float(), nullable=True),
+            sa.Column("beds_min", sa.Integer(), nullable=True),
+            sa.Column("baths_min", sa.Float(), nullable=True),
+            sa.Column("sqft_min", sa.Integer(), nullable=True),
+            sa.Column("require_natural_light", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+            sa.Column("require_high_ceilings", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+            sa.Column("require_outdoor_space", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        )
+
+    if "property_listings" not in tables:
+        op.create_table(
+            "property_listings",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("address", sa.String(length=255), nullable=False),
+            sa.Column("price", sa.Float(), nullable=False),
+            sa.Column("beds", sa.Integer(), nullable=True),
+            sa.Column("baths", sa.Float(), nullable=True),
+            sa.Column("sqft", sa.Integer(), nullable=True),
+            sa.Column("property_type", sa.String(length=50), nullable=True),
+            sa.Column("url", sa.String(length=500), nullable=False),
+            sa.Column("description", sa.Text(), nullable=True),
+            sa.Column("status", sa.String(length=20), server_default=sa.text("'active'")),
+            sa.Column("days_on_market", sa.Integer(), nullable=True),
+            sa.Column("last_updated", sa.DateTime(), nullable=True),
+        )
 
 
 def downgrade():

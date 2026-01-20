@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 from typing import Any, Dict, List, Optional
@@ -32,6 +32,15 @@ def _hash_text(text: Optional[str]) -> str:
         return ""
     normalized = " ".join(text.split())
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _build_listing_id(source: str, source_listing_id: str) -> str:
+    base = f"{source}:{source_listing_id}"
+    if len(base) <= 64:
+        return base
+    max_digest_len = max(8, 63 - len(source) - 1)
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()[:max_digest_len]
+    return f"{source}:{digest}"
 
 
 def _build_snapshot(listing: PropertyListing) -> Dict[str, Any]:
@@ -164,7 +173,7 @@ def upsert_listings(listings: List[Dict[str, Any]]):
     """Insert or update listing records in the database.
 
     Notes:
-    - Uses provider `listing_id` when present; falls back to URL.
+    - Uses `source` + `source_listing_id` when present; falls back to `listing_id` or URL.
     - Applies extracted `flags` to boolean keyword columns.
     - Avoids mutating `photos` when merging (kept as JSON list on model).
     """
@@ -176,15 +185,36 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                 continue
 
             try:
-                identifier_filter: Dict[str, Any] = {}
-                if data.get("listing_id"):
-                    identifier_filter["listing_id"] = data["listing_id"]
-                else:
-                    identifier_filter["url"] = data["url"]
+                source = data.get("source")
+                source_listing_id = data.get("source_listing_id") or data.get("listing_id")
+                if source and source_listing_id:
+                    data["source_listing_id"] = str(source_listing_id)
+                    if source != "zillow":
+                        data["listing_id"] = _build_listing_id(source, data["source_listing_id"])
+                    elif not data.get("listing_id"):
+                        data["listing_id"] = data["source_listing_id"]
 
-                existing: Optional[PropertyListing] = (
-                    db.query(PropertyListing).filter_by(**identifier_filter).first()
-                )
+                existing: Optional[PropertyListing] = None
+                if source and data.get("source_listing_id"):
+                    existing = (
+                        db.query(PropertyListing)
+                        .filter_by(source=source, source_listing_id=data["source_listing_id"])
+                        .first()
+                    )
+
+                if not existing and data.get("listing_id"):
+                    existing = (
+                        db.query(PropertyListing)
+                        .filter_by(listing_id=data["listing_id"])
+                        .first()
+                    )
+
+                if not existing and data.get("url"):
+                    existing = (
+                        db.query(PropertyListing)
+                        .filter_by(url=data["url"])
+                        .first()
+                    )
 
                 old_snapshot = _get_latest_snapshot(db, existing.id) if existing else None
                 flags = data.get("flags") or {}
@@ -213,6 +243,8 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                     "basement_unit": "is_basement_unit",
                 }
 
+                seen_at = datetime.now(timezone.utc)
+
                 if existing:
                     for k, v in data.items():
                         if k == "flags":
@@ -225,6 +257,16 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                                 setattr(existing, k, v)
                         else:
                             setattr(existing, k, v)
+                    if source and not existing.source:
+                        existing.source = source
+                    if source and data.get("source_listing_id"):
+                        existing.source_listing_id = data.get("source_listing_id")
+                    if source:
+                        sources_seen = existing.sources_seen or []
+                        if source not in sources_seen:
+                            sources_seen.append(source)
+                        existing.sources_seen = sources_seen
+                    existing.last_seen_at = seen_at
                     existing.last_updated = datetime.utcnow()
                     listing = existing
                 else:
@@ -233,6 +275,13 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                     for fk, fv in flags.items():
                         if fk in valid_flags:
                             record_attrs[valid_flags[fk]] = fv
+
+                    if source:
+                        record_attrs["source"] = source
+                        record_attrs["sources_seen"] = [source]
+                    if data.get("source_listing_id"):
+                        record_attrs["source_listing_id"] = data["source_listing_id"]
+                    record_attrs["last_seen_at"] = seen_at
                     
                     new_record = PropertyListing(**record_attrs)
                     db.add(new_record)

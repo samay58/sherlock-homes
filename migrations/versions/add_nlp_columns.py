@@ -17,11 +17,16 @@ depends_on = None
 
 def upgrade():
     # Add NLP keyword columns that are missing
+    inspector = sa.inspect(op.get_bind())
+    columns = {col["name"] for col in inspector.get_columns("property_listings")}
     with op.batch_alter_table('property_listings') as batch:
         # Essential Attributes
-        batch.add_column(sa.Column('has_natural_light_keywords', sa.Boolean(), nullable=False, server_default='false'))
-        batch.add_column(sa.Column('has_high_ceiling_keywords', sa.Boolean(), nullable=False, server_default='false'))
-        batch.add_column(sa.Column('has_outdoor_space_keywords', sa.Boolean(), nullable=False, server_default='false'))
+        if "has_natural_light_keywords" not in columns:
+            batch.add_column(sa.Column('has_natural_light_keywords', sa.Boolean(), nullable=False, server_default='false'))
+        if "has_high_ceiling_keywords" not in columns:
+            batch.add_column(sa.Column('has_high_ceiling_keywords', sa.Boolean(), nullable=False, server_default='false'))
+        if "has_outdoor_space_keywords" not in columns:
+            batch.add_column(sa.Column('has_outdoor_space_keywords', sa.Boolean(), nullable=False, server_default='false'))
         # Skip has_parking_keywords - already exists
         # Skip has_view_keywords - already exists
         # Skip has_updated_systems_keywords - already exists

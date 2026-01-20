@@ -1,12 +1,25 @@
 <script>
+  import { createEventDispatcher } from 'svelte';
+
   export let listing;
   export let index = 0;
   export let loading = false;
   export let showScore = true;
   export let isTopMatch = false; // Orange border for top 3
+  export let userFeedback = null; // 'like', 'dislike', 'neutral', or null
+
+  const dispatch = createEventDispatcher();
 
   let imageLoaded = false;
   let imageError = false;
+
+  const handleFeedback = (e, type) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // If clicking the same type, toggle it off (delete feedback)
+    const newType = userFeedback === type ? null : type;
+    dispatch('feedback', { listingId: listing.id, feedbackType: newType });
+  };
 
   const formatPrice = (price) => {
     if (price == null) return 'Price TBD';
@@ -25,6 +38,20 @@
   const calculatePricePerSqft = (price, sqft) => {
     if (!price || !sqft) return null;
     return Math.round(price / sqft);
+  };
+
+  const normalizeSignal = (value) => {
+    if (value == null) return null;
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return null;
+    return Math.round(numeric * 10) / 10;
+  };
+
+  const deriveSignal = (key, fallback) => {
+    if (listing?.signals && listing.signals[key] != null) {
+      return normalizeSignal(listing.signals[key]);
+    }
+    return normalizeSignal(fallback);
   };
 
   $: detailUrl = `/listings/${listing?.id}`;
@@ -53,6 +80,30 @@
   };
 
   $: scoreTier = listing?.match_score != null ? getScoreTier(listing.match_score) : null;
+
+  $: signalData = (() => {
+    const data = [];
+    const light = deriveSignal(
+      'light_potential',
+      listing?.light_potential_score != null ? listing.light_potential_score / 10 : null
+    );
+    const quiet = deriveSignal(
+      'tranquility_score',
+      listing?.tranquility_score != null ? listing.tranquility_score / 10 : null
+    );
+    const visual = deriveSignal(
+      'visual_quality',
+      listing?.visual_quality_score != null ? listing.visual_quality_score / 10 : null
+    );
+    const character = deriveSignal('nlp_character_score', null);
+
+    if (light != null) data.push({ label: 'Light', value: light });
+    if (quiet != null) data.push({ label: 'Quiet', value: quiet });
+    if (visual != null) data.push({ label: 'Visual', value: visual });
+    if (character != null) data.push({ label: 'Character', value: character });
+
+    return data;
+  })();
 </script>
 
 {#if loading}
@@ -102,6 +153,19 @@
       <div class="dossier-body">
         <!-- Price - Serif, commanding -->
         <div class="dossier-price">{formatPrice(listing.price)}</div>
+        {#if typeof listing.score_points === 'number' || listing.score_tier}
+          <div class="dossier-scoreline">
+            {#if typeof listing.score_points === 'number'}
+              {listing.score_points.toFixed(1)} pts
+            {/if}
+            {#if typeof listing.score_points === 'number' && listing.score_tier}
+              ·
+            {/if}
+            {#if listing.score_tier}
+              {listing.score_tier}
+            {/if}
+          </div>
+        {/if}
 
         <!-- Address - Mono, precise -->
         <address class="dossier-address">{listing.address}</address>
@@ -129,17 +193,30 @@
         </div>
 
         <!-- Property Intel -->
-        {#if intel.length > 0}
+        {#if intel.length > 0 || signalData.length > 0}
           <div class="dossier-intel">
-            <span class="intel-label">INTEL</span>
-            <div class="intel-tags">
-              {#each intel.slice(0, 3) as feature}
-                <span class="intel-tag">{feature.label}</span>
-              {/each}
-              {#if intel.length > 3}
-                <span class="intel-tag intel-tag--more">+{intel.length - 3}</span>
-              {/if}
-            </div>
+            {#if intel.length > 0}
+              <span class="intel-label">INTEL</span>
+              <div class="intel-tags">
+                {#each intel.slice(0, 3) as feature}
+                  <span class="intel-tag">{feature.label}</span>
+                {/each}
+                {#if intel.length > 3}
+                  <span class="intel-tag intel-tag--more">+{intel.length - 3}</span>
+                {/if}
+              </div>
+            {/if}
+            {#if signalData.length > 0}
+              <span class="signal-label">SIGNALS</span>
+              <div class="signal-tags">
+                {#each signalData as signal}
+                  <span class="signal-tag">
+                    <span class="signal-name">{signal.label}</span>
+                    <span class="signal-value">{signal.value}</span>
+                  </span>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/if}
 
@@ -153,10 +230,37 @@
             {#if listing.match_tradeoff}
               <span class="why-tradeoff">Tradeoff: {listing.match_tradeoff}</span>
             {/if}
+            {#if listing.why_now}
+              <span class="why-now">Why now: {listing.why_now}</span>
+            {/if}
           </div>
         {:else if listing.match_narrative}
           <p class="dossier-narrative">{listing.match_narrative}</p>
         {/if}
+
+        <!-- Feedback Buttons -->
+        <div class="dossier-feedback">
+          <button
+            class="feedback-btn feedback-btn--like"
+            class:active={userFeedback === 'like'}
+            on:click={(e) => handleFeedback(e, 'like')}
+            title="Like this listing"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+            </svg>
+          </button>
+          <button
+            class="feedback-btn feedback-btn--dislike"
+            class:active={userFeedback === 'dislike'}
+            on:click={(e) => handleFeedback(e, 'dislike')}
+            title="Dislike this listing"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+            </svg>
+          </button>
+        </div>
       </div>
     </article>
   </a>
@@ -329,6 +433,14 @@
     line-height: 1.1;
   }
 
+  .dossier-scoreline {
+    font-family: var(--font-family-mono, monospace);
+    font-size: var(--font-size-xs, 10px);
+    letter-spacing: var(--tracking-wide, 0.02em);
+    color: var(--color-text-tertiary, #999);
+    text-transform: uppercase;
+  }
+
   /* Address - Mono typography for precision */
   .dossier-address {
     font-family: var(--font-family-mono, monospace);
@@ -430,6 +542,50 @@
     color: var(--color-text-tertiary, #999);
   }
 
+  .signal-label {
+    font-family: var(--font-family-sans, sans-serif);
+    font-size: var(--font-size-xs, 10px);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-tertiary, #999);
+    letter-spacing: var(--tracking-widest, 0.1em);
+    text-transform: uppercase;
+    display: block;
+    margin: var(--space-3, 12px) 0 var(--space-2, 8px);
+  }
+
+  .signal-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1, 4px);
+  }
+
+  .signal-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1, 4px);
+    padding: var(--space-1, 4px) var(--space-2, 8px);
+    font-family: var(--font-family-sans, sans-serif);
+    font-size: var(--font-size-xs, 10px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-ink, #000);
+    background: var(--color-gray-100, #f5f5f5);
+    border: 1px solid var(--color-border, #e5e5e5);
+    border-radius: var(--radius-sm, 2px);
+    letter-spacing: var(--tracking-wide, 0.02em);
+  }
+
+  .signal-name {
+    text-transform: uppercase;
+    font-size: 0.55rem;
+    color: var(--color-text-tertiary, #999);
+  }
+
+  .signal-value {
+    font-family: var(--font-family-mono, monospace);
+    font-size: 0.7rem;
+    color: var(--color-ink, #000);
+  }
+
   /* Match Narrative */
   .dossier-narrative {
     font-family: var(--font-family-sans, sans-serif);
@@ -462,6 +618,67 @@
   .why-tradeoff {
     font-size: 0.8rem;
     color: var(--color-text-secondary, #666);
+  }
+
+  .why-now {
+    font-size: 0.8rem;
+    color: var(--color-ink, #000);
+  }
+
+  /* Feedback Buttons */
+  .dossier-feedback {
+    display: flex;
+    gap: var(--space-2, 8px);
+    margin-top: var(--space-3, 12px);
+    padding-top: var(--space-3, 12px);
+    border-top: 1px solid var(--color-border, #e5e5e5);
+  }
+
+  .feedback-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--color-border, #e5e5e5);
+    border-radius: var(--radius-sm, 2px);
+    background: var(--color-paper, #fff);
+    cursor: pointer;
+    transition: all 100ms var(--ease-out, ease-out);
+  }
+
+  .feedback-btn svg {
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-tertiary, #999);
+    transition: color 100ms var(--ease-out, ease-out);
+  }
+
+  .feedback-btn:hover {
+    border-color: var(--color-gray-400, #999);
+  }
+
+  .feedback-btn:hover svg {
+    color: var(--color-ink, #000);
+  }
+
+  .feedback-btn--like.active {
+    background: var(--color-score-excellent, #1B5E20);
+    border-color: var(--color-score-excellent, #1B5E20);
+  }
+
+  .feedback-btn--like.active svg {
+    color: white;
+  }
+
+  .feedback-btn--dislike.active {
+    background: var(--color-score-low, #C62828);
+    border-color: var(--color-score-low, #C62828);
+  }
+
+  .feedback-btn--dislike.active svg {
+    color: white;
   }
 
   /* Skeleton State */

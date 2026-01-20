@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Float, Boolean, Text, Column, DateTime
+from sqlalchemy import Integer, String, Float, Boolean, Text, Column, DateTime, UniqueConstraint
 from sqlalchemy import JSON
 from datetime import datetime
 
@@ -7,10 +7,17 @@ from .base import Base
 
 class PropertyListing(Base):
     __tablename__ = "property_listings"
+    __table_args__ = (
+        UniqueConstraint("source", "source_listing_id", name="uq_property_listings_source_listing_id"),
+    )
 
     id = Column(Integer, primary_key=True)
-    # provider-specific unique id (e.g., Redfin propertyId)
+    # provider-specific unique id (legacy single-source)
     listing_id = Column(String(64), unique=True, index=True, nullable=True)
+    source = Column(String(32), nullable=True)
+    source_listing_id = Column(String(512), nullable=True)
+    sources_seen = Column(JSON, nullable=True)
+    last_seen_at = Column(DateTime, nullable=True)
     address = Column(String(255), nullable=False, index=True)
     price = Column(Float, nullable=True)
     # price may be unknown for some listings

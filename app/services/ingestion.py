@@ -6,11 +6,12 @@ from typing import List, Dict, Any, Tuple
 
 # Local modules
 from app.core.config import settings
-from app.providers.zillow import ZillowProvider
+from app.providers.registry import get_active_providers
 from app.services.persistence import upsert_listings
 from app.services.nlp import extract_flags, estimate_light_potential
 from app.services.geospatial import calculate_tranquility_score
 from app.services.neighborhoods import resolve_neighborhood
+from app.services.listing_alerts import process_listing_alerts
 from app.state import ingestion_state # Import shared state
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,14 @@ logger = logging.getLogger(__name__)
 SF_BBOX = (37.707, -122.515, 37.83, -122.355)  # lat_sw, lon_sw, lat_ne, lon_ne
 TILE_LAT_STEP = 0.02
 TILE_LON_STEP = 0.02
+
+
+def _apply_source_fields(listing: Dict[str, Any], source_key: str) -> Dict[str, Any]:
+    if not listing.get("source"):
+        listing["source"] = source_key
+    if listing.get("source_listing_id") is None and listing.get("listing_id") is not None:
+        listing["source_listing_id"] = str(listing["listing_id"])
+    return listing
 
 
 def _generate_tiles(bbox: Tuple[float, float, float, float]):
@@ -42,71 +51,131 @@ async def run_ingestion_job():
     ingestion_state.last_run_error = None
     logger.info(f"Starting ingestion job at {start_time.isoformat()}Z")
 
-    provider = ZillowProvider()
-    listings_summary: List[Dict[str, Any]] = []
-    enriched_listings: List[Dict[str, Any]] = []
+    providers = get_active_providers()
     try:
-        # ---> Fetch summaries <---
-        try:
-            page = 1
-            max_pages = settings.MAX_PAGES
-            logger.info(f"Fetching up to {max_pages} pages of listings (MAX_PAGES={max_pages})")
-            while page <= max_pages:
-                batch, more = await provider.search_page(page=page)
-                listings_summary.extend(batch)
-                if not more:
-                    break
-                await asyncio.sleep(1.5)  # polite pause for ZenRows quota
-                page += 1
-            ingestion_state.last_run_summary_count = len(listings_summary) # Store count
-        except Exception as e:
-            logger.error(f"Error fetching listing summaries: {e}", exc_info=True)
-            ingestion_state.last_run_error = f"Failed during summary fetch: {e}"
-            # Log and continue with potentially partial summaries
-        
-        logger.info("Fetched %d listings (raw summaries)", len(listings_summary))
+        summary_count_total = 0
+        detail_calls_total = 0
+        upsert_total = 0
+        all_enriched: List[Dict[str, Any]] = []
 
-        # ---> Enrich listings <---
-        if listings_summary: # only proceed if we have summaries
-            detail_calls_made = 0 # Counter for detail API calls
-            max_detail_calls = settings.MAX_DETAIL_CALLS
-            logger.info(f"Enriching up to {max_detail_calls} listings with full details (MAX_DETAIL_CALLS={max_detail_calls})")
+        for spec in providers:
+            provider = spec.factory()
+            provider_summaries: List[Dict[str, Any]] = []
+            provider_enriched: List[Dict[str, Any]] = []
+            try:
+                # ---> Fetch summaries <---
+                try:
+                    page = 1
+                    max_pages = settings.MAX_PAGES
+                    logger.info(
+                        "Fetching up to %d pages from %s (MAX_PAGES=%d)",
+                        max_pages,
+                        spec.key,
+                        max_pages,
+                    )
+                    while page <= max_pages:
+                        if hasattr(provider, "search_page"):
+                            batch, more = await provider.search_page(page=page)
+                        else:
+                            batch = await provider.search(bbox=None, page=page)
+                            more = False
+                        provider_summaries.extend([_apply_source_fields(item, spec.key) for item in batch])
+                        if not more:
+                            break
+                        await asyncio.sleep(1.5)  # polite pause for ZenRows quota
+                        page += 1
+                    summary_count_total += len(provider_summaries)
+                except Exception as e:
+                    logger.error(
+                        "Error fetching %s listing summaries: %s",
+                        spec.key,
+                        e,
+                        exc_info=True,
+                    )
+                    ingestion_state.last_run_error = f"Failed during summary fetch ({spec.key}): {e}"
+                    # Log and continue with potentially partial summaries
 
-            for i, summary_listing in enumerate(listings_summary):
-                listing_id = summary_listing.get("listing_id")
-                # print(f"---> Processing listing {i+1}/{len(listings_summary)}, ID: {listing_id}") # Removed debug print
-                logger.debug(f"Processing listing {i+1}/{len(listings_summary)}, ID: {listing_id}") # Keep debug log
-                
-                if not listing_id:
-                    logger.warning("Skipping enrichment for listing without listing_id: %s", summary_listing.get("address"))
-                    enriched_listings.append(summary_listing) # Add as-is if no ID
-                    continue
-                
-                listing_to_add = summary_listing.copy()
+                logger.info(
+                    "Fetched %d listings (raw summaries) from %s",
+                    len(provider_summaries),
+                    spec.key,
+                )
 
-                # ---> Check detail call limit <---
-                if detail_calls_made >= max_detail_calls:
-                    if detail_calls_made == max_detail_calls: # Log only once when limit is first hit
-                       logger.info(f"Reached detail call limit ({max_detail_calls}). Skipping details for remaining listings.")
-                       detail_calls_made += 1 # Increment past limit to prevent re-logging
-                    # Skip detail fetch for this listing, keep summary data in listing_to_add
-                else:
-                    # ---> Fetch and process details (if under limit) <---
-                    try: 
-                        logger.debug(f"Attempting to fetch details for ZPID: {listing_id} (Call #{detail_calls_made + 1})")
-                        details = await provider.get_details(listing_id)
-                        detail_calls_made += 1 
-                        await asyncio.sleep(0.5) # Small polite pause between detail calls
+                # ---> Enrich listings <---
+                if provider_summaries:  # only proceed if we have summaries
+                    detail_calls_made = 0  # Counter for detail API calls
+                    max_detail_calls = settings.MAX_DETAIL_CALLS
+                    logger.info(
+                        "Enriching up to %d listings with full details from %s (MAX_DETAIL_CALLS=%d)",
+                        max_detail_calls,
+                        spec.key,
+                        max_detail_calls,
+                    )
 
-                        # Merge summary and details, details take precedence
-                        listing_to_add.update({k: v for k, v in details.items() if v is not None}) # Merge only non-None values from details
-                        
-                        # Ensure photos are handled correctly (prefer details photos if they exist)
-                        detail_photos = details.get("photos")
-                        if detail_photos: # If details had photos (even empty list), use them
-                            listing_to_add["photos"] = detail_photos
-                        elif not listing_to_add.get("photos"): # If details had no photos and summary also had none
-                             listing_to_add["photos"] = [] # Default to empty list
+                    for i, summary_listing in enumerate(provider_summaries):
+                        listing_id = summary_listing.get("source_listing_id") or summary_listing.get("listing_id")
+                        # print(f"---> Processing listing {i+1}/{len(provider_summaries)}, ID: {listing_id}") # Removed debug print
+                        logger.debug(
+                            "Processing listing %d/%d (%s), ID: %s",
+                            i + 1,
+                            len(provider_summaries),
+                            spec.key,
+                            listing_id,
+                        )  # Keep debug log
+
+                        if not listing_id:
+                            logger.warning(
+                                "Skipping enrichment for listing without listing_id (%s): %s",
+                                spec.key,
+                                summary_listing.get("address"),
+                            )
+                            provider_enriched.append(summary_listing)  # Add as-is if no ID
+                            continue
+
+                        listing_to_add = summary_listing.copy()
+
+                        # ---> Check detail call limit / support ---
+                        if spec.supports_details:
+                            if detail_calls_made >= max_detail_calls:
+                                if detail_calls_made == max_detail_calls:  # Log only once when limit is first hit
+                                    logger.info(
+                                        "Reached detail call limit (%d) for %s. Skipping remaining details.",
+                                        max_detail_calls,
+                                        spec.key,
+                                    )
+                                    detail_calls_made += 1  # Increment past limit to prevent re-logging
+                                # Skip detail fetch for this listing, keep summary data in listing_to_add
+                            else:
+                                # ---> Fetch and process details (if under limit) <---
+                                try:
+                                    logger.debug(
+                                        "Attempting to fetch details for %s: %s (Call #%d)",
+                                        spec.key,
+                                        listing_id,
+                                        detail_calls_made + 1,
+                                    )
+                                    details = await provider.get_details(listing_id)
+                                    detail_calls_made += 1
+                                    await asyncio.sleep(0.5)  # Small polite pause between detail calls
+
+                                    # Merge summary and details, details take precedence
+                                    listing_to_add.update({k: v for k, v in details.items() if v is not None})
+
+                                    # Ensure photos are handled correctly (prefer details photos if they exist)
+                                    detail_photos = details.get("photos")
+                                    if detail_photos:  # If details had photos (even empty list), use them
+                                        listing_to_add["photos"] = detail_photos
+                                    elif not listing_to_add.get("photos"):  # If details had no photos and summary also had none
+                                        listing_to_add["photos"] = []  # Default to empty list
+                                except Exception as e:
+                                    logger.error(
+                                        "Error fetching or processing details for %s %s: %s",
+                                        spec.key,
+                                        listing_id,
+                                        e,
+                                        exc_info=True,
+                                    )
+                                    # Keep summary data in listing_to_add if details fail
 
                         # Extract flags from description if available
                         description = listing_to_add.get("description")
@@ -128,8 +197,8 @@ async def run_ingestion_job():
                                 listing_to_add["tranquility_score"] = tranquility["score"]
                                 listing_to_add["tranquility_factors"] = tranquility["factors"]
                             except Exception as e:
-                                logger.debug(f"Could not calculate tranquility for {listing_id}: {e}")
-                        
+                                logger.debug("Could not calculate tranquility for %s: %s", listing_id, e)
+
                         # Neighborhood normalization (use coords if needed)
                         neighborhood = listing_to_add.get("neighborhood")
                         normalized = resolve_neighborhood(neighborhood, lat, lon)
@@ -149,23 +218,41 @@ async def run_ingestion_job():
                             listing_to_add["light_potential_score"] = light_data["score"]
                             listing_to_add["light_potential_signals"] = light_data["signals"]
                         except Exception as e:
-                            logger.debug(f"Could not calculate light potential for {listing_id}: {e}") 
-                        
-                    except Exception as e:
-                         logger.error(f"Error fetching or processing details for ZPID {listing_id}: {e}", exc_info=True)
-                         # Keep summary data in listing_to_add if details fail
+                            logger.debug("Could not calculate light potential for %s: %s", listing_id, e)
 
-                enriched_listings.append(listing_to_add)
-            ingestion_state.last_run_detail_calls = detail_calls_made # Store count
+                        provider_enriched.append(_apply_source_fields(listing_to_add, spec.key))
 
-        # ---> Persist results <---
-        if enriched_listings:
-             upsert_listings(enriched_listings)
-             upsert_count = len(enriched_listings)
-             ingestion_state.last_run_upsert_count = upsert_count # Store count
-             logger.info("Ingestion job upserted %d listings", upsert_count)
+                    detail_calls_total += detail_calls_made
+            finally:
+                try:
+                    if hasattr(provider, "close"):
+                        await provider.close()
+                except Exception as e:
+                    logger.error("Error closing %s provider: %s", spec.key, e, exc_info=True)
+
+            if provider_enriched:
+                upsert_listings(provider_enriched)
+                upsert_total += len(provider_enriched)
+                all_enriched.extend(provider_enriched)
+                logger.info("Ingestion job upserted %d listings for %s", len(provider_enriched), spec.key)
+
+        ingestion_state.last_run_summary_count = summary_count_total
+        ingestion_state.last_run_detail_calls = detail_calls_total
+        ingestion_state.last_run_upsert_count = upsert_total
+
+        # ---> Persisted results processed: alerts ---
+        if all_enriched:
+            try:
+                alert_stats = process_listing_alerts(start_time)
+                logger.info(
+                    "Alert processing complete (immediate=%d, digest=%d)",
+                    alert_stats.get("immediate", 0),
+                    alert_stats.get("digest", 0),
+                )
+            except Exception as e:
+                logger.error("Alert processing failed: %s", e, exc_info=True)
         else:
-             logger.warning("No listings available to upsert after enrichment phase.")
+            logger.warning("No listings available to upsert after enrichment phase.")
 
     except Exception as e: # Catch broader errors during the main process
         logger.error(f"Unhandled error during ingestion job: {e}", exc_info=True)
@@ -176,10 +263,7 @@ async def run_ingestion_job():
         ingestion_state.last_run_end_time = end_time
         duration = (end_time - start_time).total_seconds()
         logger.info(f"Closing provider connection. Job finished at {end_time.isoformat()}Z (Duration: {duration:.2f}s)")
-        try:
-            await provider.close()
-        except Exception as e:
-            logger.error(f"Error closing provider: {e}", exc_info=True)
+        # Providers are closed per-spec above.
 
 
 def run_ingestion_job_sync():

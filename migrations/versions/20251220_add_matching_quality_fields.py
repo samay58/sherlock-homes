@@ -17,9 +17,14 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column("criteria", sa.Column("price_soft_max", sa.Float(), nullable=True))
-    op.add_column("criteria", sa.Column("neighborhood_mode", sa.String(length=20), nullable=True))
-    op.add_column("criteria", sa.Column("recency_mode", sa.String(length=20), nullable=True))
+    inspector = sa.inspect(op.get_bind())
+    columns = {col["name"] for col in inspector.get_columns("criteria")}
+    if "price_soft_max" not in columns:
+        op.add_column("criteria", sa.Column("price_soft_max", sa.Float(), nullable=True))
+    if "neighborhood_mode" not in columns:
+        op.add_column("criteria", sa.Column("neighborhood_mode", sa.String(length=20), nullable=True))
+    if "recency_mode" not in columns:
+        op.add_column("criteria", sa.Column("recency_mode", sa.String(length=20), nullable=True))
 
 
 def downgrade():

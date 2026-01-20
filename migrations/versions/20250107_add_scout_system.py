@@ -15,118 +15,203 @@ branch_labels = None
 depends_on = None
 
 
+def _get_columns(table_name: str) -> set[str]:
+    inspector = sa.inspect(op.get_bind())
+    return {col["name"] for col in inspector.get_columns(table_name)}
+
+
+def _get_tables() -> set[str]:
+    inspector = sa.inspect(op.get_bind())
+    return set(inspector.get_table_names())
+
+
+def _get_indexes(table_name: str) -> set[str]:
+    inspector = sa.inspect(op.get_bind())
+    return {idx["name"] for idx in inspector.get_indexes(table_name)}
+
+
 def upgrade():
     # --- Criteria extensions ---
+    criteria_cols = _get_columns("criteria")
     with op.batch_alter_table('criteria') as batch:
-        batch.add_column(sa.Column('beds_max', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('sqft_max', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('require_parking', sa.Boolean(), nullable=False, server_default='false'))
-        batch.add_column(sa.Column('require_view', sa.Boolean(), nullable=False, server_default='false'))
-        batch.add_column(sa.Column('require_updated_systems', sa.Boolean(), nullable=False, server_default='false'))
-        batch.add_column(sa.Column('require_home_office', sa.Boolean(), nullable=False, server_default='false'))
-        batch.add_column(sa.Column('require_storage', sa.Boolean(), nullable=False, server_default='false'))
-        batch.add_column(sa.Column('min_walk_score', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('max_transit_distance', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('preferred_neighborhoods', sa.JSON(), nullable=True))
-        batch.add_column(sa.Column('avoid_neighborhoods', sa.JSON(), nullable=True))
-        batch.add_column(sa.Column('property_types', sa.JSON(), nullable=True))
-        batch.add_column(sa.Column('parking_type', sa.String(50), nullable=True))
-        batch.add_column(sa.Column('min_ceiling_height', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('architectural_styles', sa.JSON(), nullable=True))
-        batch.add_column(sa.Column('include_price_reduced', sa.Boolean(), nullable=False, server_default='true'))
-        batch.add_column(sa.Column('include_new_listings', sa.Boolean(), nullable=False, server_default='true'))
-        batch.add_column(sa.Column('max_days_on_market', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('avoid_busy_streets', sa.Boolean(), nullable=False, server_default='true'))
-        batch.add_column(sa.Column('avoid_north_facing_only', sa.Boolean(), nullable=False, server_default='true'))
-        batch.add_column(sa.Column('avoid_basement_units', sa.Boolean(), nullable=False, server_default='true'))
-        batch.add_column(sa.Column('excluded_streets', sa.JSON(), nullable=True))
-        batch.add_column(sa.Column('scout_description', sa.Text(), nullable=True))
-        batch.add_column(sa.Column('feature_weights', sa.JSON(), nullable=True))
+        if "beds_max" not in criteria_cols:
+            batch.add_column(sa.Column('beds_max', sa.Integer(), nullable=True))
+        if "sqft_max" not in criteria_cols:
+            batch.add_column(sa.Column('sqft_max', sa.Integer(), nullable=True))
+        if "require_parking" not in criteria_cols:
+            batch.add_column(sa.Column('require_parking', sa.Boolean(), nullable=False, server_default='false'))
+        if "require_view" not in criteria_cols:
+            batch.add_column(sa.Column('require_view', sa.Boolean(), nullable=False, server_default='false'))
+        if "require_updated_systems" not in criteria_cols:
+            batch.add_column(sa.Column('require_updated_systems', sa.Boolean(), nullable=False, server_default='false'))
+        if "require_home_office" not in criteria_cols:
+            batch.add_column(sa.Column('require_home_office', sa.Boolean(), nullable=False, server_default='false'))
+        if "require_storage" not in criteria_cols:
+            batch.add_column(sa.Column('require_storage', sa.Boolean(), nullable=False, server_default='false'))
+        if "min_walk_score" not in criteria_cols:
+            batch.add_column(sa.Column('min_walk_score', sa.Integer(), nullable=True))
+        if "max_transit_distance" not in criteria_cols:
+            batch.add_column(sa.Column('max_transit_distance', sa.Integer(), nullable=True))
+        if "preferred_neighborhoods" not in criteria_cols:
+            batch.add_column(sa.Column('preferred_neighborhoods', sa.JSON(), nullable=True))
+        if "avoid_neighborhoods" not in criteria_cols:
+            batch.add_column(sa.Column('avoid_neighborhoods', sa.JSON(), nullable=True))
+        if "property_types" not in criteria_cols:
+            batch.add_column(sa.Column('property_types', sa.JSON(), nullable=True))
+        if "parking_type" not in criteria_cols:
+            batch.add_column(sa.Column('parking_type', sa.String(50), nullable=True))
+        if "min_ceiling_height" not in criteria_cols:
+            batch.add_column(sa.Column('min_ceiling_height', sa.Integer(), nullable=True))
+        if "architectural_styles" not in criteria_cols:
+            batch.add_column(sa.Column('architectural_styles', sa.JSON(), nullable=True))
+        if "include_price_reduced" not in criteria_cols:
+            batch.add_column(sa.Column('include_price_reduced', sa.Boolean(), nullable=False, server_default='true'))
+        if "include_new_listings" not in criteria_cols:
+            batch.add_column(sa.Column('include_new_listings', sa.Boolean(), nullable=False, server_default='true'))
+        if "max_days_on_market" not in criteria_cols:
+            batch.add_column(sa.Column('max_days_on_market', sa.Integer(), nullable=True))
+        if "avoid_busy_streets" not in criteria_cols:
+            batch.add_column(sa.Column('avoid_busy_streets', sa.Boolean(), nullable=False, server_default='true'))
+        if "avoid_north_facing_only" not in criteria_cols:
+            batch.add_column(sa.Column('avoid_north_facing_only', sa.Boolean(), nullable=False, server_default='true'))
+        if "avoid_basement_units" not in criteria_cols:
+            batch.add_column(sa.Column('avoid_basement_units', sa.Boolean(), nullable=False, server_default='true'))
+        if "excluded_streets" not in criteria_cols:
+            batch.add_column(sa.Column('excluded_streets', sa.JSON(), nullable=True))
+        if "scout_description" not in criteria_cols:
+            batch.add_column(sa.Column('scout_description', sa.Text(), nullable=True))
+        if "feature_weights" not in criteria_cols:
+            batch.add_column(sa.Column('feature_weights', sa.JSON(), nullable=True))
 
     # --- Property listing columns ---
+    listing_cols = _get_columns("property_listings")
     with op.batch_alter_table('property_listings') as batch:
-        batch.add_column(sa.Column('has_parking_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_view_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_updated_systems_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_home_office_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_storage_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_open_floor_plan_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_architectural_details_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_luxury_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_designer_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_tech_ready_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('is_price_reduced', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('price_reduction_amount', sa.Float(), nullable=True))
-        batch.add_column(sa.Column('price_reduction_date', sa.DateTime(), nullable=True))
-        batch.add_column(sa.Column('is_back_on_market', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_busy_street_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_foundation_issues_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('has_hoa_issues_keywords', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('is_north_facing_only', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('is_basement_unit', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('neighborhood', sa.String(100), nullable=True))
-        batch.add_column(sa.Column('walk_score', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('transit_score', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('bike_score', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('parking_type', sa.String(50), nullable=True))
-        batch.add_column(sa.Column('parking_spaces', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('has_ev_charging', sa.Boolean(), server_default='false'))
-        batch.add_column(sa.Column('hoa_fee', sa.Float(), nullable=True))
-        batch.add_column(sa.Column('hoa_includes', sa.JSON(), nullable=True))
-        batch.add_column(sa.Column('lot_size', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('stories', sa.Integer(), nullable=True))
-        batch.add_column(sa.Column('architectural_style', sa.String(50), nullable=True))
-        batch.add_column(sa.Column('listing_agent', sa.String(100), nullable=True))
-        batch.add_column(sa.Column('listing_brokerage', sa.String(100), nullable=True))
-        batch.add_column(sa.Column('match_score', sa.Float(), nullable=True))
-        batch.add_column(sa.Column('feature_scores', sa.JSON(), nullable=True))
+        if "has_parking_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_parking_keywords', sa.Boolean(), server_default='false'))
+        if "has_view_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_view_keywords', sa.Boolean(), server_default='false'))
+        if "has_updated_systems_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_updated_systems_keywords', sa.Boolean(), server_default='false'))
+        if "has_home_office_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_home_office_keywords', sa.Boolean(), server_default='false'))
+        if "has_storage_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_storage_keywords', sa.Boolean(), server_default='false'))
+        if "has_open_floor_plan_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_open_floor_plan_keywords', sa.Boolean(), server_default='false'))
+        if "has_architectural_details_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_architectural_details_keywords', sa.Boolean(), server_default='false'))
+        if "has_luxury_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_luxury_keywords', sa.Boolean(), server_default='false'))
+        if "has_designer_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_designer_keywords', sa.Boolean(), server_default='false'))
+        if "has_tech_ready_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_tech_ready_keywords', sa.Boolean(), server_default='false'))
+        if "is_price_reduced" not in listing_cols:
+            batch.add_column(sa.Column('is_price_reduced', sa.Boolean(), server_default='false'))
+        if "price_reduction_amount" not in listing_cols:
+            batch.add_column(sa.Column('price_reduction_amount', sa.Float(), nullable=True))
+        if "price_reduction_date" not in listing_cols:
+            batch.add_column(sa.Column('price_reduction_date', sa.DateTime(), nullable=True))
+        if "is_back_on_market" not in listing_cols:
+            batch.add_column(sa.Column('is_back_on_market', sa.Boolean(), server_default='false'))
+        if "has_busy_street_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_busy_street_keywords', sa.Boolean(), server_default='false'))
+        if "has_foundation_issues_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_foundation_issues_keywords', sa.Boolean(), server_default='false'))
+        if "has_hoa_issues_keywords" not in listing_cols:
+            batch.add_column(sa.Column('has_hoa_issues_keywords', sa.Boolean(), server_default='false'))
+        if "is_north_facing_only" not in listing_cols:
+            batch.add_column(sa.Column('is_north_facing_only', sa.Boolean(), server_default='false'))
+        if "is_basement_unit" not in listing_cols:
+            batch.add_column(sa.Column('is_basement_unit', sa.Boolean(), server_default='false'))
+        if "neighborhood" not in listing_cols:
+            batch.add_column(sa.Column('neighborhood', sa.String(100), nullable=True))
+        if "walk_score" not in listing_cols:
+            batch.add_column(sa.Column('walk_score', sa.Integer(), nullable=True))
+        if "transit_score" not in listing_cols:
+            batch.add_column(sa.Column('transit_score', sa.Integer(), nullable=True))
+        if "bike_score" not in listing_cols:
+            batch.add_column(sa.Column('bike_score', sa.Integer(), nullable=True))
+        if "parking_type" not in listing_cols:
+            batch.add_column(sa.Column('parking_type', sa.String(50), nullable=True))
+        if "parking_spaces" not in listing_cols:
+            batch.add_column(sa.Column('parking_spaces', sa.Integer(), nullable=True))
+        if "has_ev_charging" not in listing_cols:
+            batch.add_column(sa.Column('has_ev_charging', sa.Boolean(), server_default='false'))
+        if "hoa_fee" not in listing_cols:
+            batch.add_column(sa.Column('hoa_fee', sa.Float(), nullable=True))
+        if "hoa_includes" not in listing_cols:
+            batch.add_column(sa.Column('hoa_includes', sa.JSON(), nullable=True))
+        if "lot_size" not in listing_cols:
+            batch.add_column(sa.Column('lot_size', sa.Integer(), nullable=True))
+        if "stories" not in listing_cols:
+            batch.add_column(sa.Column('stories', sa.Integer(), nullable=True))
+        if "architectural_style" not in listing_cols:
+            batch.add_column(sa.Column('architectural_style', sa.String(50), nullable=True))
+        if "listing_agent" not in listing_cols:
+            batch.add_column(sa.Column('listing_agent', sa.String(100), nullable=True))
+        if "listing_brokerage" not in listing_cols:
+            batch.add_column(sa.Column('listing_brokerage', sa.String(100), nullable=True))
+        if "match_score" not in listing_cols:
+            batch.add_column(sa.Column('match_score', sa.Float(), nullable=True))
+        if "feature_scores" not in listing_cols:
+            batch.add_column(sa.Column('feature_scores', sa.JSON(), nullable=True))
 
     # --- Scouts tables ---
-    op.create_table(
-        'scouts',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('name', sa.String(length=100), nullable=False),
-        sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('criteria_id', sa.Integer(), sa.ForeignKey('criteria.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
-        sa.Column('alert_frequency', sa.String(length=20), nullable=False, server_default='daily'),
-        sa.Column('min_match_score', sa.Float(), nullable=False, server_default='60.0'),
-        sa.Column('max_results_per_alert', sa.Integer(), nullable=False, server_default='10'),
-        sa.Column('search_keywords', sa.JSON(), nullable=True),
-        sa.Column('search_neighborhoods', sa.JSON(), nullable=True),
-        sa.Column('alert_email', sa.Boolean(), nullable=False, server_default='true'),
-        sa.Column('alert_sms', sa.Boolean(), nullable=False, server_default='false'),
-        sa.Column('alert_webhook', sa.String(length=500), nullable=True),
-        sa.Column('last_run', sa.DateTime(), nullable=True),
-        sa.Column('last_alert_sent', sa.DateTime(), nullable=True),
-        sa.Column('total_matches_found', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('total_alerts_sent', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('seen_listing_ids', sa.JSON(), nullable=True),
-        sa.Column('positive_feedback_listings', sa.JSON(), nullable=True),
-        sa.Column('negative_feedback_listings', sa.JSON(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now()),
-    )
-    op.create_index(op.f('ix_scouts_user_id'), 'scouts', ['user_id'], unique=False)
+    tables = _get_tables()
+    if "scouts" not in tables:
+        op.create_table(
+            'scouts',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+            sa.Column('name', sa.String(length=100), nullable=False),
+            sa.Column('description', sa.Text(), nullable=True),
+            sa.Column('criteria_id', sa.Integer(), sa.ForeignKey('criteria.id', ondelete='SET NULL'), nullable=True),
+            sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
+            sa.Column('alert_frequency', sa.String(length=20), nullable=False, server_default='daily'),
+            sa.Column('min_match_score', sa.Float(), nullable=False, server_default='60.0'),
+            sa.Column('max_results_per_alert', sa.Integer(), nullable=False, server_default='10'),
+            sa.Column('search_keywords', sa.JSON(), nullable=True),
+            sa.Column('search_neighborhoods', sa.JSON(), nullable=True),
+            sa.Column('alert_email', sa.Boolean(), nullable=False, server_default='true'),
+            sa.Column('alert_sms', sa.Boolean(), nullable=False, server_default='false'),
+            sa.Column('alert_webhook', sa.String(length=500), nullable=True),
+            sa.Column('last_run', sa.DateTime(), nullable=True),
+            sa.Column('last_alert_sent', sa.DateTime(), nullable=True),
+            sa.Column('total_matches_found', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('total_alerts_sent', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('seen_listing_ids', sa.JSON(), nullable=True),
+            sa.Column('positive_feedback_listings', sa.JSON(), nullable=True),
+            sa.Column('negative_feedback_listings', sa.JSON(), nullable=True),
+            sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
+            sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now()),
+        )
+    if "scouts" in _get_tables():
+        scout_indexes = _get_indexes("scouts")
+        if op.f('ix_scouts_user_id') not in scout_indexes:
+            op.create_index(op.f('ix_scouts_user_id'), 'scouts', ['user_id'], unique=False)
 
-    op.create_table(
-        'scout_runs',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('scout_id', sa.Integer(), sa.ForeignKey('scouts.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('started_at', sa.DateTime(), server_default=sa.func.now()),
-        sa.Column('completed_at', sa.DateTime(), nullable=True),
-        sa.Column('status', sa.String(length=20), nullable=False, server_default='running'),
-        sa.Column('listings_evaluated', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('matches_found', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('new_matches', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('alerts_sent', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('matched_listings', sa.JSON(), nullable=True),
-        sa.Column('top_score', sa.Float(), nullable=True),
-        sa.Column('average_score', sa.Float(), nullable=True),
-        sa.Column('error_message', sa.Text(), nullable=True),
-    )
-    op.create_index(op.f('ix_scout_runs_scout_id'), 'scout_runs', ['scout_id'], unique=False)
+    if "scout_runs" not in tables:
+        op.create_table(
+            'scout_runs',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('scout_id', sa.Integer(), sa.ForeignKey('scouts.id', ondelete='CASCADE'), nullable=False),
+            sa.Column('started_at', sa.DateTime(), server_default=sa.func.now()),
+            sa.Column('completed_at', sa.DateTime(), nullable=True),
+            sa.Column('status', sa.String(length=20), nullable=False, server_default='running'),
+            sa.Column('listings_evaluated', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('matches_found', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('new_matches', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('alerts_sent', sa.Integer(), nullable=False, server_default='0'),
+            sa.Column('matched_listings', sa.JSON(), nullable=True),
+            sa.Column('top_score', sa.Float(), nullable=True),
+            sa.Column('average_score', sa.Float(), nullable=True),
+            sa.Column('error_message', sa.Text(), nullable=True),
+        )
+    if "scout_runs" in _get_tables():
+        scout_run_indexes = _get_indexes("scout_runs")
+        if op.f('ix_scout_runs_scout_id') not in scout_run_indexes:
+            op.create_index(op.f('ix_scout_runs_scout_id'), 'scout_runs', ['scout_id'], unique=False)
 
 
 def downgrade():
@@ -199,4 +284,3 @@ def downgrade():
         batch.drop_column('require_parking')
         batch.drop_column('sqft_max')
         batch.drop_column('beds_max')
-

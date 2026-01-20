@@ -24,22 +24,28 @@ depends_on = None
 
 def upgrade():
     # Add visual scoring columns
-    op.add_column(
-        'property_listings',
-        sa.Column('visual_quality_score', sa.Integer(), nullable=True)
-    )
-    op.add_column(
-        'property_listings',
-        sa.Column('visual_assessment', sa.JSON(), nullable=True)
-    )
-    op.add_column(
-        'property_listings',
-        sa.Column('photos_hash', sa.String(64), nullable=True)
-    )
-    op.add_column(
-        'property_listings',
-        sa.Column('visual_analyzed_at', sa.DateTime(), nullable=True)
-    )
+    inspector = sa.inspect(op.get_bind())
+    columns = {col["name"] for col in inspector.get_columns("property_listings")}
+    if "visual_quality_score" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('visual_quality_score', sa.Integer(), nullable=True)
+        )
+    if "visual_assessment" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('visual_assessment', sa.JSON(), nullable=True)
+        )
+    if "photos_hash" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('photos_hash', sa.String(64), nullable=True)
+        )
+    if "visual_analyzed_at" not in columns:
+        op.add_column(
+            'property_listings',
+            sa.Column('visual_analyzed_at', sa.DateTime(), nullable=True)
+        )
 
 
 def downgrade():

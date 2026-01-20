@@ -14,6 +14,7 @@ export default defineConfig({
 			'/criteria': { target: API_TARGET, changeOrigin: true },
 			'/listings': { target: API_TARGET, changeOrigin: true },
 			'/matches': { target: API_TARGET, changeOrigin: true },
+			'/ingestion': { target: API_TARGET, changeOrigin: true },
 			'/admin': { target: API_TARGET, changeOrigin: true }
 			// Use 'changeOrigin: true' if needed, but usually not for localhost
 		}

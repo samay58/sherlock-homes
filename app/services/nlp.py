@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 KEYWORDS = {
     # Essential Attributes
     "natural_light": [
@@ -175,43 +177,39 @@ def extract_flags(text: str) -> dict[str, bool]:
     """Extract feature flags from property description text."""
     text_lower = text.lower()
     flags: dict[str, bool] = {}
-    
+
     # Define valid flags that match PropertyListing model columns
-    valid_keywords = [
+    valid_positive_flags = [
         "natural_light", "high_ceilings", "outdoor_space", "parking", "view",
         "updated_systems", "home_office", "storage", "open_floor_plan",
-        "architectural_details", "luxury", "designer", "tech_ready"
+        "architectural_details", "luxury", "designer", "tech_ready",
     ]
-    
+
     valid_red_flags = [
-        "busy_street", "foundation_issues", "hoa_issues"
+        "busy_street", "foundation_issues", "hoa_issues",
     ]
-    
+
     # Check for positive features
     for key, terms in KEYWORDS.items():
-        if key in valid_keywords:
+        if key in valid_positive_flags:
+            flags[key] = any(t in text_lower for t in terms)
+        elif key in valid_red_flags:
             flags[key] = any(t in text_lower for t in terms)
         elif key == "motivated_seller":
             # Map motivated seller indicators to price reduction/back on market flags
             if any(t in text_lower for t in terms):
-                # Check specific terms for price reduction
                 if any(t in text_lower for t in ["reduced", "price improvement", "below market"]):
                     flags["price_reduced"] = True
-                # Check for back on market
                 if any(t in text_lower for t in ["back on market", "fell through", "previous buyer"]):
                     flags["back_on_market"] = True
-    
-    # Check for red flags
+
+    # Check for additional red flags
     for key, terms in RED_FLAGS.items():
-        if key in valid_red_flags:
-            flags[key] = any(t in text_lower for t in terms)
-        elif key == "north_facing_only":
-            flags["north_facing_only"] = any(t in text_lower for t in ["north facing", "north-facing", "faces north"])
+        if key == "north_facing_only":
+            flags["north_facing_only"] = any(t in text_lower for t in terms)
         elif key == "basement_unit":
-            flags["basement_unit"] = any(t in text_lower for t in ["basement", "garden level", "lower level unit"])
-    
-    # Skip positive signals as they don't have corresponding columns
-    
+            flags["basement_unit"] = any(t in text_lower for t in terms)
+
     return flags
 
 
@@ -413,3 +411,63 @@ def get_light_potential_tier(score: int) -> str:
         return "Moderate"
     else:
         return "Limited"
+
+
+def _unique_hits(text_lower: str, keywords: List[str]) -> List[str]:
+    hits = [kw for kw in keywords if kw in text_lower]
+    # Preserve order, remove duplicates
+    seen = set()
+    deduped: List[str] = []
+    for hit in hits:
+        if hit not in seen:
+            deduped.append(hit)
+            seen.add(hit)
+    return deduped
+
+
+def analyze_text_signals(text: str, nlp_config: dict) -> dict:
+    """Analyze description text for buyer-specific positive/negative signals."""
+    text_lower = (text or "").lower()
+    positive = nlp_config.get("positive") or {}
+    negative = nlp_config.get("negative") or {}
+
+    positive_hits: dict[str, List[str]] = {}
+    for group, payload in positive.items():
+        keywords = payload.get("keywords") or []
+        if keywords:
+            hits = _unique_hits(text_lower, keywords)
+            if hits:
+                positive_hits[group] = hits
+
+    negative_hits: dict[str, List[str]] = {}
+    for group, payload in negative.items():
+        keywords = payload.get("keywords") or []
+        if keywords:
+            hits = _unique_hits(text_lower, keywords)
+            if hits:
+                negative_hits[group] = hits
+
+    # Context rules
+    has_light_positive = bool(positive_hits.get("light"))
+    if not has_light_positive and "dark" in negative_hits:
+        pass
+    else:
+        negative_hits.pop("dark", None)
+
+    return {
+        "positive_hits": positive_hits,
+        "negative_hits": negative_hits,
+    }
+
+
+def is_generic_description(text: str, positive_hits: Optional[dict] = None) -> bool:
+    """Heuristic: short, low-signal descriptions are treated as generic."""
+    if not text:
+        return True
+    words = text.split()
+    if len(words) < 80:
+        if not positive_hits:
+            return True
+        unique_groups = len([k for k, v in positive_hits.items() if v])
+        return unique_groups < 2
+    return False

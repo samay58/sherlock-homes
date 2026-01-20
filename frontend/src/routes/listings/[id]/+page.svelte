@@ -18,6 +18,59 @@
     return `${new Intl.NumberFormat('en-US').format(sqft)} sqft`;
   };
 
+  const formatScore = (score) => {
+    if (score == null) return '—';
+    return `${Math.round(score)}%`;
+  };
+
+  const formatSignal = (value) => {
+    if (value == null) return null;
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) return null;
+    return Math.round(numeric * 10) / 10;
+  };
+
+  const deriveSignal = (key, fallback) => {
+    if (listing?.signals && listing.signals[key] != null) {
+      return formatSignal(listing.signals[key]);
+    }
+    return formatSignal(fallback);
+  };
+
+  $: featureTags = [
+    listing?.has_natural_light_keywords ? 'Natural Light' : null,
+    listing?.has_high_ceiling_keywords ? 'High Ceilings' : null,
+    listing?.has_outdoor_space_keywords ? 'Outdoor Space' : null,
+    listing?.has_parking_keywords ? 'Parking' : null,
+    listing?.has_view_keywords ? 'Views' : null,
+    listing?.has_updated_systems_keywords ? 'Updated Systems' : null,
+    listing?.has_architectural_details_keywords ? 'Character' : null,
+  ].filter(Boolean);
+
+  $: signalData = (() => {
+    const data = [];
+    const light = deriveSignal(
+      'light_potential',
+      listing?.light_potential_score != null ? listing.light_potential_score / 10 : null
+    );
+    const quiet = deriveSignal(
+      'tranquility_score',
+      listing?.tranquility_score != null ? listing.tranquility_score / 10 : null
+    );
+    const visual = deriveSignal(
+      'visual_quality',
+      listing?.visual_quality_score != null ? listing.visual_quality_score / 10 : null
+    );
+    const character = deriveSignal('nlp_character_score', null);
+
+    if (light != null) data.push({ label: 'Light', value: light });
+    if (quiet != null) data.push({ label: 'Quiet', value: quiet });
+    if (visual != null) data.push({ label: 'Visual', value: visual });
+    if (character != null) data.push({ label: 'Character', value: character });
+
+    return data;
+  })();
+
 </script>
 
 <svelte:head>
@@ -41,6 +94,15 @@
 
       <div class="info-container">
         <div class="price">{formatPrice(listing.price)}</div>
+        <div class="scoreline">
+          <span class="score-percent">{formatScore(listing.match_score)}</span>
+          {#if listing.score_points != null}
+            <span class="score-points">{listing.score_points.toFixed(1)} pts</span>
+          {/if}
+          {#if listing.score_tier}
+            <span class="score-tier">{listing.score_tier}</span>
+          {/if}
+        </div>
         <ul class="quick-stats">
           <li><strong>{listing.beds ?? 'N/A'}</strong> bds</li>
           <li><strong>{listing.baths ?? 'N/A'}</strong> ba</li>
@@ -61,13 +123,60 @@
           <p><strong>Walk Score®:</strong> {listing.walk_score}</p>
         {/if}
 
-        <!-- Qualitative Flags -->
-        <h4>Features:</h4>
-        <ul class="features">
-          <li class:present={listing.has_natural_light_keywords}>Natural Light Keywords</li>
-          <li class:present={listing.has_high_ceiling_keywords}>High Ceiling Keywords</li>
-          <li class:present={listing.has_outdoor_space_keywords}>Outdoor Space Keywords</li>
-        </ul>
+        {#if featureTags.length > 0}
+          <div class="feature-block">
+            <span class="feature-label">FEATURES</span>
+            <div class="feature-tags">
+              {#each featureTags as feature}
+                <span class="feature-tag">{feature}</span>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        {#if listing.match_reasons?.length || listing.key_tradeoff || listing.why_now || listing.match_narrative}
+          <div class="explain-block">
+            <span class="feature-label">EXPLAINABILITY</span>
+            {#if listing.match_reasons?.length}
+              <p class="explain-row">
+                <span class="explain-label">Top</span>
+                <span class="explain-value">{listing.match_reasons.join(' · ')}</span>
+              </p>
+            {/if}
+            {#if listing.key_tradeoff}
+              <p class="explain-row">
+                <span class="explain-label">Tradeoff</span>
+                <span class="explain-value">{listing.key_tradeoff}</span>
+              </p>
+            {/if}
+            {#if listing.why_now}
+              <p class="explain-row">
+                <span class="explain-label">Why now</span>
+                <span class="explain-value">{listing.why_now}</span>
+              </p>
+            {/if}
+            {#if listing.match_narrative}
+              <p class="explain-row">
+                <span class="explain-label">Note</span>
+                <span class="explain-value">{listing.match_narrative}</span>
+              </p>
+            {/if}
+          </div>
+        {/if}
+
+        {#if signalData.length > 0}
+          <div class="signal-block">
+            <span class="feature-label">SIGNALS</span>
+            <div class="signal-tags">
+              {#each signalData as signal}
+                <span class="signal-tag">
+                  <span class="signal-name">{signal.label}</span>
+                  <span class="signal-value">{signal.value}</span>
+                </span>
+              {/each}
+            </div>
+          </div>
+        {/if}
       </div>
     </div>
 
@@ -107,12 +216,36 @@
   }
 
   .info-container {
-      /* Styles for info section */
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
   }
   .price {
-      font-size: 1.8rem;
-      font-weight: bold;
-      margin-bottom: 1rem;
+      font-family: var(--font-family-serif, Georgia, serif);
+      font-size: 2rem;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+  }
+  .scoreline {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      font-family: var(--font-family-mono, monospace);
+      font-size: 0.85rem;
+      color: var(--color-text-tertiary, #999);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+  }
+  .score-percent {
+      font-size: 1rem;
+      color: var(--color-ink, #000);
+      letter-spacing: 0.05em;
+  }
+  .score-points {
+      color: var(--color-text-secondary, #666);
+  }
+  .score-tier {
+      color: var(--color-text-tertiary, #999);
   }
   .quick-stats {
       list-style: none;
@@ -158,28 +291,80 @@
        text-decoration: underline;
    }
 
-  .features {
-      list-style: none;
-      padding: 0;
-      margin: 0.5rem 0 0 0;
+  .feature-block,
+  .signal-block,
+  .explain-block {
+      border: 1px solid var(--color-border, #e5e5e5);
+      border-radius: 6px;
+      padding: 0.75rem;
+      background: var(--color-paper, #fff);
   }
-  .features li {
-      padding: 0.25rem 0;
-      color: #888; /* Default muted color */
+
+  .feature-label {
+      display: block;
+      font-family: var(--font-family-sans, sans-serif);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary, #999);
+      margin-bottom: 0.5rem;
   }
-   .features li.present {
-       color: #28a745; /* Green if present */
-       font-weight: 500;
-   }
-  .features li::before {
-       content: '✘ '; /* Default X mark */
-       color: #dc3545; /* Red */
-       margin-right: 0.5em;
-   }
-   .features li.present::before {
-       content: '✔ '; /* Check mark if present */
-       color: #28a745; /* Green */
-   }
+
+  .feature-tags,
+  .signal-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+  }
+
+  .feature-tag,
+  .signal-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.5rem;
+      font-family: var(--font-family-sans, sans-serif);
+      font-size: 0.75rem;
+      color: var(--color-ink, #000);
+      background: var(--color-gray-100, #f5f5f5);
+      border: 1px solid var(--color-border, #e5e5e5);
+      border-radius: 999px;
+  }
+
+  .signal-name {
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary, #999);
+  }
+
+  .signal-value {
+      font-family: var(--font-family-mono, monospace);
+      font-size: 0.7rem;
+  }
+
+  .explain-row {
+      margin: 0 0 0.6rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+  }
+
+  .explain-row:last-child {
+      margin-bottom: 0;
+  }
+
+  .explain-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary, #999);
+  }
+
+  .explain-value {
+      font-size: 0.9rem;
+      color: var(--color-ink, #000);
+  }
 
   .description {
       margin-top: 2rem;

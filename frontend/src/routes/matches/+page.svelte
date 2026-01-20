@@ -4,6 +4,7 @@
   import ToggleChip from '$lib/components/ToggleChip.svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
+  import { api } from '$lib/api';
 
   export let data: PageData;
 
@@ -27,6 +28,9 @@
 
   // Skip summary
   let skipSummary = '';
+
+  // User feedback state: { listingId: 'like' | 'dislike' | 'neutral' | null }
+  let userFeedback: Record<number, string | null> = {};
 
   // Sort and filter functions
   const applyFiltersAndSort = () => {
@@ -114,7 +118,7 @@
   // Fetch ingestion status
   const fetchIngestionStatus = async () => {
     try {
-      const response = await fetch('http://localhost:8000/ingestion/status');
+      const response = await fetch('/ingestion/status');
       if (response.ok) {
         ingestionStatus = await response.json();
       }
@@ -126,7 +130,7 @@
   // Trigger data refresh
   const triggerIngestion = async () => {
     try {
-      const response = await fetch('http://localhost:8000/admin/ingestion/run', {
+      const response = await fetch('/admin/ingestion/run', {
         method: 'POST'
       });
       if (response.ok) {
@@ -142,9 +146,46 @@
   // React to changes
   $: sortBy, minScore, filters, applyFiltersAndSort();
 
+  // Fetch user feedback for all listings
+  const fetchUserFeedback = async () => {
+    try {
+      // Fetch all feedback for test user (user_id=1)
+      const feedbackList = await api.get('/feedback/user/1');
+      // Build lookup map
+      userFeedback = {};
+      for (const fb of feedbackList) {
+        userFeedback[fb.listing_id] = fb.feedback_type;
+      }
+    } catch (error) {
+      console.error('Failed to fetch user feedback:', error);
+    }
+  };
+
+  // Handle feedback from DossierCard
+  const handleFeedback = async (event: CustomEvent) => {
+    const { listingId, feedbackType } = event.detail;
+
+    try {
+      if (feedbackType === null) {
+        // Delete feedback (toggle off)
+        await api.del(`/feedback/${listingId}`);
+        userFeedback[listingId] = null;
+      } else {
+        // Create/update feedback
+        await api.post(`/feedback/${listingId}`, { feedback_type: feedbackType });
+        userFeedback[listingId] = feedbackType;
+      }
+      // Trigger reactivity
+      userFeedback = { ...userFeedback };
+    } catch (error) {
+      console.error('Failed to update feedback:', error);
+    }
+  };
+
   onMount(() => {
     applyFiltersAndSort();
     fetchIngestionStatus();
+    fetchUserFeedback();
   });
 </script>
 
@@ -254,7 +295,13 @@
   {:else if sortedMatches && sortedMatches.length > 0}
     <div class="dossiers-grid">
       {#each sortedMatches as listing, index (listing.id)}
-        <DossierCard {listing} rank={index + 1} />
+        <DossierCard
+          {listing}
+          {index}
+          userFeedback={userFeedback[listing.id] || null}
+          isTopMatch={index < 3}
+          on:feedback={handleFeedback}
+        />
       {/each}
     </div>
   {:else}

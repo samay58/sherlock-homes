@@ -1,6 +1,42 @@
 # Sherlock Homes: Session Progress Log
 
-**Master Progress Tracker** - Last Updated: January 19, 2026
+**Last Updated**: January 19, 2026 (Session 12)
+
+---
+
+## WHERE WE LEFT OFF
+
+### Completed This Session
+- **sherlock-6rh** CLOSED: Bounded weight learning system
+  - 4 API endpoints: GET/DELETE `/users/{id}/weights`, GET `/weights/summary`, POST `/weights/recalculate`
+  - Learning from like/dislike feedback with bounded deltas
+  - Integrated with PropertyMatcher for personalized scoring
+
+### Phase Status
+| Phase | Status | Key Deliverable |
+|-------|--------|-----------------|
+| Phase 1: Scoring Engine | **COMPLETE** | 17-criteria weighted scoring, visual + tranquility intelligence |
+| Phase 2: Personalization | **90% COMPLETE** | Feedback capture + weight learning done. Compare view remaining. |
+| Phase 3: Location Intelligence | NOT STARTED | Map filters, neighborhood deep-dives |
+
+### Next Session: Pick One
+1. **sherlock-b0c** [P2] - Compare view (side-by-side 2-4 listings)
+2. **sherlock-7li** [P2] - Map polygon/neighborhood filters
+3. **sherlock-1rc** - Close Phase 2 epic if compare view done
+
+### Beads Summary
+```
+Open: 18 | Closed: 30 | Blocked: 4 | Ready: 14
+```
+
+### Quick Start
+```bash
+cd ~/home-hog
+bd ready                    # See available work
+bd show sherlock-b0c        # Review next task
+./run_local.sh              # Start API
+./run_frontend.sh           # Start frontend
+```
 
 ---
 

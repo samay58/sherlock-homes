@@ -1,6 +1,6 @@
 # Sherlock Homes: Session Progress Log
 
-**Master Progress Tracker** - Last Updated: December 20, 2025
+**Master Progress Tracker** - Last Updated: January 19, 2026
 
 ---
 
@@ -8,12 +8,28 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Database | SQLite | `sherlock.db` (listing count varies with ingestion) |
+| Database | SQLite | `DATABASE_URL` is local SQLite (currently `homehog.db`) |
 | API | Running | `./run_local.sh` → http://localhost:8000 |
 | Frontend | SvelteKit | `./run_frontend.sh` → http://localhost:5173 |
-| Visual Scoring | **Active** | Runs when `ANTHROPIC_API_KEY` is set; coverage varies |
+| Visual Scoring | **Active** | OpenAI Vision (`OPENAI_API_KEY`); set `OPENAI_VISION_COST_PER_IMAGE_USD` for cost logs |
 | Docker | Available | Fallback via `.env.docker` |
 | Alerts | **Available** | iMessage (macOS relay), email (SMTP), SMS fallback, webhook |
+
+### Quick Runbook (Local)
+1. Activate env: `source .venv/bin/activate`
+2. Reset DB: `./nuke_db.sh`
+3. Migrate: `alembic upgrade head`
+4. Ingest all sources:
+   - `INGESTION_SOURCES=zillow,redfin,trulia,realtor,craigslist,curated python -c "from app.services.ingestion import run_ingestion_job_sync; run_ingestion_job_sync()"`
+5. Count listings: `sqlite3 homehog.db "select count(*) from property_listings;"`
+6. Visual scoring dry run: `python -m app.scripts.analyze_visual_scores --dry-run`
+7. Visual scoring full run: `python -m app.scripts.analyze_visual_scores`
+8. Tests: `PYTHONPATH=. pytest -q`
+
+### Known Runtime Notes (Jan 2026)
+- Redfin ZenRows search can return 422; fallback now retries without premium proxy.
+- Trulia detail pages can return 410; incomplete URLs are now skipped as non-fatal.
+- If ingestion fails on DNS, verify `api.zenrows.com` resolves (`curl -I https://api.zenrows.com` should return 405).
 
 ### Visual Scoring Stats (Session 4 snapshot)
 - These numbers were captured during Session 4 and will vary with current data.
@@ -25,6 +41,116 @@
 ---
 
 ## Session History
+
+### Session 12: January 19, 2026 - Bounded Weight Learning System
+
+**Objective**: Implement personalized scoring via bounded weight learning from user feedback.
+
+**Completed**:
+- [x] Created migration for `learned_weights` JSON column on users table
+- [x] Implemented weight learning service with bounded deltas
+- [x] Added four API endpoints for weight management
+- [x] Integrated learned weights with PropertyMatcher scoring
+- [x] **Closed sherlock-6rh** - bounded weight learning complete
+
+**Learning Algorithm**:
+| Parameter | Value |
+|-----------|-------|
+| Delta per signal | ±0.05 |
+| Max delta per recalc | ±0.5 |
+| Min signals required | 5 total (3 likes, 2 dislikes) |
+| Multiplier bounds | [0.5x, 2.0x] of base weight |
+
+**API Endpoints**:
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/users/{id}/weights` | GET | View base, learned, and effective weights |
+| `/users/{id}/weights/summary` | GET | Human-readable preference insights |
+| `/users/{id}/weights/recalculate` | POST | Trigger learning from feedback |
+| `/users/{id}/weights` | DELETE | Reset to default weights |
+
+**Files Created/Modified**:
+| File | Purpose |
+|------|---------|
+| `app/services/weight_learning.py` | Learning algorithm with bounded deltas |
+| `app/routes/users.py` | Weight management endpoints |
+| `app/schemas/user.py` | Weight-related Pydantic schemas |
+| `app/models/user.py` | Added `learned_weights` JSON column |
+| `app/services/advanced_matching.py` | PropertyMatcher accepts user_weights |
+| `app/routes/listings.py` | Matches endpoint uses learned weights |
+| `migrations/versions/20260119_add_learned_weights.py` | DB migration |
+
+**How It Works**:
+1. User likes/dislikes listings → feedback stored in DB
+2. `POST /users/{id}/weights/recalculate` analyzes feedback
+3. For liked listings: top 3 scoring criteria get boosted
+4. For disliked listings: top 3 scoring criteria get reduced
+5. Deltas are bounded to prevent overfitting
+6. `GET /matches/user/{id}` now uses learned weights for scoring
+
+---
+
+### Session 11: January 19, 2026 - Phase 1 Validation + Feedback Capture
+
+**Objective**: Validate Session 10 pipeline and implement feedback capture for weight learning.
+
+**Completed**:
+- [x] Validated full ingestion pipeline (41 Zillow listings)
+- [x] Confirmed 100% visual scoring coverage
+- [x] Confirmed 100% tranquility scoring coverage
+- [x] Validated scoring engine (17 criteria, correct tier classification)
+- [x] Verified match explainability (top_positives, key_tradeoff, why_now)
+- [x] **Closed Phase 1 Epic (sherlock-knh)** - buyer scoring engine complete
+- [x] **Feedback capture (sherlock-ms9)** - like/dislike/neutral buttons, API, DB persistence
+
+**Validation Results**:
+| Metric | Value |
+|--------|-------|
+| Listings | 41 (Zillow) |
+| Visual Scored | 100% |
+| Tranquility Scored | 100% |
+| Score Range | 34-54% (all Pass tier) |
+| Feature Scores | All 17 criteria populated |
+
+**Files Updated**:
+| File | Purpose |
+|------|---------|
+| `app/models/feedback.py` | ListingFeedback model |
+| `app/routes/feedback.py` | Feedback API endpoints |
+| `app/schemas/feedback.py` | Feedback Pydantic schemas |
+| `migrations/versions/YYYYMMDD_add_feedback.py` | Feedback table migration |
+| `frontend/src/lib/components/DossierCard.svelte` | Feedback buttons UI |
+| `frontend/src/lib/api.ts` | Feedback API calls |
+
+### Session 10: January 19, 2026 - Multi-Source Ingestion + OpenAI Vision
+
+**Objective**: Expand ingestion sources, stabilize local SQLite, and switch visual scoring to OpenAI.
+
+**Completed**:
+- [x] Added multi-source ingestion (Redfin, Trulia, Realtor, Craigslist, curated sources)
+- [x] Implemented HTML parsing via JSON-LD and embedded state
+- [x] Added source tracking + hashed listing ids for multi-provider dedupe
+- [x] Switched visual scoring to OpenAI Vision (Claude deprecated for now)
+- [x] Fixed SQLite primary key issue blocking listing events
+- [x] Hardened ZenRows timeouts + retry/backoff
+- [x] Stabilized Redfin fallback and Trulia detail failures as non-fatal
+
+**Files Updated**:
+| File | Purpose |
+|------|---------|
+| `app/providers/` | New providers + HTML parsing + ZenRows client |
+| `app/services/ingestion.py` | Source normalization + enrichment flow |
+| `app/services/persistence.py` | Source-based IDs + event creation |
+| `app/services/visual_scoring.py` | OpenAI Vision integration |
+| `app/core/config.py` | ZenRows timeout + OpenAI config |
+| `migrations/versions/2eaa91ec76da_init_tables.py` | SQLite PK fix |
+| `docs/SCORING_ENGINE_SPEC.md` | Multi-source + intelligence spec |
+| `tests/test_html_parsing.py` | Parsing coverage |
+
+**Next Steps**:
+- Run full ingestion and confirm listing coverage per source.
+- Run visual scoring to validate cost + end-to-end match explainability.
+- Validate `/matches/test-user` output (top 3 positives, tradeoffs, signals).
 
 ### Session 9: December 20, 2025 - Docs Polish + Local Install Reliability
 

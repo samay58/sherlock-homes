@@ -14,6 +14,8 @@ from app.models.criteria import Criteria
 from app.services.criteria import get_or_create_user_criteria, TEST_USER_ID
 from app.services.matching import find_matches
 from app.services.advanced_matching import find_advanced_matches
+from app.services.advanced_matching import PropertyMatcher
+from app.services.weight_learning import get_effective_weights_dict
 from app.state import ingestion_state
 
 router = APIRouter(
@@ -40,6 +42,9 @@ def read_listing(listing_id: int, db: Session = Depends(get_db)):
     db_listing = db.get(PropertyListing, listing_id)
     if db_listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+    matcher = PropertyMatcher(criteria=None, db=db, include_intelligence=True)
+    if not matcher.score_listing(db_listing):
+        db_listing.match_narrative = "Does not meet hard filters for this buyer."
     return db_listing
 
 # --- Matching Endpoint (for Test User) --- 
@@ -61,6 +66,9 @@ def read_matches_for_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active criteria found for user")
 
     try:
+        # Get effective weights for this user (base + learned adjustments)
+        user_weights = get_effective_weights_dict(user_id, db)
+
         # Use advanced matching with Sherlock Homes Deduction Engine
         match_data = find_advanced_matches(
             criteria=user_criteria,
@@ -68,7 +76,8 @@ def read_matches_for_user(user_id: int, db: Session = Depends(get_db)):
             limit=100,  # Return top 100 matches
             min_score=0.0,  # Include all scores for now
             vibe_preset=None,  # TODO: Get from query param
-            include_intelligence=True
+            include_intelligence=True,
+            user_weights=user_weights,
         )
 
         # Extract just the listing objects with scores already set

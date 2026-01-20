@@ -1,883 +1,762 @@
-"""Advanced matching algorithm with scoring and ranking.
+"""Buyer-specific matching and scoring engine for Sherlock Homes."""
 
-Sherlock Homes Deduction Engine:
-- Multi-factor scoring with configurable weights
-- Geospatial intelligence (Tranquility Score)
-- Light potential analysis
-- Vibe-based preset filtering
-- Human-readable match narratives
-"""
+from __future__ import annotations
 
-from typing import List, Dict, Any, Optional, Tuple
-from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, or_
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 import logging
 
-from app.models.criteria import Criteria
+from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session
+
 from app.models.listing import PropertyListing
-from app.core.config import settings
-
-
-def case_insensitive_like(column, pattern):
-    """Cross-database case-insensitive LIKE.
-
-    SQLite: LIKE is case-insensitive for ASCII by default.
-    PostgreSQL: Needs ilike for case-insensitivity.
-    """
-    if settings.DATABASE_URL.startswith("sqlite"):
-        return column.like(pattern)
-    else:
-        return column.ilike(pattern)
-
-
-from app.services.nlp import calculate_text_quality_score, estimate_light_potential
-from app.services.geospatial import calculate_tranquility_score, get_tranquility_tier
-from app.services.vibe_presets import (
-    get_preset,
-    apply_preset_weights,
-    get_preset_boost_keywords,
-    get_preset_penalize_keywords,
-    DEFAULT_FEATURE_WEIGHTS,
-)
+from app.models.listing_event import ListingEvent
+from app.services.criteria_config import BuyerCriteria, load_buyer_criteria, get_required_neighborhoods
+from app.services.geospatial import calculate_tranquility_score, apply_location_modifiers
+from app.services.nlp import analyze_text_signals, is_generic_description, estimate_light_potential
+from app.services.text_intelligence import enrich_listings_with_text_intelligence
 
 logger = logging.getLogger(__name__)
 
+TOTAL_POINTS = 126
 
-# =============================================================================
-# MATCH NARRATIVE GENERATION
-# =============================================================================
-
-# Human-readable feature names for narratives
-FEATURE_DISPLAY_NAMES = {
-    "natural_light": "natural light",
-    "high_ceilings": "high ceilings",
-    "outdoor_space": "outdoor space",
-    "parking": "parking",
-    "view": "views",
-    "updated_systems": "updated systems",
-    "home_office": "home office potential",
-    "storage": "storage",
-    "open_floor_plan": "open layout",
-    "architectural_details": "architectural character",
-    "luxury": "luxury finishes",
-    "designer": "designer touches",
-    "tech_ready": "smart home features",
-    "walk_score": "walkability",
-    "transit_score": "transit access",
-    "price_reduced": "price reduction",
-    "tranquility": "quiet location",
-    "light_potential": "light potential",
-    "neighborhood_match": "preferred neighborhood",
-    "visual_quality": "visual appeal",
-    "budget_fit": "budget fit",
-    "recency": "recency",
+CRITERION_LABELS = {
+    "natural_light": "Natural light",
+    "outdoor_space": "Outdoor space",
+    "character_soul": "Character & soul",
+    "kitchen_quality": "Kitchen quality",
+    "location_quiet": "Quiet location",
+    "office_space": "Office space",
+    "indoor_outdoor_flow": "Indoor-outdoor flow",
+    "high_ceilings": "High ceilings",
+    "layout_intelligence": "Layout intelligence",
+    "move_in_ready": "Move-in ready",
+    "views": "Views",
+    "in_unit_laundry": "In-unit laundry",
+    "parking": "Parking",
+    "central_hvac": "Central HVAC",
+    "gas_stove": "Gas stove",
+    "dishwasher": "Dishwasher",
+    "storage": "Storage",
 }
 
+TIER_THRESHOLDS = [
+    (100, "Exceptional"),
+    (88, "Strong"),
+    (76, "Interesting"),
+    (0, "Pass"),
+]
 
-def generate_match_narrative(
-    listing: "PropertyListing",
-    match_score: float,
-    feature_scores: Dict[str, Any],
-    tranquility_data: Optional[Dict] = None,
-    light_data: Optional[Dict] = None,
-    visual_data: Optional[Dict] = None,
-    recency_data: Optional[Dict] = None,
-) -> str:
-    """
-    Generate a human-readable narrative explaining WHY this property matched.
+OFFICE_KEYWORDS = [
+    "home office", "office", "study", "den", "workspace",
+    "work from home", "wfh", "dedicated office", "bonus room",
+]
 
-    The narrative follows Sherlock Homes' philosophy: explain the deduction,
-    not just show the score. This is what differentiates insight from inventory.
+INDOOR_OUTDOOR_KEYWORDS = [
+    "indoor-outdoor", "indoor outdoor", "folding doors", "sliding doors",
+    "opens to", "seamless", "flow to", "outdoor entertaining",
+]
 
-    Args:
-        listing: The property listing
-        match_score: Overall match score (0-100)
-        feature_scores: Dict of feature -> score contribution
-        tranquility_data: Optional geospatial tranquility analysis
-        light_data: Optional light potential analysis
+LAYOUT_KEYWORDS = [
+    "open layout", "open floor plan", "open concept", "great room",
+    "well laid out", "good flow", "functional layout", "spacious layout",
+]
 
-    Returns:
-        A 1-2 sentence narrative explaining the match quality
-    """
-    if not feature_scores:
-        return "Meets your basic requirements."
+LAYOUT_NEGATIVE_KEYWORDS = [
+    "awkward layout", "odd layout", "railroad", "chopped up",
+    "low ceiling", "low ceilings",
+]
 
-    # Sort features by score contribution (highest first)
-    sorted_features = sorted(
-        feature_scores.items(),
-        key=lambda x: x[1] if isinstance(x[1], (int, float)) else 0,
-        reverse=True
+LAUNDRY_KEYWORDS = [
+    "in-unit laundry", "in unit laundry", "washer/dryer", "washer dryer",
+    "laundry in unit", "stackable washer", "laundry closet",
+]
+
+LAUNDRY_BUILDING_KEYWORDS = [
+    "laundry in building", "shared laundry", "common laundry",
+]
+
+CENTRAL_HVAC_KEYWORDS = [
+    "central air", "central a/c", "central ac", "forced air",
+    "central heat", "hvac",
+]
+
+GAS_STOVE_KEYWORDS = [
+    "gas range", "gas stove", "gas cooktop", "gas burner",
+]
+
+DISHWASHER_KEYWORDS = [
+    "dishwasher", "bosch", "miele",
+]
+
+PARKING_STREET_ONLY_KEYWORDS = [
+    "street parking only", "permit parking", "no garage",
+]
+
+NO_PARKING_KEYWORDS = [
+    "no parking", "parking not available",
+]
+
+
+@dataclass
+class ScoreComponent:
+    score: float
+    weight: float
+    confidence: str
+    evidence: List[str]
+
+
+@dataclass
+class MatchSignals:
+    tranquility_score: Optional[float] = None
+    light_potential: Optional[float] = None
+    visual_quality: Optional[float] = None
+    nlp_character_score: Optional[float] = None
+
+
+def _score_from_hits(hit_count: int, max_hits: int = 4) -> float:
+    if hit_count <= 0:
+        return 0.0
+    return min(10.0, (hit_count / max_hits) * 10.0)
+
+
+def _blend_scores(values: List[float]) -> float:
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
+
+
+def _score_tier(total_points: float) -> str:
+    for threshold, label in TIER_THRESHOLDS:
+        if total_points >= threshold:
+            return label
+    return "Pass"
+
+
+def _score_percent(total_points: float, total_possible: float) -> str:
+    if total_possible <= 0:
+        return "0%"
+    percent = round((total_points / total_possible) * 100)
+    return f"{percent}%"
+
+
+def _normalize_text(text: Optional[str]) -> str:
+    return " ".join((text or "").split())
+
+
+def _find_hits(text_lower: str, keywords: List[str]) -> List[str]:
+    hits = [kw for kw in keywords if kw in text_lower]
+    deduped: List[str] = []
+    seen = set()
+    for hit in hits:
+        if hit not in seen:
+            deduped.append(hit)
+            seen.add(hit)
+    return deduped
+
+
+def _build_why_now(listing: PropertyListing, db: Session) -> Optional[str]:
+    if listing.is_price_reduced and listing.price_reduction_amount:
+        if listing.price:
+            percent = (listing.price_reduction_amount / (listing.price + listing.price_reduction_amount)) * 100
+            return f"Price dropped {percent:.0f}% recently"
+        return "Price dropped recently"
+
+    recent_event = (
+        db.query(ListingEvent)
+        .filter(ListingEvent.listing_id == listing.id)
+        .order_by(ListingEvent.created_at.desc())
+        .first()
     )
+    if recent_event:
+        if recent_event.event_type == "price_drop":
+            details = recent_event.details or {}
+            percent = details.get("percent")
+            if percent:
+                return f"Price dropped {percent:.0f}% recently"
+            return "Price dropped recently"
+        if recent_event.event_type == "back_on_market":
+            return "Back on market"
 
-    # Get top 2-3 contributing features
-    top_features = []
-    for feature, score in sorted_features[:3]:
-        display_name = FEATURE_DISPLAY_NAMES.get(feature, feature.replace("_", " "))
-        if score and score > 0:
-            top_features.append(display_name)
-
-    # Build narrative based on score tier
-    if match_score >= 85:
-        # Exceptional match
-        if len(top_features) >= 2:
-            narrative = f"Excellent match — exceptional {top_features[0]} and {top_features[1]}."
-        elif len(top_features) == 1:
-            narrative = f"Excellent match — standout {top_features[0]}."
-        else:
-            narrative = "Excellent match across your criteria."
-
-    elif match_score >= 70:
-        # Strong match
-        if len(top_features) >= 2:
-            narrative = f"Strong match — great {top_features[0]} with solid {top_features[1]}."
-        elif len(top_features) == 1:
-            narrative = f"Strong match with notable {top_features[0]}."
-        else:
-            narrative = "Strong match on your key requirements."
-
-    elif match_score >= 55:
-        # Good match
-        if top_features:
-            narrative = f"Good fit with {top_features[0]}."
-        else:
-            narrative = "Good fit for your criteria."
-
-    elif match_score >= 40:
-        # Moderate match
-        if top_features:
-            narrative = f"Worth considering — has {top_features[0]}."
-        else:
-            narrative = "Worth a look if other priorities are flexible."
-
-    else:
-        # Below threshold
-        narrative = "Meets some requirements but missing key features."
-
-    # Add special callouts for intelligence signals
-    callouts = []
-
-    # Tranquility callout
-    if tranquility_data and tranquility_data.get("score"):
-        tranq_score = tranquility_data["score"]
-        if tranq_score >= 80:
-            callouts.append("Very quiet location.")
-        elif tranq_score <= 40 and tranquility_data.get("warnings"):
-            # Only mention if it's notably bad
-            warning = tranquility_data["warnings"][0] if tranquility_data["warnings"] else None
-            if warning:
-                callouts.append(f"Note: {warning}.")
-
-    # Light potential callout
-    if light_data and light_data.get("score"):
-        light_score = light_data["score"]
-        if light_score >= 75:
-            callouts.append("Excellent light potential.")
-        elif light_score <= 35:
-            callouts.append("Limited natural light expected.")
-
-    # Visual quality callout
-    if visual_data and visual_data.get("score"):
-        visual_score = visual_data["score"]
-        if visual_score >= 85:
-            callouts.append("Beautifully maintained with modern finishes.")
-        elif visual_score >= 70:
-            callouts.append("Well-presented property.")
-        elif visual_score <= 45:
-            callouts.append("May need cosmetic updates.")
-
-    # Recency callout
-    if recency_data and recency_data.get("days_on_market") is not None:
-        days = recency_data["days_on_market"]
-        signal = recency_data.get("signal")
-        if signal == "fresh" and days <= 7:
-            callouts.append(f"New listing ({days} days on market).")
-        elif signal == "overlooked":
-            callouts.append(f"Longer on market ({days} days) with value potential.")
-        elif signal == "older" and days >= 60:
-            callouts.append(f"Longer on market ({days} days) — worth a closer look.")
-
-    # Combine narrative with callouts
-    if callouts:
-        narrative = narrative + " " + " ".join(callouts)
-
-    return narrative
+    if listing.days_on_market is not None:
+        if listing.days_on_market <= 7:
+            return f"New listing ({listing.days_on_market} DOM)"
+        if listing.days_on_market >= 45:
+            return f"Overlooked at {listing.days_on_market} DOM"
+    return None
 
 
-def generate_skip_summary(
-    total_analyzed: int,
-    matches_shown: int,
-    filters_applied: List[str],
-) -> str:
-    """
-    Generate a summary of the filtering process.
+def _soft_cap_penalty(price: Optional[float], soft_price: Optional[float], hard_price: Optional[float]) -> float:
+    if price is None or soft_price is None:
+        return 0.0
+    hard_price = hard_price or soft_price
+    if price <= soft_price:
+        return 0.0
+    if price >= hard_price:
+        return 10.0
+    span = hard_price - soft_price
+    if span <= 0:
+        return 10.0
+    return 10.0 * ((price - soft_price) / span)
 
-    Example: "Analyzed 847 listings. Showing 12 that matter."
-    """
-    skipped = total_analyzed - matches_shown
 
-    if skipped > 0:
-        summary = f"Analyzed {total_analyzed:,} listings. Showing {matches_shown} that matter."
-        if filters_applied:
-            summary += f" Filtered by: {', '.join(filters_applied[:3])}"
-            if len(filters_applied) > 3:
-                summary += f" +{len(filters_applied) - 3} more"
-    else:
-        summary = f"Showing all {matches_shown} matching listings."
-
-    return summary
+def _hoa_penalty(hoa_fee: Optional[float]) -> float:
+    if hoa_fee is None:
+        return 0.0
+    if hoa_fee < 400:
+        return 0.0
+    if hoa_fee <= 800:
+        return 0.0
+    if hoa_fee <= 1000:
+        return 5.0
+    return 10.0
 
 
 class PropertyMatcher:
-    """Sophisticated property matching with multi-factor scoring.
+    """Buyer-specific matcher using YAML criteria and weighted scoring."""
 
-    The Sherlock Homes Deduction Engine applies multiple intelligence layers:
-    1. Hard filters (price, beds, neighborhoods to avoid)
-    2. Feature detection (NLP keyword analysis)
-    3. Geospatial intelligence (Tranquility Score)
-    4. Light potential analysis
-    5. Vibe-based weight adjustments
-    6. Human-readable match narratives
-    """
-
-    def __init__(self, criteria: Criteria, db: Session, vibe_preset: Optional[str] = None):
+    def __init__(
+        self,
+        criteria: Optional[Any],
+        db: Session,
+        include_intelligence: bool = True,
+        user_weights: Optional[Dict[str, float]] = None,
+    ):
         self.criteria = criteria
         self.db = db
-        self.vibe_preset = vibe_preset
-        self.weights = self._initialize_weights()
-        self.boost_keywords = get_preset_boost_keywords(vibe_preset)
-        self.penalize_keywords = get_preset_penalize_keywords(vibe_preset)
-    
-    def _initialize_weights(self) -> Dict[str, float]:
-        """Initialize feature weights from criteria, vibe preset, or defaults.
+        self.include_intelligence = include_intelligence
+        self.config: BuyerCriteria = load_buyer_criteria()
+        self.total_analyzed = 0
+        # Use provided user weights or fall back to config weights
+        self._effective_weights = user_weights if user_weights else dict(self.config.weights)
 
-        Priority order:
-        1. Explicit criteria weights (user-specified)
-        2. Vibe preset weights (if vibe selected)
-        3. Default weights
-        """
-        # Start with defaults
-        base_weights = DEFAULT_FEATURE_WEIGHTS.copy()
-
-        # Apply vibe preset if selected
-        if self.vibe_preset:
-            base_weights = apply_preset_weights(base_weights, self.vibe_preset)
-
-        # User criteria weights override everything
-        if self.criteria.feature_weights:
-            base_weights.update(self.criteria.feature_weights)
-
-        return base_weights
-
-    def _get_days_on_market(self, listing: PropertyListing) -> Optional[int]:
-        if listing.days_on_market is not None:
-            return listing.days_on_market
-        return None
-
-    def _recency_info(self, listing: PropertyListing) -> Dict[str, Any]:
-        days = self._get_days_on_market(listing)
-        mode = self.criteria.recency_mode or "balanced"
-        score = 0.5
-        signal = "unknown"
-
-        if days is None:
-            return {"days_on_market": None, "score": score, "signal": signal, "mode": mode}
-
-        if mode == "fresh":
-            if days <= 7:
-                score = 1.0
-                signal = "fresh"
-            elif days <= 14:
-                score = 0.85
-                signal = "recent"
-            elif days <= 30:
-                score = 0.6
-                signal = "recent"
-            elif days <= 60:
-                score = 0.35
-                signal = "older"
-            else:
-                score = 0.2
-                signal = "older"
-        elif mode == "hidden_gems":
-            if days <= 7:
-                score = 0.6
-                signal = "fresh"
-            elif days <= 21:
-                score = 0.7
-                signal = "recent"
-            elif days <= 45:
-                score = 0.85
-                signal = "recent"
-            elif days <= 90:
-                score = 1.0
-                signal = "overlooked"
-            else:
-                score = 0.75
-                signal = "older"
-        else:
-            if days <= 7:
-                score = 1.0
-                signal = "fresh"
-            elif days <= 21:
-                score = 0.85
-                signal = "recent"
-            elif days <= 45:
-                score = 0.65
-                signal = "recent"
-            elif days <= 90:
-                score = 0.45
-                signal = "older"
-            else:
-                score = 0.3
-                signal = "older"
-
-        if listing.is_price_reduced and days >= 30:
-            score = min(1.0, score + 0.15)
-            if signal != "fresh":
-                signal = "overlooked"
-
-        return {"days_on_market": days, "score": score, "signal": signal, "mode": mode}
-
-    def _budget_fit(self, listing: PropertyListing) -> Optional[float]:
-        if listing.price is None or self.criteria.price_soft_max is None:
-            return None
-        soft_cap = self.criteria.price_soft_max
-        hard_cap = self.criteria.price_max or soft_cap
-        if hard_cap < soft_cap:
-            hard_cap = soft_cap
-
-        if listing.price <= soft_cap:
-            return 1.0
-        if listing.price >= hard_cap:
-            return 0.0
-        return 1.0 - ((listing.price - soft_cap) / (hard_cap - soft_cap))
-
-    def _format_currency(self, value: Optional[float]) -> str:
-        if value is None:
-            return "n/a"
-        if value >= 1_000_000:
-            compact = f"{value / 1_000_000:.2f}".rstrip("0").rstrip(".")
-            return f"${compact}M"
-        return f"${value:,.0f}"
-
-    def _build_match_explanation(
-        self,
-        listing: PropertyListing,
-        intelligence: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        reasons: List[str] = []
-        tradeoff: Optional[str] = None
-
-        if listing.neighborhood and self.criteria.preferred_neighborhoods:
-            if listing.neighborhood in self.criteria.preferred_neighborhoods:
-                reasons.append(f"{listing.neighborhood} focus area")
-
-        if listing.price is not None:
-            if self.criteria.price_soft_max and listing.price <= self.criteria.price_soft_max:
-                reasons.append(f"Under soft cap ({self._format_currency(self.criteria.price_soft_max)})")
-            elif self.criteria.price_max and listing.price <= self.criteria.price_max:
-                reasons.append(f"Within hard cap ({self._format_currency(self.criteria.price_max)})")
-
-        recency_info = intelligence.get("recency") or self._recency_info(listing)
-        days_on_market = recency_info.get("days_on_market")
-        if days_on_market is not None:
-            signal = recency_info.get("signal")
-            if signal == "fresh":
-                reasons.append(f"Fresh ({days_on_market}d)")
-            elif signal == "recent":
-                reasons.append(f"Recent ({days_on_market}d)")
-            elif signal == "overlooked":
-                reasons.append(f"Overlooked ({days_on_market}d)")
-
-        if listing.has_natural_light_keywords:
-            reasons.append("Natural light signals")
-        if listing.has_outdoor_space_keywords:
-            reasons.append("Outdoor space")
-        if listing.tranquility_score and listing.tranquility_score >= 80:
-            reasons.append("Quiet area")
-        if listing.visual_quality_score and listing.visual_quality_score >= 85:
-            reasons.append("Strong visual condition")
-
-        if listing.price is not None and self.criteria.price_soft_max:
-            if listing.price > self.criteria.price_soft_max:
-                delta = listing.price - self.criteria.price_soft_max
-                tradeoff = f"Above soft cap by {self._format_currency(delta)}"
-
-        if tradeoff is None and self.criteria.preferred_neighborhoods and self.criteria.neighborhood_mode != "strict":
-            if not listing.neighborhood or listing.neighborhood not in self.criteria.preferred_neighborhoods:
-                tradeoff = "Outside focus neighborhoods"
-
-        if tradeoff is None and days_on_market is not None and days_on_market >= 60:
-            tradeoff = f"Longer on market ({days_on_market}d)"
-
-        if tradeoff is None and listing.tranquility_score is not None and listing.tranquility_score < 50:
-            tradeoff = "Noisier street exposure"
-
-        if tradeoff is None and listing.light_potential_score is not None and listing.light_potential_score < 40:
-            tradeoff = "Limited light potential"
-
-        if tradeoff is None and listing.visual_quality_score is not None and listing.visual_quality_score < 60:
-            tradeoff = "Needs visual updates"
-
-        return {
-            "reasons": reasons[:2],
-            "tradeoff": tradeoff,
-        }
-    
-    def find_matches(
-        self,
-        limit: int = 100,
-        min_score: float = 0.0,
-        include_intelligence: bool = True,
-    ) -> List[Tuple[PropertyListing, float, Dict[str, Any]]]:
-        """Find and score property matches with full intelligence analysis.
-
-        Args:
-            limit: Maximum number of results
-            min_score: Minimum match score threshold
-            include_intelligence: Calculate tranquility/light scores (slower but richer)
-
-        Returns:
-            List of tuples: (listing, score, intelligence_data)
-            intelligence_data contains tranquility, light_potential, and narrative
-        """
-
-        # Build base query with hard filters
-        query = self._build_base_query()
-
-        # Execute query
-        listings = self.db.scalars(query).all()
-        self.total_analyzed = len(listings)
-
-        # Score each listing
-        scored_listings = []
-        for listing in listings:
-            # Core match score
-            score = self._calculate_match_score(listing)
-
-            if score >= min_score:
-                # Get feature breakdown
-                feature_scores = self._get_feature_breakdown(listing)
-
-                # Intelligence analysis (optional but recommended)
-                intelligence = {}
-                if include_intelligence:
-                    # Tranquility Score (geospatial)
-                    if listing.lat and listing.lon:
-                        tranquility = calculate_tranquility_score(listing.lat, listing.lon)
-                        intelligence["tranquility"] = tranquility
-
-                        # Factor tranquility into score
-                        tranq_weight = self.weights.get("tranquility", 6)
-                        tranq_bonus = (tranquility["score"] / 100) * tranq_weight
-                        score = min(100, score + tranq_bonus * 0.3)  # 30% weight
-
-                    # Light Potential Score (NLP + heuristics)
-                    light_data = estimate_light_potential(
-                        description=listing.description,
-                        is_north_facing_only=listing.is_north_facing_only or False,
-                        is_basement_unit=listing.is_basement_unit or False,
-                        has_natural_light_keywords=listing.has_natural_light_keywords or False,
-                        photo_count=len(listing.photos) if listing.photos else 0,
-                    )
-                    intelligence["light_potential"] = light_data
-
-                    # Factor light into score for Light Chaser vibe
-                    if self.vibe_preset == "light_chaser":
-                        light_bonus = (light_data["score"] / 100) * 10
-                        score = min(100, score + light_bonus * 0.5)
-
-                    # Visual Quality Score (from Claude Vision photo analysis)
-                    if listing.visual_quality_score is not None:
-                        visual_data = {
-                            "score": listing.visual_quality_score,
-                            "dimensions": listing.visual_assessment.get("dimensions", {}) if listing.visual_assessment else {},
-                            "red_flags": listing.visual_assessment.get("red_flags", []) if listing.visual_assessment else [],
-                            "highlights": listing.visual_assessment.get("highlights", []) if listing.visual_assessment else [],
-                            "confidence": listing.visual_assessment.get("confidence", "unknown") if listing.visual_assessment else "unknown",
-                        }
-                        intelligence["visual_quality"] = visual_data
-
-                        # Factor visual quality into score
-                        visual_weight = self.weights.get("visual_quality", 8)
-                        visual_bonus = (listing.visual_quality_score / 100) * visual_weight
-                        score = min(100, score + visual_bonus * 0.25)
-
-                        # Red flag penalty
-                        red_flags = visual_data.get("red_flags", [])
-                        score = max(0, score - len(red_flags) * 3)
-
-                    # Recency / market timing
-                    recency_info = self._recency_info(listing)
-                    intelligence["recency"] = recency_info
-
-                    # Generate match narrative
-                    narrative = generate_match_narrative(
-                        listing=listing,
-                        match_score=score,
-                        feature_scores=feature_scores,
-                        tranquility_data=intelligence.get("tranquility"),
-                        light_data=intelligence.get("light_potential"),
-                        visual_data=intelligence.get("visual_quality"),
-                        recency_data=intelligence.get("recency"),
-                    )
-                    intelligence["narrative"] = narrative
-
-                    explanation = self._build_match_explanation(listing, intelligence)
-                    listing.match_narrative = narrative
-                    listing.match_reasons = explanation["reasons"]
-                    listing.match_tradeoff = explanation["tradeoff"]
-
-                # Apply vibe-specific keyword adjustments
-                if listing.description:
-                    desc_lower = listing.description.lower()
-
-                    # Boost for matching vibe keywords
-                    boost_count = sum(1 for kw in self.boost_keywords if kw in desc_lower)
-                    score = min(100, score + boost_count * 1.5)
-
-                    # Penalize for anti-vibe keywords
-                    penalty_count = sum(1 for kw in self.penalize_keywords if kw in desc_lower)
-                    score = max(0, score - penalty_count * 2)
-
-                # Update the listing's match score and data
-                listing.match_score = score
-                listing.feature_scores = feature_scores
-
-                scored_listings.append((listing, score, intelligence))
-
-        # Sort by score (highest first)
-        scored_listings.sort(key=lambda x: x[1], reverse=True)
-
-        # Apply limit
-        return scored_listings[:limit]
-    
     def _build_base_query(self):
-        """Build the base query with hard filters."""
         query = select(PropertyListing)
         filters = []
-        
-        # Price filters
-        if self.criteria.price_min is not None:
-            filters.append(PropertyListing.price >= self.criteria.price_min)
-        if self.criteria.price_max is not None:
-            filters.append(PropertyListing.price <= self.criteria.price_max)
-        
-        # Size filters
-        if self.criteria.beds_min is not None:
-            filters.append(PropertyListing.beds >= self.criteria.beds_min)
-        if self.criteria.beds_max is not None:
-            filters.append(PropertyListing.beds <= self.criteria.beds_max)
-        if self.criteria.baths_min is not None:
-            filters.append(PropertyListing.baths >= self.criteria.baths_min)
-        if self.criteria.sqft_min is not None:
-            filters.append(PropertyListing.sqft >= self.criteria.sqft_min)
-        if self.criteria.sqft_max is not None:
-            filters.append(PropertyListing.sqft <= self.criteria.sqft_max)
-        
-        # Property type filter
-        if self.criteria.property_types:
-            filters.append(PropertyListing.property_type.in_(self.criteria.property_types))
-        
-        # Neighborhood filters
-        if self.criteria.preferred_neighborhoods:
-            if self.criteria.neighborhood_mode == "strict":
-                filters.append(PropertyListing.neighborhood.in_(self.criteria.preferred_neighborhoods))
-            else:
-                # Soft preference - will boost score but not exclude
-                pass
-        if self.criteria.avoid_neighborhoods:
-            filters.append(
-                or_(
-                    PropertyListing.neighborhood.notin_(self.criteria.avoid_neighborhoods),
-                    PropertyListing.neighborhood.is_(None)
-                )
-            )
-        
-        # Red flag exclusions
-        if self.criteria.avoid_busy_streets:
-            filters.append(PropertyListing.has_busy_street_keywords == False)
-        if self.criteria.avoid_north_facing_only:
-            filters.append(PropertyListing.is_north_facing_only == False)
-        if self.criteria.avoid_basement_units:
-            filters.append(PropertyListing.is_basement_unit == False)
-        
-        # Excluded streets (use cross-database case-insensitive LIKE)
-        if self.criteria.excluded_streets:
-            for street in self.criteria.excluded_streets:
-                filters.append(~case_insensitive_like(PropertyListing.address, f"%{street}%"))
-        
-        # Days on market filter
-        if self.criteria.max_days_on_market is not None:
-            filters.append(PropertyListing.days_on_market <= self.criteria.max_days_on_market)
+        hard = self.config.hard_filters
 
-        # Listing status filter: exclude inactive statuses but keep unknowns
+        price_max = hard.get("price_max")
+        if price_max is not None:
+            filters.append(PropertyListing.price <= price_max)
+
+        beds_min = hard.get("bedrooms_min")
+        if beds_min is not None:
+            filters.append(PropertyListing.beds >= beds_min)
+
+        baths_min = hard.get("bathrooms_min")
+        if baths_min is not None:
+            filters.append(PropertyListing.baths >= baths_min)
+
+        sqft_min = hard.get("sqft_min")
+        if sqft_min is not None:
+            filters.append(PropertyListing.sqft >= sqft_min)
+
+        neighborhoods = get_required_neighborhoods(self.config)
+        if neighborhoods:
+            filters.append(PropertyListing.neighborhood.in_(neighborhoods))
+
         inactive_statuses = ["pending", "contingent", "sold", "off market", "off_market"]
         status_filters = [
-            ~case_insensitive_like(PropertyListing.listing_status, f"%{status}%")
+            ~PropertyListing.listing_status.ilike(f"%{status}%")
             for status in inactive_statuses
         ]
         filters.append(
             or_(
                 PropertyListing.listing_status.is_(None),
-                and_(*status_filters)
+                and_(*status_filters),
             )
         )
-        
-        # Apply all filters
+
         if filters:
             query = query.where(and_(*filters))
-        
         return query
-    
-    def _calculate_match_score(self, listing: PropertyListing) -> float:
-        """Calculate comprehensive match score for a listing."""
-        score = 0.0
-        max_score = 0.0
-        
-        # Essential features scoring
-        features_to_check = [
-            ("natural_light", listing.has_natural_light_keywords, self.criteria.require_natural_light),
-            ("high_ceilings", listing.has_high_ceiling_keywords, self.criteria.require_high_ceilings),
-            ("outdoor_space", listing.has_outdoor_space_keywords, self.criteria.require_outdoor_space),
-            ("parking", listing.has_parking_keywords, self.criteria.require_parking),
-            ("view", listing.has_view_keywords, self.criteria.require_view),
-            ("updated_systems", listing.has_updated_systems_keywords, self.criteria.require_updated_systems),
-            ("home_office", listing.has_home_office_keywords, self.criteria.require_home_office),
-            ("storage", listing.has_storage_keywords, self.criteria.require_storage),
+
+    def _passes_hard_filters(self, listing: PropertyListing) -> Tuple[bool, List[str]]:
+        failures: List[str] = []
+        hard = self.config.hard_filters
+
+        price_max = hard.get("price_max")
+        if price_max is not None:
+            if listing.price is None or listing.price > price_max:
+                failures.append("price above max")
+
+        beds_min = hard.get("bedrooms_min")
+        if beds_min is not None:
+            if listing.beds is None or listing.beds < beds_min:
+                failures.append("bedrooms below min")
+
+        baths_min = hard.get("bathrooms_min")
+        if baths_min is not None:
+            if listing.baths is None or listing.baths < baths_min:
+                failures.append("bathrooms below min")
+
+        sqft_min = hard.get("sqft_min")
+        if sqft_min is not None:
+            if listing.sqft is None or listing.sqft < sqft_min:
+                failures.append("sqft below min")
+
+        neighborhoods = get_required_neighborhoods(self.config)
+        if neighborhoods:
+            if not listing.neighborhood or listing.neighborhood not in neighborhoods:
+                failures.append("neighborhood excluded")
+
+        status = (listing.listing_status or "").lower()
+        inactive_statuses = ["pending", "contingent", "sold", "off market", "off_market"]
+        if status and any(flag in status for flag in inactive_statuses):
+            failures.append("inactive status")
+
+        return (len(failures) == 0, failures)
+
+    def _passes_additional_hard_filters(
+        self,
+        listing: PropertyListing,
+        text_lower: str,
+        nlp_hits: dict,
+        tranquility_score: Optional[float],
+    ) -> Tuple[bool, List[str]]:
+        failures: List[str] = []
+
+        dark_hits = nlp_hits.get("negative_hits", {}).get("dark")
+        if dark_hits and not nlp_hits.get("positive_hits", {}).get("light"):
+            failures.append("dark interior signals")
+
+        if listing.has_busy_street_keywords:
+            failures.append("busy street signal")
+        if tranquility_score is not None and tranquility_score < 40:
+            failures.append("low tranquility score")
+
+        layout_negative = _find_hits(text_lower, LAYOUT_NEGATIVE_KEYWORDS)
+        if layout_negative:
+            failures.append("layout red flags")
+
+        no_parking_hits = _find_hits(text_lower, NO_PARKING_KEYWORDS)
+        if no_parking_hits:
+            failures.append("no parking")
+
+        return (len(failures) == 0, failures)
+
+    def _apply_scorecard(
+        self,
+        listing: PropertyListing,
+        total_points: float,
+        components: Dict[str, ScoreComponent],
+        signals: MatchSignals,
+        total_possible: float,
+        score_percent_value: float,
+    ) -> None:
+        contributions = [
+            (key, (comp.score / 10.0) * comp.weight)
+            for key, comp in components.items()
+            if comp.weight > 0 and comp.score > 0
         ]
-        
-        for feature_name, has_feature, is_required in features_to_check:
-            weight = self.weights.get(feature_name, 5)
-            if is_required:
-                max_score += weight * 2  # Double weight for required features
-                if has_feature:
-                    score += weight * 2
-            else:
-                max_score += weight
-                if has_feature:
-                    score += weight
-        
-        # Quality indicators
-        if listing.has_luxury_keywords:
-            score += self.weights.get("luxury", 3)
-        if listing.has_designer_keywords:
-            score += self.weights.get("designer", 3)
-        if listing.has_tech_ready_keywords:
-            score += self.weights.get("tech_ready", 4)
-        
-        max_score += self.weights.get("luxury", 3) + self.weights.get("designer", 3) + self.weights.get("tech_ready", 4)
-        
-        # Neighborhood scoring
-        if self.criteria.preferred_neighborhoods and listing.neighborhood:
-            if listing.neighborhood in self.criteria.preferred_neighborhoods:
-                score += self.weights.get("neighborhood_match", 9)
-            max_score += self.weights.get("neighborhood_match", 9)
-        
-        # Walk score
-        if self.criteria.min_walk_score and listing.walk_score:
-            if listing.walk_score >= self.criteria.min_walk_score:
-                score += self.weights.get("walk_score", 8)
-            else:
-                # Partial credit for close walk scores
-                diff = self.criteria.min_walk_score - listing.walk_score
-                if diff <= 10:
-                    score += self.weights.get("walk_score", 8) * (1 - diff/20)
-            max_score += self.weights.get("walk_score", 8)
-        
-        # Price value scoring (lower price within range is better)
-        if self.criteria.price_min and self.criteria.price_max and listing.price:
-            price_range = self.criteria.price_max - self.criteria.price_min
-            if price_range > 0:
-                price_position = (listing.price - self.criteria.price_min) / price_range
-                # Lower prices get higher scores
-                price_score = (1 - price_position) * self.weights.get("price_match", 10)
-                score += price_score
-                max_score += self.weights.get("price_match", 10)
+        contributions.sort(key=lambda item: item[1], reverse=True)
+        top_positives = [CRITERION_LABELS.get(key, key) for key, _ in contributions[:3]]
 
-        # Budget fit scoring (soft cap preference)
-        budget_fit = self._budget_fit(listing)
-        if budget_fit is not None:
-            budget_weight = self.weights.get("budget_fit", 8)
-            score += budget_fit * budget_weight
-            max_score += budget_weight
-        
-        # Deal quality scoring
-        if listing.is_price_reduced:
-            score += self.weights.get("deal_quality", 5)
-        if listing.is_back_on_market:
-            score += self.weights.get("deal_quality", 5) * 0.5
-        max_score += self.weights.get("deal_quality", 5)
-
-        # Recency scoring
-        recency_info = self._recency_info(listing)
-        recency_weight = self.weights.get("recency", 4)
-        score += recency_info["score"] * recency_weight
-        max_score += recency_weight
-        
-        # Text quality scoring (if description available)
-        if listing.description:
-            text_score = calculate_text_quality_score(
-                listing.description, 
-                {"feature_weights": self.weights}
-            )
-            # Text score is 0-100, normalize to our scale
-            score += (text_score / 100) * 20
-            max_score += 20
-        
-        # Parking type matching
-        if self.criteria.parking_type and listing.parking_type:
-            if listing.parking_type == self.criteria.parking_type:
-                score += 5
-            elif self.criteria.parking_type == "any" and listing.parking_type:
-                score += 3
-            max_score += 5
-
-        # Penalize red flags that weren't filtered out
-        if listing.has_foundation_issues_keywords:
-            score -= 10
-        if listing.has_hoa_issues_keywords:
-            score -= 8
-        
-        # Calculate final percentage score
-        if max_score > 0:
-            final_score = (score / max_score) * 100
+        tradeoff = None
+        price_penalty = _soft_cap_penalty(
+            listing.price,
+            self.config.soft_caps.get("price_soft"),
+            self.config.hard_filters.get("price_max"),
+        )
+        hoa_penalty = _hoa_penalty(listing.hoa_fee)
+        if price_penalty > 0:
+            tradeoff = "Above ideal price"
+        elif hoa_penalty > 0:
+            tradeoff = "High HOA"
         else:
-            final_score = 50  # Default middle score if no criteria
-        
-        return max(0, min(100, final_score))  # Clamp between 0-100
-    
-    def _get_feature_breakdown(self, listing: PropertyListing) -> Dict[str, Any]:
-        """Get detailed breakdown of feature scores."""
-        breakdown = {}
-        
-        # Check each feature
-        features = {
-            "natural_light": listing.has_natural_light_keywords,
-            "high_ceilings": listing.has_high_ceiling_keywords,
-            "outdoor_space": listing.has_outdoor_space_keywords,
-            "parking": listing.has_parking_keywords,
-            "view": listing.has_view_keywords,
-            "updated_systems": listing.has_updated_systems_keywords,
-            "home_office": listing.has_home_office_keywords,
-            "storage": listing.has_storage_keywords,
-            "luxury": listing.has_luxury_keywords,
-            "designer": listing.has_designer_keywords,
-            "tech_ready": listing.has_tech_ready_keywords,
+            lowest = min(components.items(), key=lambda item: item[1].score, default=(None, None))
+            if lowest[0]:
+                tradeoff = f"Low on {CRITERION_LABELS.get(lowest[0], lowest[0])}"
+
+        why_now = _build_why_now(listing, self.db)
+
+        listing.match_score = round(score_percent_value, 1)
+        listing.score_points = round(total_points, 1)
+        listing.score = listing.score_points
+        listing.feature_scores = {
+            key: {
+                "score": comp.score,
+                "weight": comp.weight,
+                "evidence": comp.evidence,
+                "confidence": comp.confidence,
+            }
+            for key, comp in components.items()
         }
-        
-        for feature, has_it in features.items():
-            if has_it:
-                breakdown[feature] = self.weights.get(feature, 1)
+        listing.match_reasons = top_positives
+        listing.match_tradeoff = tradeoff
+        listing.score_percent = _score_percent(total_points, total_possible)
+        listing.score_tier = _score_tier(total_points)
+        listing.top_positives = top_positives
+        listing.key_tradeoff = tradeoff
+        listing.signals = {
+            "tranquility_score": signals.tranquility_score,
+            "light_potential": signals.light_potential,
+            "visual_quality": signals.visual_quality,
+            "nlp_character_score": signals.nlp_character_score,
+        }
+        listing.why_now = why_now
 
-        if self.criteria.preferred_neighborhoods and listing.neighborhood:
-            if listing.neighborhood in self.criteria.preferred_neighborhoods:
-                breakdown["neighborhood_match"] = self.weights.get("neighborhood_match", 9)
+    def _score_listing(
+        self,
+        listing: PropertyListing,
+        nlp_hits: dict,
+        text_lower: str,
+    ) -> Tuple[float, Dict[str, ScoreComponent], MatchSignals]:
+        description = listing.description or ""
 
-        # Add other scoring factors
-        if listing.walk_score and self.criteria.min_walk_score:
-            if listing.walk_score >= self.criteria.min_walk_score:
-                breakdown["walk_score"] = self.weights.get("walk_score", 8)
-        
-        if listing.is_price_reduced:
-            breakdown["price_reduced"] = self.weights.get("deal_quality", 5)
+        light_potential_score = listing.light_potential_score
+        if light_potential_score is None and self.include_intelligence:
+            light_data = estimate_light_potential(
+                description=description,
+                is_north_facing_only=listing.is_north_facing_only or False,
+                is_basement_unit=listing.is_basement_unit or False,
+                has_natural_light_keywords=listing.has_natural_light_keywords or False,
+                photo_count=len(listing.photos or []),
+            )
+            light_potential_score = light_data.get("score")
 
-        budget_fit = self._budget_fit(listing)
-        if budget_fit is not None:
-            breakdown["budget_fit"] = round(budget_fit * self.weights.get("budget_fit", 8), 2)
+        tranquility_score = listing.tranquility_score
+        if tranquility_score is None and listing.lat and listing.lon and self.include_intelligence:
+            tranquility = calculate_tranquility_score(listing.lat, listing.lon)
+            tranquility_score = tranquility.get("score")
 
-        recency_info = self._recency_info(listing)
-        breakdown["recency"] = round(recency_info["score"] * self.weights.get("recency", 4), 2)
-        
-        return breakdown
+        visual_brightness = None
+        if listing.visual_assessment:
+            dimensions = listing.visual_assessment.get("dimensions") or {}
+            visual_brightness = dimensions.get("brightness")
+
+        weights = self._effective_weights
+        components: Dict[str, ScoreComponent] = {}
+
+        def add_component(key: str, score: float, evidence: List[str], confidence: str = "medium"):
+            weight = float(weights.get(key, 0))
+            components[key] = ScoreComponent(score=score, weight=weight, evidence=evidence, confidence=confidence)
+
+        # Natural light
+        light_hits = nlp_hits.get("positive_hits", {}).get("light", [])
+        light_base = _score_from_hits(len(light_hits))
+        blended = [light_base]
+        if light_potential_score is not None:
+            blended.append(light_potential_score / 10)
+        if visual_brightness is not None:
+            blended.append(visual_brightness / 10)
+        light_score = _blend_scores(blended)
+        light_multiplier = float(self.config.nlp_signals.get("positive", {}).get("light", {}).get("weight", 1.0))
+        if light_score:
+            light_score = min(10.0, light_score * light_multiplier)
+        dark_multiplier = float(self.config.nlp_signals.get("negative", {}).get("dark", {}).get("weight", 1.0))
+        if nlp_hits.get("negative_hits", {}).get("dark") and not light_hits:
+            light_score = light_score * dark_multiplier
+        add_component(
+            "natural_light",
+            score=round(light_score, 2),
+            evidence=[f"mentions '{hit}'" for hit in light_hits[:3]]
+            + ([f"light potential {light_potential_score}"] if light_potential_score is not None else [])
+            + ([f"brightness {visual_brightness}"] if visual_brightness is not None else []),
+            confidence="high" if len(light_hits) >= 2 or light_potential_score else "medium",
+        )
+
+        # Outdoor space
+        outdoor_hits = nlp_hits.get("positive_hits", {}).get("outdoor", [])
+        outdoor_score = _score_from_hits(len(outdoor_hits))
+        if listing.has_outdoor_space_keywords:
+            outdoor_score = max(outdoor_score, 7.5)
+        outdoor_multiplier = float(self.config.nlp_signals.get("positive", {}).get("outdoor", {}).get("weight", 1.0))
+        if outdoor_score:
+            outdoor_score = min(10.0, outdoor_score * outdoor_multiplier)
+        weak_outdoor_multiplier = float(
+            self.config.nlp_signals.get("negative", {}).get("weak_outdoor", {}).get("weight", 1.0)
+        )
+        if nlp_hits.get("negative_hits", {}).get("weak_outdoor"):
+            outdoor_score = outdoor_score * weak_outdoor_multiplier
+        add_component(
+            "outdoor_space",
+            score=round(outdoor_score, 2),
+            evidence=[f"mentions '{hit}'" for hit in outdoor_hits[:3]],
+        )
+
+        # Character & soul
+        character_hits = nlp_hits.get("positive_hits", {}).get("character", [])
+        quality_hits = nlp_hits.get("positive_hits", {}).get("quality", [])
+        character_score = _score_from_hits(len(character_hits) + len(quality_hits))
+        if listing.has_architectural_details_keywords:
+            character_score = max(character_score, 7.0)
+        if listing.year_built:
+            if listing.year_built <= 1910:
+                character_score = min(10.0, character_score + 2.0)
+            elif listing.year_built <= 1940:
+                character_score = min(10.0, character_score + 1.0)
+        character_multiplier = float(self.config.nlp_signals.get("positive", {}).get("character", {}).get("weight", 1.0))
+        if character_score:
+            character_score = min(10.0, character_score * character_multiplier)
+        quality_multiplier = float(self.config.nlp_signals.get("positive", {}).get("quality", {}).get("weight", 1.0))
+        if quality_hits and character_score:
+            character_score = min(10.0, character_score * quality_multiplier)
+        flipper_multiplier = float(self.config.nlp_signals.get("negative", {}).get("flipper", {}).get("weight", 1.0))
+        if nlp_hits.get("negative_hits", {}).get("flipper") and is_generic_description(description, nlp_hits.get("positive_hits")):
+            character_score = character_score * flipper_multiplier
+        add_component(
+            "character_soul",
+            score=round(character_score, 2),
+            evidence=[f"mentions '{hit}'" for hit in (character_hits + quality_hits)[:3]]
+            + ([f"year built {listing.year_built}"] if listing.year_built else []),
+        )
+
+        # Kitchen quality
+        kitchen_hits = nlp_hits.get("positive_hits", {}).get("kitchen", [])
+        kitchen_score = _score_from_hits(len(kitchen_hits))
+        kitchen_multiplier = float(self.config.nlp_signals.get("positive", {}).get("kitchen", {}).get("weight", 1.0))
+        if kitchen_score:
+            kitchen_score = min(10.0, kitchen_score * kitchen_multiplier)
+        add_component(
+            "kitchen_quality",
+            score=round(kitchen_score, 2),
+            evidence=[f"mentions '{hit}'" for hit in kitchen_hits[:3]],
+        )
+
+        # Location quiet
+        quiet_evidence: List[str] = []
+        quiet_score = 5.0
+        quiet_confidence = "low"
+        if tranquility_score is not None:
+            quiet_score = min(10.0, tranquility_score / 10)
+            quiet_confidence = "high"
+            quiet_evidence.append(f"tranquility {tranquility_score}")
+        if listing.has_busy_street_keywords:
+            quiet_score = max(0.0, quiet_score - 3.0)
+            quiet_evidence.append("busy street signal")
+        noise_hits = nlp_hits.get("negative_hits", {}).get("location_noise", [])
+        if noise_hits:
+            noise_multiplier = float(self.config.nlp_signals.get("negative", {}).get("location_noise", {}).get("weight", 1.0))
+            quiet_score = quiet_score * noise_multiplier
+            quiet_evidence.extend([f"mentions '{hit}'" for hit in noise_hits[:2]])
+
+        modifiers = self.config.location_modifiers or {}
+        mod_result = apply_location_modifiers(
+            listing.address,
+            description,
+            modifiers,
+            has_busy_street=listing.has_busy_street_keywords,
+            noise_hits=noise_hits,
+        )
+        quiet_score = max(0.0, min(10.0, quiet_score + mod_result.get("adjustment", 0.0)))
+        quiet_evidence.extend(mod_result.get("evidence", []))
+
+        add_component(
+            "location_quiet",
+            score=round(quiet_score, 2),
+            evidence=quiet_evidence,
+            confidence=quiet_confidence,
+        )
+
+        # Office space
+        office_hits = _find_hits(text_lower, OFFICE_KEYWORDS)
+        office_score = _score_from_hits(len(office_hits))
+        if listing.has_home_office_keywords:
+            office_score = max(office_score, 7.0)
+        add_component("office_space", score=round(office_score, 2), evidence=[f"mentions '{hit}'" for hit in office_hits[:3]])
+
+        # Indoor-outdoor flow
+        flow_hits = _find_hits(text_lower, INDOOR_OUTDOOR_KEYWORDS)
+        flow_score = _score_from_hits(len(flow_hits))
+        if flow_score == 0 and outdoor_score >= 6 and _find_hits(text_lower, LAYOUT_KEYWORDS):
+            flow_score = 6.5
+        add_component("indoor_outdoor_flow", score=round(flow_score, 2), evidence=[f"mentions '{hit}'" for hit in flow_hits[:2]])
+
+        # High ceilings
+        ceiling_score = 0.0
+        if listing.has_high_ceiling_keywords:
+            ceiling_score = 8.0
+        if "10 ft" in text_lower or "10-foot" in text_lower or "11 ft" in text_lower:
+            ceiling_score = max(ceiling_score, 9.0)
+        add_component("high_ceilings", score=round(ceiling_score, 2), evidence=["ceiling keywords"] if ceiling_score else [])
+
+        # Layout intelligence
+        layout_hits = _find_hits(text_lower, LAYOUT_KEYWORDS)
+        layout_score = _score_from_hits(len(layout_hits))
+        add_component("layout_intelligence", score=round(layout_score, 2), evidence=[f"mentions '{hit}'" for hit in layout_hits[:2]])
+
+        # Move-in ready
+        move_hits = _find_hits(text_lower, ["move-in ready", "move in ready", "turn-key", "turnkey", "updated", "renovated"])
+        move_score = _score_from_hits(len(move_hits))
+        if listing.visual_quality_score:
+            move_score = max(move_score, min(10.0, listing.visual_quality_score / 10))
+        if nlp_hits.get("negative_hits", {}).get("flipper") and is_generic_description(description, nlp_hits.get("positive_hits")):
+            move_score = move_score * 0.8
+        condition_multiplier = float(self.config.nlp_signals.get("negative", {}).get("condition", {}).get("weight", 1.0))
+        if nlp_hits.get("negative_hits", {}).get("condition"):
+            move_score = move_score * condition_multiplier
+        move_evidence = [f"mentions '{hit}'" for hit in move_hits[:2]]
+        if nlp_hits.get("negative_hits", {}).get("condition"):
+            move_evidence.append("condition concerns")
+        add_component("move_in_ready", score=round(move_score, 2), evidence=move_evidence)
+
+        # Views
+        view_score = 0.0
+        if listing.has_view_keywords:
+            view_score = 8.0
+        add_component("views", score=round(view_score, 2), evidence=["view keywords"] if view_score else [])
+
+        # In-unit laundry
+        laundry_hits = _find_hits(text_lower, LAUNDRY_KEYWORDS)
+        laundry_score = _score_from_hits(len(laundry_hits))
+        if not laundry_hits and _find_hits(text_lower, LAUNDRY_BUILDING_KEYWORDS):
+            laundry_score = 4.0
+        add_component("in_unit_laundry", score=round(laundry_score, 2), evidence=[f"mentions '{hit}'" for hit in laundry_hits[:2]])
+
+        # Parking
+        parking_score = 0.0
+        if listing.has_parking_keywords:
+            parking_score = 7.0
+        if listing.parking_type:
+            if listing.parking_type.lower() in {"garage", "carport", "driveway"}:
+                parking_score = max(parking_score, 9.0)
+        if _find_hits(text_lower, PARKING_STREET_ONLY_KEYWORDS):
+            parking_score = max(parking_score, 4.0)
+        add_component("parking", score=round(parking_score, 2), evidence=["parking mention"] if parking_score else [])
+
+        # Central HVAC
+        hvac_hits = _find_hits(text_lower, CENTRAL_HVAC_KEYWORDS)
+        hvac_score = _score_from_hits(len(hvac_hits))
+        add_component("central_hvac", score=round(hvac_score, 2), evidence=[f"mentions '{hit}'" for hit in hvac_hits[:2]])
+
+        # Gas stove
+        gas_hits = _find_hits(text_lower, GAS_STOVE_KEYWORDS)
+        gas_score = _score_from_hits(len(gas_hits))
+        add_component("gas_stove", score=round(gas_score, 2), evidence=[f"mentions '{hit}'" for hit in gas_hits[:2]])
+
+        # Dishwasher
+        dishwasher_hits = _find_hits(text_lower, DISHWASHER_KEYWORDS)
+        dishwasher_score = _score_from_hits(len(dishwasher_hits))
+        add_component("dishwasher", score=round(dishwasher_score, 2), evidence=[f"mentions '{hit}'" for hit in dishwasher_hits[:2]])
+
+        # Storage
+        storage_score = 0.0
+        if listing.has_storage_keywords:
+            storage_score = 8.0
+        add_component("storage", score=round(storage_score, 2), evidence=["storage mention"] if storage_score else [])
+
+        signals = MatchSignals(
+            tranquility_score=round((tranquility_score or 0) / 10, 1) if tranquility_score is not None else None,
+            light_potential=round((light_potential_score or 0) / 10, 1) if light_potential_score is not None else None,
+            visual_quality=round((listing.visual_quality_score or 0) / 10, 1) if listing.visual_quality_score is not None else None,
+            nlp_character_score=round(_score_from_hits(len(character_hits) + len(quality_hits)), 1)
+            if character_hits or quality_hits
+            else None,
+        )
+
+        total = 0.0
+        for component in components.values():
+            total += (component.score / 10.0) * component.weight
+
+        price_penalty = _soft_cap_penalty(listing.price, self.config.soft_caps.get("price_soft"), self.config.hard_filters.get("price_max"))
+        hoa_penalty = _hoa_penalty(listing.hoa_fee)
+        total = max(0.0, total - price_penalty - hoa_penalty)
+
+        return total, components, signals
+
+    def score_listing(self, listing: PropertyListing, min_score_percent: float = 0.0) -> bool:
+        total_possible = sum(self._effective_weights.values()) or TOTAL_POINTS
+
+        passes, _ = self._passes_hard_filters(listing)
+        if not passes:
+            return False
+
+        description = listing.description or ""
+        text_lower = description.lower()
+        nlp_hits = analyze_text_signals(description, self.config.nlp_signals)
+
+        tranquility_score = listing.tranquility_score
+        if tranquility_score is None and listing.lat and listing.lon:
+            tranquility_score = calculate_tranquility_score(listing.lat, listing.lon).get("score")
+            listing.tranquility_score = tranquility_score
+
+        passes, _ = self._passes_additional_hard_filters(listing, text_lower, nlp_hits, tranquility_score)
+        if not passes:
+            return False
+
+        total_points, components, signals = self._score_listing(listing, nlp_hits, text_lower)
+        score_percent_value = (total_points / total_possible) * 100
+        self._apply_scorecard(listing, total_points, components, signals, total_possible, score_percent_value)
+
+        return score_percent_value >= min_score_percent
+
+    def find_matches(
+        self,
+        limit: int = 100,
+        min_score: float = 0.0,
+    ) -> List[Tuple[PropertyListing, float, Dict[str, Any]]]:
+        query = self._build_base_query()
+        total_possible = sum(self._effective_weights.values()) or TOTAL_POINTS
+        listings = self.db.scalars(query).all()
+        self.total_analyzed = len(listings)
+
+        scored_listings: List[Tuple[PropertyListing, float, Dict[str, Any]]] = []
+
+        for listing in listings:
+            description = listing.description or ""
+            text_lower = description.lower()
+            nlp_hits = analyze_text_signals(description, self.config.nlp_signals)
+
+            tranquility_score = listing.tranquility_score
+            if tranquility_score is None and listing.lat and listing.lon:
+                tranquility_score = calculate_tranquility_score(listing.lat, listing.lon).get("score")
+                listing.tranquility_score = tranquility_score
+
+            passes, failures = self._passes_additional_hard_filters(listing, text_lower, nlp_hits, tranquility_score)
+            if not passes:
+                continue
+
+            total_points, components, signals = self._score_listing(listing, nlp_hits, text_lower)
+            score_percent_value = (total_points / total_possible) * 100
+            if score_percent_value < min_score:
+                continue
+
+            self._apply_scorecard(listing, total_points, components, signals, total_possible, score_percent_value)
+            scored_listings.append((listing, total_points, listing.signals))
+
+        scored_listings.sort(key=lambda item: item[1], reverse=True)
+        if self.include_intelligence:
+            enrich_listings_with_text_intelligence([item[0] for item in scored_listings], self.db)
+        return scored_listings[:limit]
 
 
 def find_advanced_matches(
-    criteria: Criteria,
+    criteria: Any,
     db: Session,
     limit: int = 50,
-    min_score: float = 30.0,
+    min_score: float = 0.0,
     vibe_preset: Optional[str] = None,
     include_intelligence: bool = True,
+    user_weights: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
-    """
-    Find property matches using the Sherlock Homes Deduction Engine.
+    matcher = PropertyMatcher(criteria, db, include_intelligence=include_intelligence, user_weights=user_weights)
+    matches = matcher.find_matches(limit=limit, min_score=min_score)
 
-    Returns a dict containing:
-    - results: List of match dicts with listing data, score, and intelligence
-    - summary: Skip summary explaining what was filtered
-    - total_analyzed: Number of listings that were scored
-    - filters_applied: List of active filter names
-
-    Args:
-        criteria: User's search criteria
-        db: Database session
-        limit: Maximum results to return
-        min_score: Minimum match score threshold
-        vibe_preset: Optional vibe preset ID ('light_chaser', 'urban_professional', 'deal_hunter')
-        include_intelligence: Calculate tranquility/light scores (recommended)
-    """
-    matcher = PropertyMatcher(criteria, db, vibe_preset=vibe_preset)
-    matches = matcher.find_matches(
-        limit=limit,
-        min_score=min_score,
-        include_intelligence=include_intelligence,
-    )
-
-    # Build results list with full intelligence data
     results = []
-    for listing, score, intelligence in matches:
-        result = {
-            "listing": listing,
-            "match_score": round(score, 1),
-            "feature_scores": listing.feature_scores,
-            "address": listing.address,
-            "price": listing.price,
-            "url": listing.url,
-            "days_on_market": listing.days_on_market,
-            # Intelligence data
-            "narrative": intelligence.get("narrative", ""),
-            "tranquility": intelligence.get("tranquility"),
-            "light_potential": intelligence.get("light_potential"),
-            "visual_quality": intelligence.get("visual_quality"),
-            "recency": intelligence.get("recency"),
-        }
-        results.append(result)
+    for listing, score, signals in matches:
+        results.append(
+            {
+                "listing": listing,
+                "match_score": listing.match_score,
+                "score_points": listing.score_points,
+                "feature_scores": listing.feature_scores,
+                "address": listing.address,
+                "price": listing.price,
+                "url": listing.url,
+                "days_on_market": listing.days_on_market,
+                "signals": signals,
+                "why_now": listing.why_now,
+            }
+        )
 
-    # Determine which filters were applied
-    filters_applied = []
-    if criteria.price_max:
-        filters_applied.append(f"price ≤ ${criteria.price_max:,}")
-    if criteria.beds_min:
-        filters_applied.append(f"{criteria.beds_min}+ beds")
-    if criteria.preferred_neighborhoods:
-        if criteria.neighborhood_mode == "strict":
-            filters_applied.append(f"only {', '.join(criteria.preferred_neighborhoods[:2])}")
-        else:
-            filters_applied.append(f"in {', '.join(criteria.preferred_neighborhoods[:2])}")
-    if criteria.avoid_busy_streets:
-        filters_applied.append("quiet streets")
-    if criteria.require_natural_light:
-        filters_applied.append("natural light")
-    if vibe_preset:
-        preset = get_preset(vibe_preset)
-        if preset:
-            filters_applied.append(f"{preset.name} vibe")
-
-    # Generate skip summary
-    summary = generate_skip_summary(
-        total_analyzed=matcher.total_analyzed,
-        matches_shown=len(results),
-        filters_applied=filters_applied,
-    )
-
-    logger.info(f"Sherlock Homes: {summary}")
+    summary = f"Analyzed {matcher.total_analyzed:,} listings. Showing {len(results)} that matter."
 
     return {
         "results": results,
         "summary": summary,
         "total_analyzed": matcher.total_analyzed,
         "matches_shown": len(results),
-        "filters_applied": filters_applied,
+        "filters_applied": ["hard_filters"],
         "vibe_preset": vibe_preset,
     }

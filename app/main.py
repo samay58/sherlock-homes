@@ -7,6 +7,8 @@ from app.routes.criteria import router as criteria_router
 from app.routes.admin import router as admin_router
 from app.routes.listings import router as listings_router
 from app.routes.scouts import router as scouts_router
+from app.routes.feedback import router as feedback_router
+from app.routes.users import router as users_router
 from app.services.ingestion import run_ingestion_job_sync
 from app.dependencies import get_db
 from app.models.user import User
@@ -33,11 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Routers --- 
+# --- Routers ---
 app.include_router(criteria_router)
 app.include_router(admin_router)
 app.include_router(listings_router)
 app.include_router(scouts_router)
+app.include_router(feedback_router)
+app.include_router(users_router)
 
 scheduler: BackgroundScheduler | None = None
 

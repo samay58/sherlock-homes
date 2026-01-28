@@ -7,14 +7,15 @@ modernity, condition, brightness, staging, and cleanliness.
 This follows the same pattern as geospatial.py and nlp.py for intelligence scoring.
 """
 
-import json
-import hashlib
-import logging
 import base64
-import httpx
+import hashlib
+import json
+import logging
 import socket
-from typing import Dict, List, Optional, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import httpx
 
 from app.core.config import settings
 
@@ -98,6 +99,7 @@ def _parse_json_response(content: str) -> Optional[Dict[str, Any]]:
 # CORE FUNCTIONS
 # =============================================================================
 
+
 def compute_photos_hash(photos: List[str]) -> str:
     """Compute SHA256 hash of photo URLs for cache invalidation."""
     if not photos:
@@ -112,7 +114,7 @@ def should_reanalyze(
     existing_hash: Optional[str],
     existing_analyzed_at: Optional[datetime],
     new_photos: List[str],
-    max_age_days: int = 30
+    max_age_days: int = 30,
 ) -> bool:
     """
     Determine if we should re-analyze photos for a listing.
@@ -155,7 +157,7 @@ def sample_photo_indices(total_photos: int, sample_size: int = 3) -> List[int]:
     # If we don't have enough, fill with remaining indices
     if len(valid) < sample_size:
         remaining = [i for i in range(total_photos) if i not in valid]
-        valid.extend(remaining[:sample_size - len(valid)])
+        valid.extend(remaining[: sample_size - len(valid)])
 
     return valid[:sample_size]
 
@@ -201,17 +203,23 @@ async def analyze_single_photo(photo_url: str) -> Optional[Dict[str, Any]]:
             response = await call_openai(client, photo_url)
             if response.status_code >= 400:
                 error_detail = response.text[:500]
-                logger.warning("Vision request failed (%s): %s", response.status_code, error_detail)
+                logger.warning(
+                    "Vision request failed (%s): %s", response.status_code, error_detail
+                )
                 if response.status_code in {400, 422}:
                     try:
                         image_response = await client.get(photo_url)
                         image_response.raise_for_status()
-                        content_type = image_response.headers.get("content-type", "image/jpeg")
+                        content_type = image_response.headers.get(
+                            "content-type", "image/jpeg"
+                        )
                         b64 = base64.b64encode(image_response.content).decode("ascii")
                         data_url = f"data:{content_type};base64,{b64}"
                         response = await call_openai(client, data_url)
                     except Exception as exc:
-                        logger.warning("Failed to fetch image for base64 fallback: %s", exc)
+                        logger.warning(
+                            "Failed to fetch image for base64 fallback: %s", exc
+                        )
                         return None
 
             response.raise_for_status()
@@ -225,7 +233,9 @@ async def analyze_single_photo(photo_url: str) -> Optional[Dict[str, Any]]:
             return _parse_json_response(content)
 
     except httpx.HTTPStatusError as e:
-        logger.warning(f"HTTP error analyzing photo {photo_url}: {e.response.status_code}")
+        logger.warning(
+            f"HTTP error analyzing photo {photo_url}: {e.response.status_code}"
+        )
         return None
     except httpx.RequestError as e:
         if isinstance(e.__cause__, socket.gaierror):
@@ -258,7 +268,7 @@ def aggregate_photo_scores(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
             "red_flags": [],
             "highlights": [],
             "photos_analyzed": 0,
-            "confidence": "none"
+            "confidence": "none",
         }
 
     # Average each dimension across photos
@@ -282,7 +292,7 @@ def aggregate_photo_scores(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
         "condition": 0.25,
         "brightness": 0.20,
         "staging": 0.15,
-        "cleanliness": 0.15
+        "cleanliness": 0.15,
     }
     composite = sum(averaged.get(k, 50) * w for k, w in weights.items())
 
@@ -326,14 +336,14 @@ def aggregate_photo_scores(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
         "red_flags": list(all_red_flags),
         "highlights": list(all_highlights),
         "photos_analyzed": photos_analyzed,
-        "confidence": confidence
+        "confidence": confidence,
     }
 
 
 async def analyze_listing_photos(
     photos: List[str],
     listing_id: Optional[str] = None,
-    sample_size: Optional[int] = None
+    sample_size: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Analyze photos for a property listing.
@@ -355,7 +365,7 @@ async def analyze_listing_photos(
             "highlights": [],
             "photos_analyzed": 0,
             "confidence": "none",
-            "note": "No photos available"
+            "note": "No photos available",
         }
 
     if not settings.OPENAI_API_KEY:
@@ -367,7 +377,7 @@ async def analyze_listing_photos(
             "highlights": [],
             "photos_analyzed": 0,
             "confidence": "none",
-            "note": "API key not configured"
+            "note": "API key not configured",
         }
 
     # Determine sample size
@@ -383,7 +393,9 @@ async def analyze_listing_photos(
     # Analyze each photo
     analyses = []
     for i, photo_url in enumerate(photos_to_analyze):
-        logger.debug(f"  Analyzing photo {i+1}/{len(photos_to_analyze)}: {photo_url[:60]}...")
+        logger.debug(
+            f"  Analyzing photo {i+1}/{len(photos_to_analyze)}: {photo_url[:60]}..."
+        )
         result = await analyze_single_photo(photo_url)
         if result:
             analyses.append(result)
@@ -392,7 +404,9 @@ async def analyze_listing_photos(
     aggregated = aggregate_photo_scores(analyses)
     aggregated["note"] = f"Analyzed photos at indices {indices}"
 
-    logger.info(f"Visual score for {listing_id}: {aggregated['score']} ({aggregated['confidence']} confidence)")
+    logger.info(
+        f"Visual score for {listing_id}: {aggregated['score']} ({aggregated['confidence']} confidence)"
+    )
 
     return aggregated
 
@@ -400,6 +414,7 @@ async def analyze_listing_photos(
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
 
 def get_visual_tier(score: Optional[int]) -> str:
     """Get human-readable tier for visual quality score."""

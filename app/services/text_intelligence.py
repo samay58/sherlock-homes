@@ -163,7 +163,9 @@ def _call_openai(payload: str, model: str) -> Optional[Dict[str, Any]]:
             and prompt_tokens is not None
             and completion_tokens is not None
         ):
-            estimated = (prompt_tokens / 1000) * input_cost + (completion_tokens / 1000) * output_cost
+            estimated = (prompt_tokens / 1000) * input_cost + (
+                completion_tokens / 1000
+            ) * output_cost
             logger.info(
                 "OpenAI text usage model=%s prompt=%s completion=%s est_cost=$%.4f",
                 model,
@@ -175,12 +177,18 @@ def _call_openai(payload: str, model: str) -> Optional[Dict[str, Any]]:
             logger.info(
                 "OpenAI text usage model=%s tokens=%s",
                 model,
-                total_tokens if total_tokens is not None else f"prompt={prompt_tokens} completion={completion_tokens}",
+                (
+                    total_tokens
+                    if total_tokens is not None
+                    else f"prompt={prompt_tokens} completion={completion_tokens}"
+                ),
             )
 
     try:
         with httpx.Client(timeout=settings.OPENAI_TEXT_TIMEOUT_SECONDS) as client:
-            response = client.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body)
+            response = client.post(
+                "https://api.openai.com/v1/chat/completions", headers=headers, json=body
+            )
             response.raise_for_status()
         data = response.json()
         usage = data.get("usage")
@@ -193,7 +201,9 @@ def _call_openai(payload: str, model: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def analyze_listing_text(listing: PropertyListing, db: Session, model: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def analyze_listing_text(
+    listing: PropertyListing, db: Session, model: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
     if not settings.OPENAI_API_KEY:
         return None
 
@@ -216,7 +226,9 @@ def analyze_listing_text(listing: PropertyListing, db: Session, model: Optional[
     return result
 
 
-def enrich_listing_with_text_intelligence(listing: PropertyListing, db: Session) -> None:
+def enrich_listing_with_text_intelligence(
+    listing: PropertyListing, db: Session
+) -> None:
     if not listing.description or len(listing.description.split()) < 40:
         return
     model = settings.OPENAI_TEXT_MODEL
@@ -242,7 +254,9 @@ def enrich_listing_with_text_intelligence(listing: PropertyListing, db: Session)
         listing.why_now = why_now
 
 
-def enrich_listings_with_text_intelligence(listings: List[PropertyListing], db: Session) -> None:
+def enrich_listings_with_text_intelligence(
+    listings: List[PropertyListing], db: Session
+) -> None:
     if not settings.OPENAI_API_KEY:
         return
     max_listings = max(0, settings.OPENAI_TEXT_MAX_LISTINGS)

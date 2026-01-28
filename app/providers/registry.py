@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Callable, Dict, List
-import logging
 
 from app.core.config import settings
 from app.providers.base import BaseProvider
-from app.providers.curated import CuratedProvider
 from app.providers.craigslist import CraigslistProvider
+from app.providers.curated import CuratedProvider
 from app.providers.realtor import RealtorProvider
 from app.providers.redfin import RedfinProvider
 from app.providers.trulia import TruliaProvider

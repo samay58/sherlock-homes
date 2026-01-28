@@ -1,22 +1,25 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { TEST_USER_ID } from '@/lib/user'
 
-const USER_ID = 'test-user' // TODO: Replace with actual user management
+type FeedbackType = 'like' | 'dislike' | 'neutral'
 
 interface FeedbackPayload {
-  listing_id: number
-  feedback_type: 'like' | 'dislike' | 'skip'
+  listingId: number
+  feedbackType: FeedbackType | null
 }
 
 export function useFeedback() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (payload: FeedbackPayload) =>
-      api.post(`/feedback/${USER_ID}`, payload),
+    mutationFn: ({ listingId, feedbackType }: FeedbackPayload) =>
+      feedbackType
+        ? api.post(`/feedback/${listingId}`, { feedback_type: feedbackType })
+        : api.del(`/feedback/${listingId}`),
     onSuccess: () => {
       // Optionally invalidate matches to remove disliked items
-      queryClient.invalidateQueries({ queryKey: ['matches', USER_ID] })
+      queryClient.invalidateQueries({ queryKey: ['matches', TEST_USER_ID] })
     },
   })
 }

@@ -6,7 +6,8 @@ from bs4 import BeautifulSoup
 
 from app.core.config import settings
 from app.providers.base import BaseProvider
-from app.providers.html_parsing import extract_item_list_urls, parse_listing_from_html
+from app.providers.html_parsing import (extract_item_list_urls,
+                                        parse_listing_from_html)
 from app.providers.zenrows_universal import ZenRowsUniversalClient
 
 logger = logging.getLogger(__name__)
@@ -19,11 +20,15 @@ class CraigslistProvider(BaseProvider):
     """Fetch Craigslist real estate listings via ZenRows universal scraping API."""
 
     def __init__(self, search_url: str | None = None, concurrency: int = 4):
-        self.search_url = search_url or settings.CRAIGSLIST_SEARCH_URL or DEFAULT_SEARCH_URL
+        self.search_url = (
+            search_url or settings.CRAIGSLIST_SEARCH_URL or DEFAULT_SEARCH_URL
+        )
         self._client = ZenRowsUniversalClient(concurrency=concurrency)
 
     async def search(self, bbox=None, page: int = 1) -> Iterable[Dict[str, Any]]:  # type: ignore[override]
-        html = await self._client.fetch(self.search_url, js_render=False, premium_proxy=True)
+        html = await self._client.fetch(
+            self.search_url, js_render=False, premium_proxy=True
+        )
         urls = extract_item_list_urls(html)
         if not urls:
             urls = LISTING_URL_RE.findall(html)
@@ -52,7 +57,9 @@ class CraigslistProvider(BaseProvider):
             if price_tag:
                 data["price"] = _parse_price(price_tag.get_text(strip=True))
 
-        attr_text = " ".join([tag.get_text(" ", strip=True) for tag in soup.select("p.attrgroup span")])
+        attr_text = " ".join(
+            [tag.get_text(" ", strip=True) for tag in soup.select("p.attrgroup span")]
+        )
         beds_match = re.search(r"(\\d+)br", attr_text)
         if beds_match and data.get("beds") is None:
             data["beds"] = int(beds_match.group(1))

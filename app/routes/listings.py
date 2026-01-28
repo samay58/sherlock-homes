@@ -1,39 +1,45 @@
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-from sqlalchemy import select
+import logging
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
+from app.models.criteria import Criteria
 from app.models.listing import PropertyListing
 from app.models.listing_event import ListingEvent
-from app.schemas.property import PropertyListing as PropertyListingSchema # Use property.py schema
 from app.schemas.listing_event import ListingEvent as ListingEventSchema
-from app.schemas.listing_event import ListingEventFeed as ListingEventFeedSchema
-from app.models.criteria import Criteria
-from app.services.criteria import get_or_create_user_criteria, TEST_USER_ID
-from app.services.matching import find_matches
-from app.services.advanced_matching import find_advanced_matches
-from app.services.advanced_matching import PropertyMatcher
+from app.schemas.listing_event import \
+    ListingEventFeed as ListingEventFeedSchema
+from app.schemas.property import PropertyListing as PropertyListingSchema
+from app.services.advanced_matching import (PropertyMatcher,
+                                            find_advanced_matches)
+from app.services.criteria import TEST_USER_ID, get_or_create_user_criteria
 from app.services.weight_learning import get_effective_weights_dict
 from app.state import ingestion_state
 
-router = APIRouter(
-    tags=["listings"]
-)
+router = APIRouter(tags=["listings"])
 
-# --- Listings Endpoints --- 
+logger = logging.getLogger(__name__)
+
+# --- Listings Endpoints ---
+
 
 @router.get("/listings", response_model=List[PropertyListingSchema])
 def read_listings(
     db: Session = Depends(get_db),
     skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=100, ge=1, le=500) # Added pagination
+    limit: int = Query(default=100, ge=1, le=500),
 ):
     """Retrieve a paginated list of property listings."""
-    query = select(PropertyListing).offset(skip).limit(limit).order_by(PropertyListing.id)
+    query = (
+        select(PropertyListing).offset(skip).limit(limit).order_by(PropertyListing.id)
+    )
     listings = db.scalars(query).all()
     return list(listings)
+
 
 @router.get("/listings/{listing_id}", response_model=PropertyListingSchema)
 def read_listing(listing_id: int, db: Session = Depends(get_db)):
@@ -41,13 +47,17 @@ def read_listing(listing_id: int, db: Session = Depends(get_db)):
     # Note: This uses the internal DB ID. Could also lookup by listing_id (ZPID) if needed.
     db_listing = db.get(PropertyListing, listing_id)
     if db_listing is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
+        )
     matcher = PropertyMatcher(criteria=None, db=db, include_intelligence=True)
     if not matcher.score_listing(db_listing):
         db_listing.match_narrative = "Does not meet hard filters for this buyer."
     return db_listing
 
-# --- Matching Endpoint (for Test User) --- 
+
+# --- Matching Endpoint (for Test User) ---
+
 
 @router.get("/matches/user/{user_id}", response_model=List[PropertyListingSchema])
 def read_matches_for_user(user_id: int, db: Session = Depends(get_db)):
@@ -55,47 +65,52 @@ def read_matches_for_user(user_id: int, db: Session = Depends(get_db)):
     # TODO: Later, protect this and get user_id from authenticated user
     try:
         user_criteria = get_or_create_user_criteria(db=db, user_id=user_id)
-    except ValueError as e: 
-         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception as e:
-        # Log e
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error retrieving criteria")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving criteria",
+        )
 
     if not user_criteria:
         # This case might be handled by get_or_create, but added defensively
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active criteria found for user")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active criteria found for user",
+        )
 
     try:
-        # Get effective weights for this user (base + learned adjustments)
         user_weights = get_effective_weights_dict(user_id, db)
 
-        # Use advanced matching with Sherlock Homes Deduction Engine
         match_data = find_advanced_matches(
             criteria=user_criteria,
             db=db,
-            limit=100,  # Return top 100 matches
-            min_score=0.0,  # Include all scores for now
-            vibe_preset=None,  # TODO: Get from query param
+            limit=100,
+            min_score=0.0,
+            vibe_preset=None,
             include_intelligence=True,
             user_weights=user_weights,
         )
 
-        # Extract just the listing objects with scores already set
-        # match_data is now a dict with "results" key
         matches = [result["listing"] for result in match_data["results"]]
         return matches
-    except Exception as e:
-        # Log e
-        import logging
-        logging.error(f"Error in find_matches: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error finding matches")
+    except Exception as exc:
+        logger.error("Error in find_matches: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error finding matches",
+        )
+
 
 # Convenience endpoint for test user
 @router.get("/matches/test-user", response_model=List[PropertyListingSchema])
 def read_matches_for_test_user(db: Session = Depends(get_db)):
-     return read_matches_for_user(user_id=TEST_USER_ID, db=db)
+    return read_matches_for_user(user_id=TEST_USER_ID, db=db)
+
 
 # --- Ingestion Status Endpoint ---
+
 
 @router.get("/ingestion/status", response_model=Dict[str, Any])
 def get_ingestion_status():
@@ -108,7 +123,7 @@ def get_ingestion_status():
         if value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc)
         return value
-    
+
     status_info = {
         "last_run_start_time": ensure_aware(ingestion_state.last_run_start_time),
         "last_run_end_time": ensure_aware(ingestion_state.last_run_end_time),
@@ -116,18 +131,24 @@ def get_ingestion_status():
         "last_run_detail_calls": ingestion_state.last_run_detail_calls,
         "last_run_upsert_count": ingestion_state.last_run_upsert_count,
         "last_run_error": ingestion_state.last_run_error,
-        "status": "never_run"
+        "status": "never_run",
     }
-    
+
     if status_info["last_run_end_time"]:
         time_since_update = now - status_info["last_run_end_time"]
         hours_ago = time_since_update.total_seconds() / 3600
-        
+
         status_info["hours_since_update"] = round(hours_ago, 1)
-        status_info["status"] = "up_to_date" if hours_ago < 6 else "stale" if hours_ago < 24 else "outdated"
-        status_info["last_update_display"] = f"{round(hours_ago, 1)} hours ago" if hours_ago < 24 else f"{round(hours_ago / 24, 1)} days ago"
-    
-    return status_info 
+        status_info["status"] = (
+            "up_to_date" if hours_ago < 6 else "stale" if hours_ago < 24 else "outdated"
+        )
+        status_info["last_update_display"] = (
+            f"{round(hours_ago, 1)} hours ago"
+            if hours_ago < 24
+            else f"{round(hours_ago / 24, 1)} days ago"
+        )
+
+    return status_info
 
 
 @router.get("/listings/{listing_id}/history", response_model=List[ListingEventSchema])
@@ -139,7 +160,9 @@ def read_listing_history(
     """Retrieve change history for a single listing."""
     listing = db.get(PropertyListing, listing_id)
     if listing is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
+        )
 
     query = (
         select(ListingEvent)
@@ -155,7 +178,9 @@ def read_listing_history(
 def read_recent_changes(
     db: Session = Depends(get_db),
     since: Optional[datetime] = Query(default=None),
-    event_types: Optional[str] = Query(default=None, description="Comma-separated event types"),
+    event_types: Optional[str] = Query(
+        default=None, description="Comma-separated event types"
+    ),
     limit: int = Query(default=100, ge=1, le=500),
 ):
     """Retrieve recent listing changes across the catalog."""

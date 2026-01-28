@@ -1,8 +1,13 @@
-// Simple API client utility for React (no SSR complexity)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+
+function buildUrl(endpoint: string) {
+  if (endpoint.startsWith('http')) return endpoint
+  if (!API_BASE_URL) return endpoint
+  return `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  // In client-only React, we just use relative URLs and let Vite proxy handle it
-  const url = endpoint.startsWith('http') ? endpoint : endpoint;
+  const url = buildUrl(endpoint)
 
   const headers = {
     'Content-Type': 'application/json',
@@ -15,29 +20,29 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   };
 
   try {
-    const response = await fetch(url, config);
+    const response = await fetch(url, config)
 
     if (!response.ok) {
-      let errorDetail = `HTTP error ${response.status}`;
+      let errorDetail = `HTTP error ${response.status}`
       try {
-        const errorData = await response.json();
-        errorDetail = errorData.detail || errorDetail;
+        const errorData = await response.json()
+        errorDetail = errorData.detail || errorDetail
       } catch {
         // Ignore if error response is not JSON
       }
-      throw new Error(errorDetail);
+      throw new Error(errorDetail)
     }
 
     // Handle cases with no content (e.g., 204 No Content)
     if (response.status === 204) {
-      return null as T;
+      return null as T
     }
 
-    return response.json();
+    return response.json()
   } catch (error) {
-    console.error(`API request failed for ${options.method || 'GET'} ${url}:`, error);
-    const message = error instanceof Error ? error.message : 'fetch failed';
-    throw new Error(message);
+    console.error(`API request failed for ${options.method || 'GET'} ${url}:`, error)
+    const message = error instanceof Error ? error.message : 'fetch failed'
+    throw new Error(message)
   }
 }
 
@@ -53,4 +58,4 @@ export const api = {
 
   del: <T>(endpoint: string, options: RequestInit = {}) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),
-};
+}

@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, Column, JSON
+from sqlalchemy import JSON, Column, Integer, String
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -16,5 +16,7 @@ class User(Base):
     learned_weights = Column(JSON, nullable=True)
 
     # Relationships
-    criteria = relationship("Criteria", back_populates="user", cascade="all, delete-orphan")
-    scouts = relationship("Scout", back_populates="user", cascade="all, delete-orphan") 
+    criteria = relationship(
+        "Criteria", back_populates="user", cascade="all, delete-orphan"
+    )
+    scouts = relationship("Scout", back_populates="user", cascade="all, delete-orphan")

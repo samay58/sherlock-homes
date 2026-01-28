@@ -16,12 +16,18 @@ API_KEY_ENV = "ZENROWS_API_KEY"
 class ZenRowsUniversalClient:
     """Thin async wrapper around the ZenRows universal scraping API."""
 
-    def __init__(self, concurrency: int = 6, timeout: Optional[int] = None, max_retries: int = 2):
+    def __init__(
+        self, concurrency: int = 6, timeout: Optional[int] = None, max_retries: int = 2
+    ):
         api_key = os.getenv(API_KEY_ENV) or settings.ZENROWS_API_KEY
         if not api_key:
-            raise RuntimeError("ZENROWS_API_KEY env var required for ZenRowsUniversalClient")
+            raise RuntimeError(
+                "ZENROWS_API_KEY env var required for ZenRowsUniversalClient"
+            )
         self.api_key = api_key
-        timeout_seconds = timeout if timeout is not None else settings.ZENROWS_TIMEOUT_SECONDS
+        timeout_seconds = (
+            timeout if timeout is not None else settings.ZENROWS_TIMEOUT_SECONDS
+        )
         self._client = httpx.AsyncClient(timeout=timeout_seconds)
         self._sem = asyncio.Semaphore(concurrency)
         self._max_retries = max_retries

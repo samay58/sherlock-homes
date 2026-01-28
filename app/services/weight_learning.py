@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.feedback import ListingFeedback, FeedbackType
+from app.models.feedback import FeedbackType, ListingFeedback
 from app.models.listing import PropertyListing
 from app.models.user import User
 from app.services.criteria_config import load_buyer_criteria
@@ -212,16 +212,24 @@ def calculate_weight_updates(
     for listing in likes:
         top_criteria = _get_listing_top_criteria(listing)
         for criterion, _ in top_criteria:
-            criteria_deltas[criterion] = criteria_deltas.get(criterion, 0) + DELTA_PER_SIGNAL
-            criteria_signal_counts[criterion] = criteria_signal_counts.get(criterion, 0) + 1
+            criteria_deltas[criterion] = (
+                criteria_deltas.get(criterion, 0) + DELTA_PER_SIGNAL
+            )
+            criteria_signal_counts[criterion] = (
+                criteria_signal_counts.get(criterion, 0) + 1
+            )
 
     # Penalize criteria that appear in top scores of disliked listings
     # (user dislikes listings where these criteria scored high)
     for listing in dislikes:
         top_criteria = _get_listing_top_criteria(listing)
         for criterion, _ in top_criteria:
-            criteria_deltas[criterion] = criteria_deltas.get(criterion, 0) - DELTA_PER_SIGNAL
-            criteria_signal_counts[criterion] = criteria_signal_counts.get(criterion, 0) + 1
+            criteria_deltas[criterion] = (
+                criteria_deltas.get(criterion, 0) - DELTA_PER_SIGNAL
+            )
+            criteria_signal_counts[criterion] = (
+                criteria_signal_counts.get(criterion, 0) + 1
+            )
 
     # Clamp deltas to max per recalculation
     for criterion in criteria_deltas:
@@ -338,7 +346,8 @@ def get_user_weights(user_id: int, db: Session) -> Dict[str, Any]:
     # Get learned multipliers
     learned_raw = user.learned_weights or {}
     learned_multipliers = {
-        criterion: data.get("multiplier", 1.0) for criterion, data in learned_raw.items()
+        criterion: data.get("multiplier", 1.0)
+        for criterion, data in learned_raw.items()
     }
 
     # Calculate effective weights
@@ -349,7 +358,8 @@ def get_user_weights(user_id: int, db: Session) -> Dict[str, Any]:
 
     # Get signal counts
     signal_counts = {
-        criterion: data.get("signal_count", 0) for criterion, data in learned_raw.items()
+        criterion: data.get("signal_count", 0)
+        for criterion, data in learned_raw.items()
     }
 
     return {
@@ -418,15 +428,11 @@ def get_learning_summary(user_id: int, db: Session) -> Dict[str, Any]:
     signal_counts = weights_data.get("signal_counts", {})
 
     # Identify strengthened preferences (multiplier > 1.1)
-    boosted = [
-        (c, m) for c, m in learned_multipliers.items() if m > 1.1
-    ]
+    boosted = [(c, m) for c, m in learned_multipliers.items() if m > 1.1]
     boosted.sort(key=lambda x: x[1], reverse=True)
 
     # Identify weakened preferences (multiplier < 0.9)
-    reduced = [
-        (c, m) for c, m in learned_multipliers.items() if m < 0.9
-    ]
+    reduced = [(c, m) for c, m in learned_multipliers.items() if m < 0.9]
     reduced.sort(key=lambda x: x[1])
 
     # Map criterion keys to human-readable labels
@@ -457,10 +463,14 @@ def get_learning_summary(user_id: int, db: Session) -> Dict[str, Any]:
     # Generate insight text
     if boosted:
         top_boost = CRITERION_LABELS.get(boosted[0][0], boosted[0][0])
-        summary["insight"] = f"Your feedback suggests '{top_boost}' matters more to you than average."
+        summary["insight"] = (
+            f"Your feedback suggests '{top_boost}' matters more to you than average."
+        )
     elif reduced:
         top_reduce = CRITERION_LABELS.get(reduced[0][0], reduced[0][0])
-        summary["insight"] = f"Your feedback suggests '{top_reduce}' matters less to you than average."
+        summary["insight"] = (
+            f"Your feedback suggests '{top_reduce}' matters less to you than average."
+        )
     else:
         summary["insight"] = "Not enough feedback yet to identify clear preferences."
 

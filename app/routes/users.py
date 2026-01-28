@@ -5,18 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
 from app.models.user import User
-from app.schemas.user import (
-    UserWeightsResponse,
-    WeightLearningSummary,
-    WeightRecalculationResult,
-    WeightResetResponse,
-)
-from app.services.weight_learning import (
-    get_user_weights,
-    get_learning_summary,
-    recalculate_user_weights,
-    reset_user_weights,
-)
+from app.schemas.user import (UserWeightsResponse, WeightLearningSummary,
+                              WeightRecalculationResult, WeightResetResponse)
+from app.services.weight_learning import (get_learning_summary,
+                                          get_user_weights,
+                                          recalculate_user_weights,
+                                          reset_user_weights)
 
 router = APIRouter(prefix="/users", tags=["users"])
 

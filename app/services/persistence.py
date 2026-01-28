@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
 import hashlib
 import json
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.listing import PropertyListing
 from app.models.listing_event import ListingEvent, ListingSnapshot
-from app.services.visual_scoring import compute_photos_hash
 from app.services.neighborhoods import resolve_neighborhood
+from app.services.visual_scoring import compute_photos_hash
 
 
 def _normalize_price(value: Any) -> Optional[float]:
@@ -186,11 +186,15 @@ def upsert_listings(listings: List[Dict[str, Any]]):
 
             try:
                 source = data.get("source")
-                source_listing_id = data.get("source_listing_id") or data.get("listing_id")
+                source_listing_id = data.get("source_listing_id") or data.get(
+                    "listing_id"
+                )
                 if source and source_listing_id:
                     data["source_listing_id"] = str(source_listing_id)
                     if source != "zillow":
-                        data["listing_id"] = _build_listing_id(source, data["source_listing_id"])
+                        data["listing_id"] = _build_listing_id(
+                            source, data["source_listing_id"]
+                        )
                     elif not data.get("listing_id"):
                         data["listing_id"] = data["source_listing_id"]
 
@@ -198,7 +202,9 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                 if source and data.get("source_listing_id"):
                     existing = (
                         db.query(PropertyListing)
-                        .filter_by(source=source, source_listing_id=data["source_listing_id"])
+                        .filter_by(
+                            source=source, source_listing_id=data["source_listing_id"]
+                        )
                         .first()
                     )
 
@@ -211,14 +217,14 @@ def upsert_listings(listings: List[Dict[str, Any]]):
 
                 if not existing and data.get("url"):
                     existing = (
-                        db.query(PropertyListing)
-                        .filter_by(url=data["url"])
-                        .first()
+                        db.query(PropertyListing).filter_by(url=data["url"]).first()
                     )
 
-                old_snapshot = _get_latest_snapshot(db, existing.id) if existing else None
+                old_snapshot = (
+                    _get_latest_snapshot(db, existing.id) if existing else None
+                )
                 flags = data.get("flags") or {}
-                
+
                 # Map of valid flag names to their corresponding model attributes
                 valid_flags = {
                     "natural_light": "has_natural_light_keywords",
@@ -282,7 +288,7 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                     if data.get("source_listing_id"):
                         record_attrs["source_listing_id"] = data["source_listing_id"]
                     record_attrs["last_seen_at"] = seen_at
-                    
+
                     new_record = PropertyListing(**record_attrs)
                     db.add(new_record)
                     db.flush()
@@ -305,22 +311,26 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                     )
                     events = _build_events(
                         listing_id=listing.id,
-                        old_snapshot=old_snapshot.snapshot_data if old_snapshot else None,
+                        old_snapshot=(
+                            old_snapshot.snapshot_data if old_snapshot else None
+                        ),
                         new_snapshot=snapshot_data,
                     )
                     for event in events:
                         db.add(event)
-                
+
                 # Commit after each listing to handle duplicates gracefully
                 db.commit()
                 upserted_count += 1
-                
+
             except Exception as e:
                 db.rollback()
                 # Log but continue with next listing
-                print(f"Failed to upsert listing {data.get('listing_id', 'unknown')}: {e}")
+                print(
+                    f"Failed to upsert listing {data.get('listing_id', 'unknown')}: {e}"
+                )
                 continue
-                
+
     finally:
         db.close()
         print(f"Successfully upserted {upserted_count} listings")

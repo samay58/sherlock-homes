@@ -14,36 +14,33 @@ Usage:
     python -m app.scripts.analyze_visual_scores --dry-run    # Preview without API calls
 """
 
-import asyncio
 import argparse
+import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Optional
-
-from sqlalchemy import select, or_
-from sqlalchemy.orm import Session
-
 # Setup path for script execution
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
+
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.listing import PropertyListing
 from app.services.advanced_matching import PropertyMatcher
-from app.services.visual_scoring import (
-    analyze_listing_photos,
-    compute_photos_hash,
-    should_reanalyze,
-    get_visual_tier
-)
-from app.core.config import settings
+from app.services.visual_scoring import (analyze_listing_photos,
+                                         compute_photos_hash, get_visual_tier,
+                                         should_reanalyze)
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S"
+    datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -53,7 +50,7 @@ async def analyze_batch(
     analyze_all: bool = False,
     limit: Optional[int] = None,
     top_matches: Optional[int] = None,
-    dry_run: bool = False
+    dry_run: bool = False,
 ) -> dict:
     """
     Run batch visual analysis on listings.
@@ -74,7 +71,7 @@ async def analyze_batch(
         "analyzed": 0,
         "skipped": 0,
         "failed": 0,
-        "estimated_cost": None
+        "estimated_cost": None,
     }
 
     listings = []
@@ -83,9 +80,11 @@ async def analyze_batch(
         scored = matcher.find_matches(limit=top_matches, min_score=0.0)
         listings = [listing for listing, _, _ in scored]
     else:
-        query = select(PropertyListing).where(
-            PropertyListing.photos.isnot(None)
-        ).order_by(PropertyListing.id)
+        query = (
+            select(PropertyListing)
+            .where(PropertyListing.photos.isnot(None))
+            .order_by(PropertyListing.id)
+        )
 
         if limit:
             query = query.limit(limit * 2)  # Get extra to account for skips
@@ -112,7 +111,7 @@ async def analyze_batch(
             needs_it = should_reanalyze(
                 existing_hash=listing.photos_hash,
                 existing_analyzed_at=listing.visual_analyzed_at,
-                new_photos=listing.photos
+                new_photos=listing.photos,
             )
             if not needs_it:
                 stats["skipped"] += 1
@@ -122,13 +121,19 @@ async def analyze_batch(
         stats["needs_analysis"] += 1
         if cost_per_image is not None:
             photo_count = min(len(listing.photos or []), sample_size)
-            stats["estimated_cost"] = (stats["estimated_cost"] or 0.0) + (photo_count * cost_per_image)
+            stats["estimated_cost"] = (stats["estimated_cost"] or 0.0) + (
+                photo_count * cost_per_image
+            )
 
         if limit and len(to_analyze) >= limit:
             break
 
-    logger.info(f"Found {stats['total_listings']} listings, {stats['with_photos']} with photos")
-    logger.info(f"Need to analyze: {len(to_analyze)}, skipping {stats['skipped']} (cached)")
+    logger.info(
+        f"Found {stats['total_listings']} listings, {stats['with_photos']} with photos"
+    )
+    logger.info(
+        f"Need to analyze: {len(to_analyze)}, skipping {stats['skipped']} (cached)"
+    )
     if stats["estimated_cost"] is not None:
         logger.info(f"Estimated cost: ${stats['estimated_cost']:.2f}")
     else:
@@ -138,7 +143,9 @@ async def analyze_batch(
         logger.info("DRY RUN - not making API calls")
         for listing in to_analyze[:10]:
             photo_count = len(listing.photos) if listing.photos else 0
-            logger.info(f"  Would analyze: {listing.address[:50]} ({photo_count} photos)")
+            logger.info(
+                f"  Would analyze: {listing.address[:50]} ({photo_count} photos)"
+            )
         if len(to_analyze) > 10:
             logger.info(f"  ... and {len(to_analyze) - 10} more")
         return stats
@@ -153,17 +160,20 @@ async def analyze_batch(
     # Analyze each listing
     for i, listing in enumerate(to_analyze):
         try:
-            logger.info(f"[{i+1}/{len(to_analyze)}] Analyzing: {listing.address[:50]}...")
+            logger.info(
+                f"[{i+1}/{len(to_analyze)}] Analyzing: {listing.address[:50]}..."
+            )
             if cost_per_image is not None:
                 photo_count = min(len(listing.photos or []), sample_size)
                 listing_cost = photo_count * cost_per_image
                 running_cost += listing_cost
-                logger.info(f"  Est. cost: ${listing_cost:.2f} (running ${running_cost:.2f})")
+                logger.info(
+                    f"  Est. cost: ${listing_cost:.2f} (running ${running_cost:.2f})"
+                )
 
             # Run visual analysis
             result = await analyze_listing_photos(
-                photos=listing.photos,
-                listing_id=listing.listing_id or str(listing.id)
+                photos=listing.photos, listing_id=listing.listing_id or str(listing.id)
             )
 
             if result.get("score") is not None:
@@ -174,7 +184,7 @@ async def analyze_batch(
                     "red_flags": result.get("red_flags", []),
                     "highlights": result.get("highlights", []),
                     "photos_analyzed": result.get("photos_analyzed", 0),
-                    "confidence": result.get("confidence", "unknown")
+                    "confidence": result.get("confidence", "unknown"),
                 }
                 listing.photos_hash = compute_photos_hash(listing.photos)
                 listing.visual_analyzed_at = datetime.now(timezone.utc)
@@ -201,11 +211,19 @@ async def analyze_batch(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Batch visual scoring for property listings")
-    parser.add_argument("--all", action="store_true", help="Re-analyze all listings (ignore cache)")
+    parser = argparse.ArgumentParser(
+        description="Batch visual scoring for property listings"
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="Re-analyze all listings (ignore cache)"
+    )
     parser.add_argument("--limit", type=int, help="Maximum listings to analyze")
-    parser.add_argument("--top-matches", type=int, help="Analyze top N matches (uses scoring engine)")
-    parser.add_argument("--dry-run", action="store_true", help="Preview without API calls")
+    parser.add_argument(
+        "--top-matches", type=int, help="Analyze top N matches (uses scoring engine)"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview without API calls"
+    )
     args = parser.parse_args()
 
     logger.info("=" * 60)
@@ -214,13 +232,15 @@ def main():
 
     db = SessionLocal()
     try:
-        stats = asyncio.run(analyze_batch(
-            db=db,
-            analyze_all=args.all,
-            limit=args.limit,
-            top_matches=args.top_matches,
-            dry_run=args.dry_run
-        ))
+        stats = asyncio.run(
+            analyze_batch(
+                db=db,
+                analyze_all=args.all,
+                limit=args.limit,
+                top_matches=args.top_matches,
+                dry_run=args.dry_run,
+            )
+        )
 
         # Print summary
         print("\n" + "=" * 40)

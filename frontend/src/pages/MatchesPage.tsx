@@ -5,7 +5,7 @@ import { DossierCard } from '@/components/cards/DossierCard'
 import { VibeSelector } from '@/components/filters/VibeSelector'
 import { ToggleChip } from '@/components/filters/ToggleChip'
 import { api } from '@/lib/api'
-import type { PropertyListing } from '@/lib/types'
+import { TEST_USER_ID } from '@/lib/user'
 import './MatchesPage.css'
 
 interface IngestionStatus {
@@ -37,6 +37,9 @@ export function MatchesPage() {
   const [sortBy, setSortBy] = useState('score')
   const [minScore, setMinScore] = useState(0)
   const [ingestionStatus, setIngestionStatus] = useState<IngestionStatus | null>(null)
+  const [ingestionMessage, setIngestionMessage] = useState<string | null>(null)
+  const [ingestionError, setIngestionError] = useState<string | null>(null)
+  const [ingestionRunning, setIngestionRunning] = useState(false)
 
   // User feedback state
   const [userFeedback, setUserFeedback] = useState<Record<number, string | null>>({})
@@ -44,34 +47,38 @@ export function MatchesPage() {
   // Fetch ingestion status
   const fetchIngestionStatus = useCallback(async () => {
     try {
-      const response = await fetch('/ingestion/status')
-      if (response.ok) {
-        const data = await response.json()
-        setIngestionStatus(data)
-      }
+      const data = await api.get<IngestionStatus>('/ingestion/status')
+      setIngestionStatus(data)
+      setIngestionError(null)
     } catch (error) {
-      console.error('Failed to fetch ingestion status:', error)
+      const message = error instanceof Error ? error.message : 'Failed to fetch ingestion status'
+      console.error(message)
+      setIngestionError(message)
     }
   }, [])
 
   // Trigger data refresh
   const triggerIngestion = async () => {
     try {
-      const response = await fetch('/admin/ingestion/run', { method: 'POST' })
-      if (response.ok) {
-        alert('Data ingestion started. This may take a few minutes.')
-        setTimeout(fetchIngestionStatus, 5000)
-      }
+      setIngestionRunning(true)
+      setIngestionMessage(null)
+      setIngestionError(null)
+      await api.post('/admin/ingestion/run', {})
+      setIngestionMessage('Ingestion started. Check back in a few minutes.')
+      setTimeout(fetchIngestionStatus, 5000)
     } catch (error) {
-      console.error('Failed to trigger ingestion:', error)
-      alert('Failed to start data ingestion.')
+      const message = error instanceof Error ? error.message : 'Failed to start data ingestion'
+      console.error(message)
+      setIngestionError(message)
+    } finally {
+      setIngestionRunning(false)
     }
   }
 
   // Fetch user feedback for all listings
   const fetchUserFeedback = useCallback(async () => {
     try {
-      const feedbackList = await api.get<FeedbackEntry[]>('/feedback/user/1')
+      const feedbackList = await api.get<FeedbackEntry[]>(`/feedback/user/${TEST_USER_ID}`)
       const feedbackMap: Record<number, string | null> = {}
       for (const fb of feedbackList) {
         feedbackMap[fb.listing_id] = fb.feedback_type
@@ -121,11 +128,11 @@ export function MatchesPage() {
     if (!matches) return []
 
     let filtered = matches.filter((listing) => {
-      if (listing.match_score && listing.match_score < minScore) return false
+      if (listing.match_score != null && listing.match_score < minScore) return false
       if (filters.hasNaturalLight && !listing.has_natural_light_keywords) return false
       if (filters.hasOutdoorSpace && !listing.has_outdoor_space_keywords) return false
       if (filters.hasParking && !listing.has_parking_keywords) return false
-      if (filters.quietLocation && (listing.tranquility_score || 50) < 60) return false
+      if (filters.quietLocation && (listing.tranquility_score ?? 50) < 60) return false
       if (filters.priceReduced && !listing.is_price_reduced) return false
       return true
     })
@@ -136,19 +143,19 @@ export function MatchesPage() {
         sorted.sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
         break
       case 'price_low':
-        sorted.sort((a, b) => (a.price || Infinity) - (b.price || Infinity))
+        sorted.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))
         break
       case 'price_high':
-        sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
+        sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
         break
       case 'light':
-        sorted.sort((a, b) => (b.light_potential_score || 50) - (a.light_potential_score || 50))
+        sorted.sort((a, b) => (b.light_potential_score ?? 50) - (a.light_potential_score ?? 50))
         break
       case 'tranquility':
-        sorted.sort((a, b) => (b.tranquility_score || 50) - (a.tranquility_score || 50))
+        sorted.sort((a, b) => (b.tranquility_score ?? 50) - (a.tranquility_score ?? 50))
         break
       case 'newest':
-        sorted.sort((a, b) => (a.days_on_market || 999) - (b.days_on_market || 999))
+        sorted.sort((a, b) => (a.days_on_market ?? 999) - (b.days_on_market ?? 999))
         break
     }
 
@@ -174,19 +181,21 @@ export function MatchesPage() {
           <p className="page-subtitle">Properties matching your criteria, ranked by fit.</p>
         </div>
 
-        {ingestionStatus && (
+        {(ingestionStatus || ingestionMessage || ingestionError) && (
           <div className="data-freshness">
             <span className="freshness-label">Data:</span>
-            {ingestionStatus.last_update_display ? (
+            {ingestionStatus?.last_update_display ? (
               <span className={`freshness-value ${ingestionStatus.status}`}>
                 {ingestionStatus.last_update_display}
               </span>
             ) : (
-              <span className="freshness-value outdated">Never updated</span>
+              <span className="freshness-value outdated">Unknown</span>
             )}
-            <button className="refresh-btn" onClick={triggerIngestion}>
-              Refresh
+            <button className="refresh-btn" onClick={triggerIngestion} disabled={ingestionRunning}>
+              {ingestionRunning ? 'Refreshing…' : 'Refresh'}
             </button>
+            {ingestionMessage && <span className="freshness-note">{ingestionMessage}</span>}
+            {ingestionError && <span className="freshness-error">{ingestionError}</span>}
           </div>
         )}
       </header>
@@ -269,7 +278,7 @@ export function MatchesPage() {
       {isLoading && (
         <div className="dossiers-grid">
           {[...Array(6)].map((_, i) => (
-            <DossierCard key={i} listing={{} as PropertyListing} index={i} loading />
+            <DossierCard key={i} index={i} loading />
           ))}
         </div>
       )}

@@ -6,15 +6,18 @@ No external APIs required - uses static datasets for SF noise sources.
 """
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
 class NoiseSource:
     """Represents a noise source with location and severity."""
+
     name: str
-    coords: List[Tuple[float, float]]  # List of (lat, lon) points defining the line/area
+    coords: List[
+        Tuple[float, float]
+    ]  # List of (lat, lon) points defining the line/area
     severity: float  # 0.0 to 1.0, higher = noisier
     source_type: str  # 'street', 'freeway', 'transit', 'venue'
 
@@ -28,61 +31,61 @@ SF_BUSY_STREETS = [
         name="Van Ness Ave",
         coords=[(37.7949, -122.4217), (37.7549, -122.4217)],
         severity=0.9,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Geary Blvd",
         coords=[(37.7852, -122.5034), (37.7852, -122.4034)],
         severity=0.85,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="19th Avenue",
         coords=[(37.7815, -122.4759), (37.7215, -122.4759)],
         severity=0.85,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Mission Street",
         coords=[(37.7649, -122.4198), (37.7849, -122.4048)],
         severity=0.75,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Market Street",
         coords=[(37.7879, -122.4074), (37.7649, -122.4352)],
         severity=0.8,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Divisadero Street",
         coords=[(37.7849, -122.4399), (37.7449, -122.4399)],
         severity=0.65,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Lombard Street (Marina)",
         coords=[(37.8005, -122.4185), (37.8005, -122.4485)],
         severity=0.7,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Columbus Avenue",
         coords=[(37.7987, -122.4078), (37.8057, -122.4178)],
         severity=0.65,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Folsom Street",
         coords=[(37.7799, -122.4058), (37.7639, -122.4198)],
         severity=0.6,
-        source_type="street"
+        source_type="street",
     ),
     NoiseSource(
         name="Broadway",
         coords=[(37.7977, -122.4058), (37.7977, -122.4258)],
         severity=0.7,
-        source_type="street"
+        source_type="street",
     ),
 ]
 
@@ -91,19 +94,19 @@ SF_FREEWAYS = [
         name="US-101 (Central)",
         coords=[(37.7749, -122.4094), (37.7649, -122.3994), (37.7549, -122.3894)],
         severity=1.0,
-        source_type="freeway"
+        source_type="freeway",
     ),
     NoiseSource(
         name="I-280",
         coords=[(37.7349, -122.4094), (37.7249, -122.4194), (37.7149, -122.4294)],
         severity=0.95,
-        source_type="freeway"
+        source_type="freeway",
     ),
     NoiseSource(
         name="I-80 (Bay Bridge approach)",
         coords=[(37.7879, -122.3894), (37.7879, -122.3794)],
         severity=0.95,
-        source_type="freeway"
+        source_type="freeway",
     ),
 ]
 
@@ -124,6 +127,7 @@ SF_FIRE_STATIONS = [
 # DISTANCE CALCULATIONS
 # =============================================================================
 
+
 def haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
     Calculate the great-circle distance in meters between two points.
@@ -136,17 +140,22 @@ def haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
     delta_phi = math.radians(lat2 - lat1)
     delta_lambda = math.radians(lon2 - lon1)
 
-    a = (math.sin(delta_phi / 2) ** 2 +
-         math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2)
+    a = (
+        math.sin(delta_phi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     return R * c
 
 
 def point_to_segment_distance(
-    point_lat: float, point_lon: float,
-    seg_lat1: float, seg_lon1: float,
-    seg_lat2: float, seg_lon2: float
+    point_lat: float,
+    point_lon: float,
+    seg_lat1: float,
+    seg_lon1: float,
+    seg_lat2: float,
+    seg_lon2: float,
 ) -> float:
     """
     Calculate the minimum distance from a point to a line segment.
@@ -180,8 +189,7 @@ def point_to_segment_distance(
 
 
 def distance_to_polyline(
-    point_lat: float, point_lon: float,
-    coords: List[Tuple[float, float]]
+    point_lat: float, point_lon: float, coords: List[Tuple[float, float]]
 ) -> float:
     """
     Calculate minimum distance from a point to a polyline (series of segments).
@@ -190,14 +198,17 @@ def distance_to_polyline(
     if len(coords) < 2:
         if len(coords) == 1:
             return haversine_meters(point_lat, point_lon, coords[0][0], coords[0][1])
-        return float('inf')
+        return float("inf")
 
-    min_dist = float('inf')
+    min_dist = float("inf")
     for i in range(len(coords) - 1):
         dist = point_to_segment_distance(
-            point_lat, point_lon,
-            coords[i][0], coords[i][1],
-            coords[i+1][0], coords[i+1][1]
+            point_lat,
+            point_lon,
+            coords[i][0],
+            coords[i][1],
+            coords[i + 1][0],
+            coords[i + 1][1],
         )
         min_dist = min(min_dist, dist)
 
@@ -208,10 +219,8 @@ def distance_to_polyline(
 # TRANQUILITY SCORE CALCULATION
 # =============================================================================
 
-def calculate_tranquility_score(
-    lat: Optional[float],
-    lon: Optional[float]
-) -> Dict:
+
+def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> Dict:
     """
     Calculate a Tranquility Score (0-100) based on proximity to noise sources.
 
@@ -234,7 +243,7 @@ def calculate_tranquility_score(
             "score": 50,  # Neutral if no data
             "factors": {},
             "warnings": ["No location data available"],
-            "confidence": "low"
+            "confidence": "low",
         }
 
     score = 100.0
@@ -242,7 +251,7 @@ def calculate_tranquility_score(
     warnings = []
 
     # Check busy street proximity
-    min_street_dist = float('inf')
+    min_street_dist = float("inf")
     nearest_street = None
     for street in SF_BUSY_STREETS:
         dist = distance_to_polyline(lat, lon, street.coords)
@@ -252,7 +261,7 @@ def calculate_tranquility_score(
 
     factors["nearest_busy_street"] = {
         "name": nearest_street.name if nearest_street else "Unknown",
-        "distance_m": round(min_street_dist, 1)
+        "distance_m": round(min_street_dist, 1),
     }
 
     # Deduct for busy street proximity (weighted by severity)
@@ -270,7 +279,7 @@ def calculate_tranquility_score(
             score -= 8 * severity
 
     # Check freeway proximity (severe penalty)
-    min_freeway_dist = float('inf')
+    min_freeway_dist = float("inf")
     nearest_freeway = None
     for freeway in SF_FREEWAYS:
         dist = distance_to_polyline(lat, lon, freeway.coords)
@@ -280,7 +289,7 @@ def calculate_tranquility_score(
 
     factors["nearest_freeway"] = {
         "name": nearest_freeway.name if nearest_freeway else "None nearby",
-        "distance_m": round(min_freeway_dist, 1)
+        "distance_m": round(min_freeway_dist, 1),
     }
 
     if nearest_freeway and min_freeway_dist < 500:
@@ -296,7 +305,7 @@ def calculate_tranquility_score(
             score -= 10
 
     # Check fire station proximity (siren noise)
-    min_fire_dist = float('inf')
+    min_fire_dist = float("inf")
     nearest_fire = None
     for station in SF_FIRE_STATIONS:
         dist = haversine_meters(lat, lon, station["lat"], station["lon"])
@@ -306,7 +315,7 @@ def calculate_tranquility_score(
 
     factors["nearest_fire_station"] = {
         "name": nearest_fire["name"] if nearest_fire else "Unknown",
-        "distance_m": round(min_fire_dist, 1)
+        "distance_m": round(min_fire_dist, 1),
     }
 
     if min_fire_dist < 150:
@@ -322,7 +331,7 @@ def calculate_tranquility_score(
         "score": max(0, min(100, int(round(score)))),
         "factors": factors,
         "warnings": warnings,
-        "confidence": confidence
+        "confidence": confidence,
     }
 
 
@@ -367,14 +376,18 @@ def apply_location_modifiers(
             evidence.append(f"penalize street {street}")
 
     conditions = set(modifiers.get("penalize_conditions", []) or [])
-    if "adjacent_to_bar" in conditions and (noise_hits or "bar" in text_lower or "nightlife" in text_lower):
+    if "adjacent_to_bar" in conditions and (
+        noise_hits or "bar" in text_lower or "nightlife" in text_lower
+    ):
         adjustment -= 1.5
         evidence.append("adjacent to nightlife")
     if "on_major_thoroughfare" in conditions and (has_busy_street or penalized_street):
         adjustment -= 1.5
         evidence.append("major thoroughfare exposure")
     if "first_floor_busy_street" in conditions:
-        if ("first floor" in text_lower or "ground floor" in text_lower) and (has_busy_street or penalized_street):
+        if ("first floor" in text_lower or "ground floor" in text_lower) and (
+            has_busy_street or penalized_street
+        ):
             adjustment -= 1.0
             evidence.append("first floor on busy street")
 
@@ -388,6 +401,7 @@ def apply_location_modifiers(
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
+
 
 def is_on_busy_street(lat: float, lon: float, threshold_meters: float = 50) -> bool:
     """Check if a location is directly on a busy street."""

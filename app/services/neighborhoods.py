@@ -107,7 +107,9 @@ def normalize_neighborhood_list(names: Optional[List[str]]) -> Optional[List[str
     return normalized if normalized else []
 
 
-def neighborhood_from_coordinates(lat: Optional[float], lon: Optional[float]) -> Optional[str]:
+def neighborhood_from_coordinates(
+    lat: Optional[float], lon: Optional[float]
+) -> Optional[str]:
     if lat is None or lon is None:
         return None
     for box in NEIGHBORHOOD_BOXES:

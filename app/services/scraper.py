@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 from bs4 import BeautifulSoup
-
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -28,9 +27,7 @@ HEADERS = {
 }
 
 # verify env vars for WalkScore before attempting
-walk_env_ok = all(
-    env in os.environ for env in ("WALKSCORE_API_KEY", "WALKSCORE_HOST")
-)
+walk_env_ok = all(env in os.environ for env in ("WALKSCORE_API_KEY", "WALKSCORE_HOST"))
 
 
 # ------------------ helper utils ------------------
@@ -56,7 +53,9 @@ def _normalize_photo(url: str) -> str:
         return url
 
 
-async def _walk_score(client: httpx.AsyncClient, address: str, lat: float, lon: float) -> Optional[int]:
+async def _walk_score(
+    client: httpx.AsyncClient, address: str, lat: float, lon: float
+) -> Optional[int]:
     if not walk_env_ok:
         return None
     try:
@@ -81,7 +80,9 @@ async def _walk_score(client: httpx.AsyncClient, address: str, lat: float, lon: 
 # ------------------ core scraping ------------------
 
 
-async def _scrape_listing(client: httpx.AsyncClient, url: str) -> Optional[Dict[str, Any]]:
+async def _scrape_listing(
+    client: httpx.AsyncClient, url: str
+) -> Optional[Dict[str, Any]]:
     try:
         res = await client.get(url, timeout=15)
         res.raise_for_status()
@@ -110,7 +111,11 @@ async def _scrape_listing(client: httpx.AsyncClient, url: str) -> Optional[Dict[
         flags = extract_flags(description or "")
 
         coord_match = re.search(r'"latitude":([\d.]+),"longitude":([\d.]+)', res.text)
-        lat, lon = (float(coord_match.group(1)), float(coord_match.group(2))) if coord_match else (None, None)
+        lat, lon = (
+            (float(coord_match.group(1)), float(coord_match.group(2)))
+            if coord_match
+            else (None, None)
+        )
         walk = await _walk_score(client, address, lat, lon) if lat and lon else None
 
         return {
@@ -186,4 +191,7 @@ def run_scrape_job() -> None:
 
 
 def scraper_status(db: Session) -> Dict[str, Any]:
-    return {"timestamp": datetime.utcnow().isoformat(), "listings": db.query(PropertyListing).count()} 
+    return {
+        "timestamp": datetime.utcnow().isoformat(),
+        "listings": db.query(PropertyListing).count(),
+    }

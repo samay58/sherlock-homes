@@ -41,8 +41,12 @@ def process_listing_alerts(since: Optional[datetime] = None) -> Dict[str, int]:
     criteria = load_buyer_criteria()
     alerts_cfg = criteria.alerts or {}
 
-    immediate_threshold = (alerts_cfg.get("new_listing") or {}).get("score_threshold", 76)
-    price_drop_threshold = (alerts_cfg.get("price_drop") or {}).get("percent_threshold", 5)
+    immediate_threshold = (alerts_cfg.get("new_listing") or {}).get(
+        "score_threshold", 76
+    )
+    price_drop_threshold = (alerts_cfg.get("price_drop") or {}).get(
+        "percent_threshold", 5
+    )
     digest_drop_threshold = 3
     dom_threshold = (alerts_cfg.get("dom_stale") or {}).get("days", 45)
 
@@ -71,7 +75,9 @@ def process_listing_alerts(since: Optional[datetime] = None) -> Dict[str, int]:
             if event.event_type == "new_listing":
                 if details.get("alerted_immediate"):
                     continue
-                scored = matcher.score_listing(listing, min_score_percent=immediate_threshold)
+                scored = matcher.score_listing(
+                    listing, min_score_percent=immediate_threshold
+                )
                 if not scored:
                     continue
                 immediate_alerts.append(_build_alert_payload(listing, "New listing"))
@@ -84,11 +90,19 @@ def process_listing_alerts(since: Optional[datetime] = None) -> Dict[str, int]:
                 scored = matcher.score_listing(listing)
                 if not scored:
                     continue
-                if percent >= price_drop_threshold and not details.get("alerted_immediate"):
-                    immediate_alerts.append(_build_alert_payload(listing, f"Price drop {percent:.0f}%"))
+                if percent >= price_drop_threshold and not details.get(
+                    "alerted_immediate"
+                ):
+                    immediate_alerts.append(
+                        _build_alert_payload(listing, f"Price drop {percent:.0f}%")
+                    )
                     details["alerted_immediate"] = True
-                elif percent >= digest_drop_threshold and not details.get("alerted_digest"):
-                    digest_alerts.append(_build_alert_payload(listing, f"Price drop {percent:.0f}%"))
+                elif percent >= digest_drop_threshold and not details.get(
+                    "alerted_digest"
+                ):
+                    digest_alerts.append(
+                        _build_alert_payload(listing, f"Price drop {percent:.0f}%")
+                    )
                     details["alerted_digest"] = True
 
             elif event.event_type == "back_on_market":
@@ -127,7 +141,9 @@ def process_listing_alerts(since: Optional[datetime] = None) -> Dict[str, int]:
                     details={"days_on_market": listing.days_on_market},
                 )
                 db.add(dom_event)
-                digest_alerts.append(_build_alert_payload(listing, f"DOM {listing.days_on_market}"))
+                digest_alerts.append(
+                    _build_alert_payload(listing, f"DOM {listing.days_on_market}")
+                )
 
         if immediate_alerts:
             db.commit()

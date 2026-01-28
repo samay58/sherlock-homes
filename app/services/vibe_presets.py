@@ -5,13 +5,14 @@ Personality-based filtering presets that apply different weights
 to property features based on lifestyle preferences.
 """
 
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class VibePreset:
     """Represents a vibe preset configuration."""
+
     id: str
     name: str
     tagline: str
@@ -19,7 +20,9 @@ class VibePreset:
     description: str
     weights: Dict[str, int]  # Feature -> weight (0-20)
     filters: Dict[str, Any]  # Hard filters to apply
-    boost_keywords: List[str] = field(default_factory=list)  # Extra keywords to look for
+    boost_keywords: List[str] = field(
+        default_factory=list
+    )  # Extra keywords to look for
     penalize_keywords: List[str] = field(default_factory=list)  # Keywords to penalize
 
 
@@ -34,7 +37,7 @@ VIBE_PRESETS: Dict[str, VibePreset] = {
         tagline="South-facing, big windows, views for days",
         icon="",
         description="Maximizes natural light, prioritizes views and high ceilings. "
-                   "Perfect for those who need sunlight for their mental health or work-from-home setup.",
+        "Perfect for those who need sunlight for their mental health or work-from-home setup.",
         weights={
             "natural_light": 20,
             "view": 15,
@@ -51,23 +54,36 @@ VIBE_PRESETS: Dict[str, VibePreset] = {
             "avoid_basement_units": True,
         },
         boost_keywords=[
-            "south-facing", "southwest", "floor-to-ceiling", "panoramic",
-            "sunny", "bright", "skylights", "corner unit", "top floor",
-            "penthouse", "artist loft", "light-filled"
+            "south-facing",
+            "southwest",
+            "floor-to-ceiling",
+            "panoramic",
+            "sunny",
+            "bright",
+            "skylights",
+            "corner unit",
+            "top floor",
+            "penthouse",
+            "artist loft",
+            "light-filled",
         ],
         penalize_keywords=[
-            "north-facing", "garden level", "basement", "lower unit",
-            "interior unit", "no view", "dark"
-        ]
+            "north-facing",
+            "garden level",
+            "basement",
+            "lower unit",
+            "interior unit",
+            "no view",
+            "dark",
+        ],
     ),
-
     "urban_professional": VibePreset(
         id="urban_professional",
         name="Urban Professional",
         tagline="Walk to work, near nightlife, modern finishes",
         icon="",
         description="Optimizes for walkability, transit access, and modern amenities. "
-                   "Ideal for young professionals who prioritize convenience over space.",
+        "Ideal for young professionals who prioritize convenience over space.",
         weights={
             "walk_score": 15,
             "transit_score": 12,
@@ -85,22 +101,29 @@ VIBE_PRESETS: Dict[str, VibePreset] = {
             "property_types": ["condo", "loft", "townhouse"],
         },
         boost_keywords=[
-            "walkable", "steps from", "urban", "modern", "renovated",
-            "smart home", "fiber", "gym", "rooftop", "doorman",
-            "concierge", "bike storage", "ev charging"
+            "walkable",
+            "steps from",
+            "urban",
+            "modern",
+            "renovated",
+            "smart home",
+            "fiber",
+            "gym",
+            "rooftop",
+            "doorman",
+            "concierge",
+            "bike storage",
+            "ev charging",
         ],
-        penalize_keywords=[
-            "suburban", "cul-de-sac", "remote", "no transit"
-        ]
+        penalize_keywords=["suburban", "cul-de-sac", "remote", "no transit"],
     ),
-
     "deal_hunter": VibePreset(
         id="deal_hunter",
         name="Deal Hunter",
         tagline="Price drops, motivated sellers, negotiation potential",
         icon="",
         description="Focuses on properties with deal signals: price reductions, "
-                   "days on market, and motivated seller language. For the strategic buyer.",
+        "days on market, and motivated seller language. For the strategic buyer.",
         weights={
             "deal_quality": 20,
             "price_position": 15,
@@ -117,14 +140,27 @@ VIBE_PRESETS: Dict[str, VibePreset] = {
             "min_days_on_market": 14,  # Properties that have sat a bit
         },
         boost_keywords=[
-            "price reduced", "motivated", "must sell", "priced to sell",
-            "bring offers", "just reduced", "new price", "seller relocating",
-            "estate sale", "foreclosure", "fixer", "as-is", "investor special"
+            "price reduced",
+            "motivated",
+            "must sell",
+            "priced to sell",
+            "bring offers",
+            "just reduced",
+            "new price",
+            "seller relocating",
+            "estate sale",
+            "foreclosure",
+            "fixer",
+            "as-is",
+            "investor special",
         ],
         penalize_keywords=[
-            "multiple offers", "highest and best", "over asking",
-            "bidding war", "sold as-is"
-        ]
+            "multiple offers",
+            "highest and best",
+            "over asking",
+            "bidding war",
+            "sold as-is",
+        ],
     ),
 }
 
@@ -132,6 +168,7 @@ VIBE_PRESETS: Dict[str, VibePreset] = {
 # =============================================================================
 # PRESET APPLICATION FUNCTIONS
 # =============================================================================
+
 
 def get_preset(preset_id: str) -> Optional[VibePreset]:
     """Get a preset by ID."""
@@ -153,8 +190,7 @@ def get_all_presets() -> List[Dict]:
 
 
 def apply_preset_weights(
-    base_weights: Dict[str, int],
-    preset_id: Optional[str]
+    base_weights: Dict[str, int], preset_id: Optional[str]
 ) -> Dict[str, int]:
     """
     Apply preset weights on top of base weights.
@@ -173,8 +209,7 @@ def apply_preset_weights(
 
 
 def apply_preset_filters(
-    base_filters: Dict[str, Any],
-    preset_id: Optional[str]
+    base_filters: Dict[str, Any], preset_id: Optional[str]
 ) -> Dict[str, Any]:
     """
     Apply preset filters on top of base filters.

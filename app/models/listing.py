@@ -1,6 +1,7 @@
-from sqlalchemy import Integer, String, Float, Boolean, Text, Column, DateTime, UniqueConstraint
-from sqlalchemy import JSON
 from datetime import datetime
+
+from sqlalchemy import (JSON, Boolean, Column, DateTime, Float, Integer,
+                        String, Text, UniqueConstraint)
 
 from .base import Base
 
@@ -8,7 +9,9 @@ from .base import Base
 class PropertyListing(Base):
     __tablename__ = "property_listings"
     __table_args__ = (
-        UniqueConstraint("source", "source_listing_id", name="uq_property_listings_source_listing_id"),
+        UniqueConstraint(
+            "source", "source_listing_id", name="uq_property_listings_source_listing_id"
+        ),
     )
 
     id = Column(Integer, primary_key=True)
@@ -49,47 +52,47 @@ class PropertyListing(Base):
     has_storage_keywords = Column(Boolean, default=False)
     has_open_floor_plan_keywords = Column(Boolean, default=False)
     has_architectural_details_keywords = Column(Boolean, default=False)
-    
+
     # Property Quality Indicators
     has_luxury_keywords = Column(Boolean, default=False)
     has_designer_keywords = Column(Boolean, default=False)
     has_tech_ready_keywords = Column(Boolean, default=False)
-    
+
     # Deal Indicators
     is_price_reduced = Column(Boolean, default=False)
     price_reduction_amount = Column(Float, nullable=True)
     price_reduction_date = Column(DateTime, nullable=True)
     is_back_on_market = Column(Boolean, default=False)
-    
+
     # Red Flags
     has_busy_street_keywords = Column(Boolean, default=False)
     has_foundation_issues_keywords = Column(Boolean, default=False)
     has_hoa_issues_keywords = Column(Boolean, default=False)
     is_north_facing_only = Column(Boolean, default=False)
     is_basement_unit = Column(Boolean, default=False)
-    
+
     # Neighborhood Data
     neighborhood = Column(String(100), nullable=True)
     walk_score = Column(Integer, nullable=True)
     transit_score = Column(Integer, nullable=True)
     bike_score = Column(Integer, nullable=True)
-    
+
     # Parking Details
     parking_type = Column(String(50), nullable=True)  # garage, driveway, street
     parking_spaces = Column(Integer, nullable=True)
     has_ev_charging = Column(Boolean, default=False)
-    
+
     # HOA Information (for condos)
     hoa_fee = Column(Float, nullable=True)
     hoa_includes = Column(JSON, nullable=True)  # ["water", "garbage", "gym", etc.]
-    
+
     # Additional Metadata
     lot_size = Column(Integer, nullable=True)  # in sqft
     stories = Column(Integer, nullable=True)
     architectural_style = Column(String(50), nullable=True)
     listing_agent = Column(String(100), nullable=True)
     listing_brokerage = Column(String(100), nullable=True)
-    
+
     # Scoring
     match_score = Column(Float, nullable=True)  # calculated match score
     feature_scores = Column(JSON, nullable=True)  # breakdown of scores by feature
@@ -101,12 +104,15 @@ class PropertyListing(Base):
     light_potential_signals = Column(JSON, nullable=True)  # what contributed to score
 
     # Visual Quality Intelligence (from Claude Vision photo analysis)
-    visual_quality_score = Column(Integer, nullable=True)  # 0-100, overall visual appeal
-    visual_assessment = Column(JSON, nullable=True)  # {modernity, condition, brightness, staging, cleanliness, red_flags, highlights}
+    visual_quality_score = Column(
+        Integer, nullable=True
+    )  # 0-100, overall visual appeal
+    visual_assessment = Column(
+        JSON, nullable=True
+    )  # {modernity, condition, brightness, staging, cleanliness, red_flags, highlights}
     photos_hash = Column(String(64), nullable=True)  # SHA256 for cache invalidation
     visual_analyzed_at = Column(DateTime, nullable=True)
 
     photos = Column(JSON, nullable=True)
 
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
- 

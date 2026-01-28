@@ -3,13 +3,14 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
 
 from app.dependencies import get_db
 from app.models.feedback import ListingFeedback
 from app.models.listing import PropertyListing
-from app.schemas.feedback import FeedbackCreate, FeedbackResponse, FeedbackSummary, FeedbackType
+from app.schemas.feedback import (FeedbackCreate, FeedbackResponse,
+                                  FeedbackSummary, FeedbackType)
 from app.services.criteria import TEST_USER_ID
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
@@ -27,15 +28,13 @@ def create_or_update_feedback(
     listing = db.get(PropertyListing, listing_id)
     if not listing:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Listing not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found"
         )
 
     # Check for existing feedback
     existing = db.execute(
         select(ListingFeedback).where(
-            ListingFeedback.listing_id == listing_id,
-            ListingFeedback.user_id == user_id
+            ListingFeedback.listing_id == listing_id, ListingFeedback.user_id == user_id
         )
     ).scalar_one_or_none()
 
@@ -67,8 +66,7 @@ def delete_feedback(
     """Delete feedback for a listing (revert to no opinion)."""
     existing = db.execute(
         select(ListingFeedback).where(
-            ListingFeedback.listing_id == listing_id,
-            ListingFeedback.user_id == user_id
+            ListingFeedback.listing_id == listing_id, ListingFeedback.user_id == user_id
         )
     ).scalar_one_or_none()
 
@@ -103,8 +101,7 @@ def get_listing_feedback_summary(
     # Get counts by type
     counts = db.execute(
         select(
-            ListingFeedback.feedback_type,
-            func.count(ListingFeedback.id).label("count")
+            ListingFeedback.feedback_type, func.count(ListingFeedback.id).label("count")
         )
         .where(ListingFeedback.listing_id == listing_id)
         .group_by(ListingFeedback.feedback_type)
@@ -122,8 +119,7 @@ def get_listing_feedback_summary(
     # Get current user's feedback
     user_feedback = db.execute(
         select(ListingFeedback.feedback_type).where(
-            ListingFeedback.listing_id == listing_id,
-            ListingFeedback.user_id == user_id
+            ListingFeedback.listing_id == listing_id, ListingFeedback.user_id == user_id
         )
     ).scalar_one_or_none()
 

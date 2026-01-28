@@ -3,7 +3,8 @@
 from datetime import datetime
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (Column, DateTime, ForeignKey, Integer, String,
+                        UniqueConstraint)
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -24,15 +25,22 @@ class ListingFeedback(Base):
 
     id = Column(Integer, primary_key=True)
     listing_id = Column(
-        Integer, ForeignKey("property_listings.id", ondelete="CASCADE"), index=True, nullable=False
+        Integer,
+        ForeignKey("property_listings.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
     )
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     feedback_type = Column(String(20), nullable=False)  # 'like', 'dislike', 'neutral'
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # One feedback per user per listing
-    __table_args__ = (UniqueConstraint("listing_id", "user_id", name="uq_listing_user_feedback"),)
+    __table_args__ = (
+        UniqueConstraint("listing_id", "user_id", name="uq_listing_user_feedback"),
+    )
 
     listing = relationship("PropertyListing", backref="feedbacks")
     user = relationship("User", backref="feedbacks")

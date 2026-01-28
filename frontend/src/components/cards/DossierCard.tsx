@@ -1,10 +1,10 @@
-import { useState, useMemo, type MouseEvent } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { PropertyListing } from '@/lib/types'
 import './DossierCard.css'
 
 interface DossierCardProps {
-  listing: PropertyListing
+  listing?: PropertyListing
   index?: number
   loading?: boolean
   showScore?: boolean
@@ -13,19 +13,15 @@ interface DossierCardProps {
   onFeedback?: (listingId: number, feedbackType: string | null) => void
 }
 
-const formatPrice = (price: number | null) => {
-  if (price == null) return 'Price TBD'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(price)
-}
+const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+})
+const NUMBER_FORMATTER = new Intl.NumberFormat('en-US')
 
-const formatNumber = (num: number | null) => {
-  if (num == null) return '—'
-  return new Intl.NumberFormat('en-US').format(num)
-}
+const formatPrice = (price: number | null) => (price == null ? 'Price TBD' : PRICE_FORMATTER.format(price))
+const formatNumber = (num: number | null) => (num == null ? '—' : NUMBER_FORMATTER.format(num))
 
 const getScoreTier = (score: number) => {
   if (score >= 80) return 'excellent'
@@ -39,6 +35,48 @@ const normalizeSignal = (value: unknown) => {
   const numeric = Number(value)
   if (Number.isNaN(numeric)) return null
   return Math.round(numeric * 10) / 10
+}
+
+const buildIntel = (listing: PropertyListing) =>
+  [
+    { key: 'natural_light', label: 'Natural Light', detected: listing.has_natural_light_keywords },
+    { key: 'high_ceilings', label: 'High Ceilings', detected: listing.has_high_ceiling_keywords },
+    { key: 'outdoor_space', label: 'Outdoor Space', detected: listing.has_outdoor_space_keywords },
+    { key: 'parking', label: 'Parking', detected: listing.has_parking_keywords },
+    { key: 'view', label: 'View', detected: listing.has_view_keywords },
+    { key: 'updated', label: 'Updated', detected: listing.has_updated_systems_keywords },
+  ].filter((feature) => feature.detected)
+
+const buildSignalData = (listing: PropertyListing) => {
+  const data: { label: string; value: number }[] = []
+
+  const deriveSignal = (key: string, fallback: number | null) => {
+    if (listing.signals && (listing.signals as Record<string, unknown>)[key] != null) {
+      return normalizeSignal((listing.signals as Record<string, unknown>)[key])
+    }
+    return normalizeSignal(fallback)
+  }
+
+  const light = deriveSignal(
+    'light_potential',
+    listing.light_potential_score != null ? listing.light_potential_score / 10 : null
+  )
+  const quiet = deriveSignal(
+    'tranquility_score',
+    listing.tranquility_score != null ? listing.tranquility_score / 10 : null
+  )
+  const visual = deriveSignal(
+    'visual_quality',
+    listing.visual_quality_score != null ? listing.visual_quality_score / 10 : null
+  )
+  const character = deriveSignal('nlp_character_score', null)
+
+  if (light != null) data.push({ label: 'Light', value: light })
+  if (quiet != null) data.push({ label: 'Quiet', value: quiet })
+  if (visual != null) data.push({ label: 'Visual', value: visual })
+  if (character != null) data.push({ label: 'Character', value: character })
+
+  return data
 }
 
 export function DossierCard({
@@ -56,66 +94,12 @@ export function DossierCard({
   const handleFeedback = (e: MouseEvent, type: string) => {
     e.preventDefault()
     e.stopPropagation()
+    if (!listing) return
     const newType = userFeedback === type ? null : type
     onFeedback?.(listing.id, newType)
   }
 
-  const primaryPhoto = listing?.photos?.[0] || '/placeholder-image.svg'
-
-  const pricePerSqft = useMemo(() => {
-    if (!listing?.price || !listing?.sqft) return null
-    return Math.round(listing.price / listing.sqft)
-  }, [listing?.price, listing?.sqft])
-
-  const intel = useMemo(() => {
-    return [
-      { key: 'natural_light', label: 'Natural Light', detected: listing?.has_natural_light_keywords },
-      { key: 'high_ceilings', label: 'High Ceilings', detected: listing?.has_high_ceiling_keywords },
-      { key: 'outdoor_space', label: 'Outdoor Space', detected: listing?.has_outdoor_space_keywords },
-      { key: 'parking', label: 'Parking', detected: listing?.has_parking_keywords },
-      { key: 'view', label: 'View', detected: listing?.has_view_keywords },
-      { key: 'updated', label: 'Updated', detected: listing?.has_updated_systems_keywords },
-    ].filter((f) => f.detected)
-  }, [listing])
-
-  const scoreTier = useMemo(() => {
-    return listing?.match_score != null ? getScoreTier(listing.match_score) : null
-  }, [listing?.match_score])
-
-  const signalData = useMemo(() => {
-    if (!listing) return []
-    const data: { label: string; value: number }[] = []
-
-    const deriveSignal = (key: string, fallback: number | null) => {
-      if (listing.signals && (listing.signals as Record<string, unknown>)[key] != null) {
-        return normalizeSignal((listing.signals as Record<string, unknown>)[key])
-      }
-      return normalizeSignal(fallback)
-    }
-
-    const light = deriveSignal(
-      'light_potential',
-      listing.light_potential_score != null ? listing.light_potential_score / 10 : null
-    )
-    const quiet = deriveSignal(
-      'tranquility_score',
-      listing.tranquility_score != null ? listing.tranquility_score / 10 : null
-    )
-    const visual = deriveSignal(
-      'visual_quality',
-      listing.visual_quality_score != null ? listing.visual_quality_score / 10 : null
-    )
-    const character = deriveSignal('nlp_character_score', null)
-
-    if (light != null) data.push({ label: 'Light', value: light })
-    if (quiet != null) data.push({ label: 'Quiet', value: quiet })
-    if (visual != null) data.push({ label: 'Visual', value: visual })
-    if (character != null) data.push({ label: 'Character', value: character })
-
-    return data
-  }, [listing])
-
-  if (loading) {
+  if (loading || !listing) {
     return (
       <div className="dossier-card dossier-card--skeleton" style={{ animationDelay: `${index * 30}ms` }}>
         <div className="skeleton skeleton-image"></div>
@@ -128,8 +112,14 @@ export function DossierCard({
     )
   }
 
+  const primaryPhoto = listing.photos?.[0] || '/placeholder-image.svg'
+  const pricePerSqft = listing.price && listing.sqft ? Math.round(listing.price / listing.sqft) : null
+  const intel = buildIntel(listing)
+  const signalData = buildSignalData(listing)
+  const scoreTier = listing.match_score != null ? getScoreTier(listing.match_score) : null
+
   return (
-    <Link to={`/listings/${listing?.id}`} className="dossier-link" style={{ animationDelay: `${index * 30}ms` }}>
+    <Link to={`/listings/${listing.id}`} className="dossier-link" style={{ animationDelay: `${index * 30}ms` }}>
       <article className={`dossier-card ${isTopMatch ? 'dossier-card--top' : ''}`}>
         {/* Photo Section */}
         <div className="dossier-photo">

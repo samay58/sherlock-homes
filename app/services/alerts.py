@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import smtplib
 import subprocess
 from email.message import EmailMessage
 from typing import Any, Dict, List, Optional, Tuple
-import smtplib
 
 import httpx
 
@@ -26,9 +26,13 @@ def _format_price(price: Optional[float]) -> str:
     return f"${price:,.0f}"
 
 
-def _build_alert_content(scout: Scout, matches: List[Dict[str, Any]]) -> Tuple[str, str]:
+def _build_alert_content(
+    scout: Scout, matches: List[Dict[str, Any]]
+) -> Tuple[str, str]:
     count = len(matches)
-    subject = f"[Sherlock Homes] {scout.name}: {count} new match{'es' if count != 1 else ''}"
+    subject = (
+        f"[Sherlock Homes] {scout.name}: {count} new match{'es' if count != 1 else ''}"
+    )
 
     lines = [
         f"Scout: {scout.name}",
@@ -63,7 +67,9 @@ def _send_email(subject: str, body: str, to_address: str) -> bool:
 
     from_address = settings.ALERT_EMAIL_FROM or settings.SMTP_USERNAME
     if not from_address:
-        logger.warning("ALERT_EMAIL_FROM or SMTP_USERNAME required; email alert skipped")
+        logger.warning(
+            "ALERT_EMAIL_FROM or SMTP_USERNAME required; email alert skipped"
+        )
         return False
 
     message = EmailMessage()
@@ -96,7 +102,7 @@ def _send_imessage(message: str, target: str) -> bool:
         "on run argv",
         "set targetHandle to item 1 of argv",
         "set messageText to item 2 of argv",
-        "tell application \"Messages\"",
+        'tell application "Messages"',
         "set iMessageService to 1st service whose service type is iMessage",
         "set targetBuddy to buddy targetHandle of iMessageService",
         "send messageText to targetBuddy",
@@ -183,10 +189,14 @@ async def _send_webhook(url: str, payload: Dict[str, Any]) -> bool:
         return False
 
 
-def _build_listing_alert_content(alert_type: str, alerts: List[Dict[str, Any]]) -> Tuple[str, str]:
+def _build_listing_alert_content(
+    alert_type: str, alerts: List[Dict[str, Any]]
+) -> Tuple[str, str]:
     count = len(alerts)
     label = alert_type.replace("_", " ").title()
-    subject = f"[Sherlock Homes] {label} alert: {count} listing{'s' if count != 1 else ''}"
+    subject = (
+        f"[Sherlock Homes] {label} alert: {count} listing{'s' if count != 1 else ''}"
+    )
 
     lines = [
         f"Alert type: {label}",
@@ -240,7 +250,9 @@ def _build_listing_alert_content(alert_type: str, alerts: List[Dict[str, Any]]) 
     return subject, body
 
 
-def send_listing_alerts(alert_type: str, alerts: List[Dict[str, Any]]) -> Dict[str, bool]:
+def send_listing_alerts(
+    alert_type: str, alerts: List[Dict[str, Any]]
+) -> Dict[str, bool]:
     subject, body = _build_listing_alert_content(alert_type, alerts)
     results: Dict[str, bool] = {}
 
@@ -266,14 +278,18 @@ async def send_scout_alerts(
 
     if scout.alert_sms:
         if settings.IMESSAGE_ENABLED and settings.IMESSAGE_TARGET:
-            tasks.append(asyncio.to_thread(_send_imessage, body, settings.IMESSAGE_TARGET))
+            tasks.append(
+                asyncio.to_thread(_send_imessage, body, settings.IMESSAGE_TARGET)
+            )
             results["imessage"] = False
         else:
             tasks.append(_send_sms_twilio(body, settings.TWILIO_TO_NUMBER or ""))
             results["sms"] = False
 
     if scout.alert_email:
-        recipient = (scout.user.email if scout.user else None) or settings.ALERT_EMAIL_TO
+        recipient = (
+            scout.user.email if scout.user else None
+        ) or settings.ALERT_EMAIL_TO
         tasks.append(asyncio.to_thread(_send_email, subject, body, recipient or ""))
         results["email"] = False
 

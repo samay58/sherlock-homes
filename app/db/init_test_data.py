@@ -5,12 +5,14 @@ Run this script once after database migrations to enable API functionality.
 """
 
 import sys
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
-from app.models.user import User
 from app.models.criteria import Criteria
+from app.models.user import User
+
 
 def init_test_data():
     """Create test user and search criteria if they don't exist."""
@@ -28,7 +30,7 @@ def init_test_data():
             test_user = User(
                 id=1,
                 email="test@sherlock.app",
-                hashed_password="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5aeJNJ6pV7S7e"  # "password"
+                hashed_password="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5aeJNJ6pV7S7e",  # "password"
             )
             db.add(test_user)
             db.commit()
@@ -36,9 +38,7 @@ def init_test_data():
             print("  Password: 'password' (development only!)")
 
         # Check if search criteria exists for test user
-        existing_criteria = db.query(Criteria).filter(
-            Criteria.user_id == 1
-        ).first()
+        existing_criteria = db.query(Criteria).filter(Criteria.user_id == 1).first()
 
         if existing_criteria:
             print("✓ Search criteria already exists for test user")
@@ -84,14 +84,16 @@ def init_test_data():
                     "storage": 4,
                     "tech_ready": 4,
                     "luxury": 3,
-                    "designer": 3
-                }
+                    "designer": 3,
+                },
             )
             db.add(criteria)
             db.commit()
             print("✓ Created search criteria for test user")
             print(f"  Name: {criteria.name}")
-            print(f"  Price range: ${int(criteria.price_min):,} - ${int(criteria.price_max):,}")
+            print(
+                f"  Price range: ${int(criteria.price_min):,} - ${int(criteria.price_max):,}"
+            )
             print(f"  Required features: natural_light")
             print(f"  Feature weights: {len(criteria.feature_weights)} categories")
 
@@ -101,11 +103,13 @@ def init_test_data():
     except Exception as e:
         print(f"❌ Error initializing test data: {e}")
         import traceback
+
         traceback.print_exc()
         db.rollback()
         sys.exit(1)
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     init_test_data()

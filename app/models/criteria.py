@@ -1,4 +1,5 @@
-from sqlalchemy import Integer, String, Float, ForeignKey, Column, Boolean, JSON, Text
+from sqlalchemy import (JSON, Boolean, Column, Float, ForeignKey, Integer,
+                        String, Text)
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -11,7 +12,9 @@ class Criteria(Base):
     __tablename__ = "criteria"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name = Column(String(100), nullable=False, default="My Criteria")
     is_active = Column(Boolean, default=True, nullable=False, index=True)
 
@@ -43,32 +46,42 @@ class Criteria(Base):
     neighborhood_mode = Column(String(20), nullable=True)  # "strict" or "boost"
 
     # Property Type Preferences
-    property_types = Column(JSON, nullable=True)  # ["single_family", "condo", "townhouse", "loft"]
-    
+    property_types = Column(
+        JSON, nullable=True
+    )  # ["single_family", "condo", "townhouse", "loft"]
+
     # Parking Preferences
-    parking_type = Column(String(50), nullable=True)  # "garage", "driveway", "street", "any"
-    
+    parking_type = Column(
+        String(50), nullable=True
+    )  # "garage", "driveway", "street", "any"
+
     # Architectural Preferences
     min_ceiling_height = Column(Integer, nullable=True)  # in feet
-    architectural_styles = Column(JSON, nullable=True)  # ["victorian", "modern", "edwardian", etc.]
-    
+    architectural_styles = Column(
+        JSON, nullable=True
+    )  # ["victorian", "modern", "edwardian", etc.]
+
     # Deal Preferences
     include_price_reduced = Column(Boolean, nullable=False, default=True)
     include_new_listings = Column(Boolean, nullable=False, default=True)
     max_days_on_market = Column(Integer, nullable=True)
-    recency_mode = Column(String(20), nullable=True)  # "fresh", "balanced", "hidden_gems"
-    
+    recency_mode = Column(
+        String(20), nullable=True
+    )  # "fresh", "balanced", "hidden_gems"
+
     # Red Flags (things to avoid)
     avoid_busy_streets = Column(Boolean, nullable=False, default=True)
     avoid_north_facing_only = Column(Boolean, nullable=False, default=True)
     avoid_basement_units = Column(Boolean, nullable=False, default=True)
     excluded_streets = Column(JSON, nullable=True)  # ["Van Ness", "Geary", "19th Ave"]
-    
+
     # Scout Description
     scout_description = Column(Text, nullable=True)  # Full natural language description
-    
+
     # Weighting for scoring
-    feature_weights = Column(JSON, nullable=True)  # {"natural_light": 10, "outdoor_space": 8, etc.}
+    feature_weights = Column(
+        JSON, nullable=True
+    )  # {"natural_light": 10, "outdoor_space": 8, etc.}
 
     # relationships
-    user = relationship("User", back_populates="criteria", lazy="joined") 
+    user = relationship("User", back_populates="criteria", lazy="joined")

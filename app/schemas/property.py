@@ -1,6 +1,7 @@
-from pydantic import BaseModel, HttpUrl, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class PropertyListingBase(BaseModel):

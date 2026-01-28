@@ -1,20 +1,18 @@
 import asyncio
+import json
 import logging
 import re
 from typing import Any, Dict, Iterable, List, Tuple
 from urllib.parse import urlsplit
 
 import httpx
-import json
 
 from app.core.config import settings
 from app.providers.base import BaseProvider, BoundingBox
-from app.providers.html_parsing import (
-    extract_embedded_property_data,
-    extract_item_list_urls,
-    merge_listing_fields,
-    parse_listing_from_html,
-)
+from app.providers.html_parsing import (extract_embedded_property_data,
+                                        extract_item_list_urls,
+                                        merge_listing_fields,
+                                        parse_listing_from_html)
 from app.providers.zenrows_universal import ZenRowsUniversalClient
 
 logger = logging.getLogger(__name__)
@@ -46,7 +44,9 @@ class RedfinProvider(BaseProvider):
                 text = text.split("&&", 1)[1]
             return json.loads(text)
 
-    async def search(self, bbox: BoundingBox | None = None, page: int = 1) -> Iterable[Dict[str, Any]]:  # noqa: D401
+    async def search(
+        self, bbox: BoundingBox | None = None, page: int = 1
+    ) -> Iterable[Dict[str, Any]]:  # noqa: D401
         self._listing_urls.clear()
         try:
             params = _build_search_params(self.market, bbox, page)
@@ -60,11 +60,17 @@ class RedfinProvider(BaseProvider):
             if listings:
                 for listing in listings:
                     if listing.get("source_listing_id") and listing.get("url"):
-                        self._listing_urls[str(listing["source_listing_id"])] = listing["url"]
+                        self._listing_urls[str(listing["source_listing_id"])] = listing[
+                            "url"
+                        ]
                 return listings
-            logger.info("Redfin direct search returned no listings; falling back to ZenRows")
+            logger.info(
+                "Redfin direct search returned no listings; falling back to ZenRows"
+            )
         except Exception as exc:
-            logger.warning("Redfin direct search failed; falling back to ZenRows: %s", exc)
+            logger.warning(
+                "Redfin direct search failed; falling back to ZenRows: %s", exc
+            )
         return await self._search_via_zenrows()
 
     async def get_details(self, listing_id: str) -> Dict[str, Any]:
@@ -94,7 +100,9 @@ class RedfinProvider(BaseProvider):
     async def _search_via_zenrows(self) -> List[Dict[str, Any]]:
         client = self._ensure_zen_client()
         try:
-            html = await client.fetch(self.search_url, js_render=True, premium_proxy=True)
+            html = await client.fetch(
+                self.search_url, js_render=True, premium_proxy=True
+            )
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code if exc.response else None
             if status == 422:
@@ -102,7 +110,9 @@ class RedfinProvider(BaseProvider):
                     "Redfin ZenRows search returned 422; retrying without premium proxy"
                 )
                 try:
-                    html = await client.fetch(self.search_url, js_render=True, premium_proxy=False)
+                    html = await client.fetch(
+                        self.search_url, js_render=True, premium_proxy=False
+                    )
                 except httpx.HTTPStatusError as retry_exc:
                     logger.warning(
                         "Redfin ZenRows fallback failed: %s",
@@ -129,7 +139,9 @@ class RedfinProvider(BaseProvider):
                     "address": _address_from_url(normalized_url),
                 }
             )
-        logger.info("Redfin ZenRows search returned %d candidate listings", len(listings))
+        logger.info(
+            "Redfin ZenRows search returned %d candidate listings", len(listings)
+        )
         return listings
 
     async def _details_from_url(self, url: str) -> Dict[str, Any]:
@@ -154,7 +166,9 @@ REDFIN_LISTING_URL_RE = re.compile(r"https?://www\.redfin\.com/[^\s\"']+/home/\d
 REDFIN_RELATIVE_URL_RE = re.compile(r"/[^\s\"']+/home/\d+")
 
 
-def _build_search_params(market: str, bbox: BoundingBox | None, page: int) -> Dict[str, Any]:
+def _build_search_params(
+    market: str, bbox: BoundingBox | None, page: int
+) -> Dict[str, Any]:
     if bbox:
         lat_lo, lon_lo, lat_hi, lon_hi = bbox
         return {
@@ -190,12 +204,15 @@ def _normalize_redfin_item(item: Dict[str, Any]) -> Dict[str, Any] | None:
         url = f"https://www.redfin.com{url}"
 
     street = item.get("streetLine") or item.get("address") or item.get("streetAddress")
-    address = _format_address(
-        street,
-        item.get("city"),
-        item.get("state"),
-        item.get("zip") or item.get("zipCode"),
-    ) or street
+    address = (
+        _format_address(
+            street,
+            item.get("city"),
+            item.get("state"),
+            item.get("zip") or item.get("zipCode"),
+        )
+        or street
+    )
 
     source_listing_id = item.get("propertyId") or item.get("listingId") or url
     if not source_listing_id or not address:

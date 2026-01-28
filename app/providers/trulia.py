@@ -7,12 +7,10 @@ import httpx
 
 from app.core.config import settings
 from app.providers.base import BaseProvider
-from app.providers.html_parsing import (
-    extract_embedded_property_data,
-    extract_item_list_urls,
-    merge_listing_fields,
-    parse_listing_from_html,
-)
+from app.providers.html_parsing import (extract_embedded_property_data,
+                                        extract_item_list_urls,
+                                        merge_listing_fields,
+                                        parse_listing_from_html)
 from app.providers.zenrows_universal import ZenRowsUniversalClient
 
 logger = logging.getLogger(__name__)
@@ -30,7 +28,9 @@ class TruliaProvider(BaseProvider):
         self._client = ZenRowsUniversalClient(concurrency=concurrency)
 
     async def search(self, bbox=None, page: int = 1) -> Iterable[Dict[str, Any]]:  # type: ignore[override]
-        html = await self._client.fetch(self.search_url, js_render=True, premium_proxy=True)
+        html = await self._client.fetch(
+            self.search_url, js_render=True, premium_proxy=True
+        )
         urls = extract_item_list_urls(html)
         urls.extend(LISTING_URL_RE.findall(html))
         normalized_urls: List[str] = []
@@ -62,11 +62,15 @@ class TruliaProvider(BaseProvider):
             logger.debug("Skipping Trulia details for incomplete URL: %s", listing_id)
             return {}
         try:
-            html = await self._client.fetch(listing_id, js_render=True, premium_proxy=True)
+            html = await self._client.fetch(
+                listing_id, js_render=True, premium_proxy=True
+            )
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code if exc.response else None
             if status in {404, 410}:
-                logger.info("Trulia listing unavailable (%s). Skipping: %s", status, listing_id)
+                logger.info(
+                    "Trulia listing unavailable (%s). Skipping: %s", status, listing_id
+                )
                 return {}
             raise
         data = parse_listing_from_html(html)

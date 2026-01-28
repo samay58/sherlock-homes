@@ -57,7 +57,9 @@ def parse_listing_from_html(html: str) -> Dict[str, Any]:
 
     if data.get("lat") is None or data.get("lon") is None:
         lat = _meta_content(soup, properties=["place:location:latitude", "og:latitude"])
-        lon = _meta_content(soup, properties=["place:location:longitude", "og:longitude"])
+        lon = _meta_content(
+            soup, properties=["place:location:longitude", "og:longitude"]
+        )
         data["lat"] = _parse_float(lat) if lat else data.get("lat")
         data["lon"] = _parse_float(lon) if lon else data.get("lon")
 
@@ -146,7 +148,9 @@ def _flatten_json_ld(data: Any) -> Iterable[Any]:
             yield data
 
 
-def _select_listing_candidate(objects: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _select_listing_candidate(
+    objects: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
     best: Optional[Dict[str, Any]] = None
     best_score = -1
     for obj in objects:
@@ -205,7 +209,13 @@ def _normalize_listing(obj: Dict[str, Any]) -> Dict[str, Any]:
 
     price = _first_present([obj.get("price"), offers.get("price")])
     beds = _first_present([obj.get("numberOfBedrooms"), obj.get("numberOfRooms")])
-    baths = _first_present([obj.get("numberOfBathroomsTotal"), obj.get("numberOfBathrooms"), obj.get("bathroomCount")])
+    baths = _first_present(
+        [
+            obj.get("numberOfBathroomsTotal"),
+            obj.get("numberOfBathrooms"),
+            obj.get("bathroomCount"),
+        ]
+    )
     floor_size = obj.get("floorSize") or obj.get("floor_size")
     if isinstance(floor_size, dict):
         floor_size = floor_size.get("value") or floor_size.get("size")
@@ -222,7 +232,10 @@ def _normalize_listing(obj: Dict[str, Any]) -> Dict[str, Any]:
 
     property_type = _first_present([obj.get("category"), obj.get("@type")])
     if isinstance(property_type, list):
-        property_type = next((value for value in property_type if value in LISTING_TYPES), property_type[0])
+        property_type = next(
+            (value for value in property_type if value in LISTING_TYPES),
+            property_type[0],
+        )
 
     return {
         "address": address,
@@ -241,16 +254,29 @@ def _normalize_listing(obj: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _normalize_embedded_listing(obj: Dict[str, Any]) -> Dict[str, Any]:
-    address = _extract_address(obj.get("address") or obj.get("fullAddress") or obj.get("addressLine"))
-    price = _extract_numeric(obj, ["price", "listPrice", "listingPrice", "priceValue", "list_price"])
+    address = _extract_address(
+        obj.get("address") or obj.get("fullAddress") or obj.get("addressLine")
+    )
+    price = _extract_numeric(
+        obj, ["price", "listPrice", "listingPrice", "priceValue", "list_price"]
+    )
     beds = _extract_numeric(obj, ["beds", "bedrooms", "bedroomCount", "bedroom_count"])
-    baths = _extract_numeric(obj, ["baths", "bathrooms", "bathroomCount", "bathroom_count"])
-    sqft = _extract_numeric(obj, ["sqft", "livingArea", "living_area", "livingAreaSize", "living_area_size"])
+    baths = _extract_numeric(
+        obj, ["baths", "bathrooms", "bathroomCount", "bathroom_count"]
+    )
+    sqft = _extract_numeric(
+        obj, ["sqft", "livingArea", "living_area", "livingAreaSize", "living_area_size"]
+    )
     lat = _extract_numeric(obj, ["lat", "latitude"])
     lon = _extract_numeric(obj, ["lon", "lng", "longitude"])
     description = _extract_text(obj, ["description", "remarks", "summary"])
     year_built = _extract_numeric(obj, ["yearBuilt", "year_built"])
-    images = _extract_images(obj.get("photos") or obj.get("images") or obj.get("media") or obj.get("photoUrls"))
+    images = _extract_images(
+        obj.get("photos")
+        or obj.get("images")
+        or obj.get("media")
+        or obj.get("photoUrls")
+    )
 
     return {
         "address": address,
@@ -288,7 +314,9 @@ def _format_address(value: Any) -> Optional[str]:
         return value.strip()
     if isinstance(value, dict):
         parts = [
-            value.get("streetAddress") or value.get("street") or value.get("streetLine"),
+            value.get("streetAddress")
+            or value.get("street")
+            or value.get("streetLine"),
             value.get("addressLocality") or value.get("city"),
             value.get("addressRegion") or value.get("state"),
             value.get("postalCode") or value.get("zip"),
@@ -441,10 +469,10 @@ def _extract_balanced_json(text: str, start: int) -> Optional[str]:
                 escape = False
             elif char == "\\":
                 escape = True
-            elif char == "\"":
+            elif char == '"':
                 in_string = False
         else:
-            if char == "\"":
+            if char == '"':
                 in_string = True
             elif char == "{":
                 depth += 1

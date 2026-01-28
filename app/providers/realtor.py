@@ -5,29 +5,35 @@ from urllib.parse import urlsplit
 
 from app.core.config import settings
 from app.providers.base import BaseProvider
-from app.providers.html_parsing import (
-    extract_embedded_property_data,
-    extract_item_list_urls,
-    merge_listing_fields,
-    parse_listing_from_html,
-)
+from app.providers.html_parsing import (extract_embedded_property_data,
+                                        extract_item_list_urls,
+                                        merge_listing_fields,
+                                        parse_listing_from_html)
 from app.providers.zenrows_universal import ZenRowsUniversalClient
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SEARCH_URL = "https://www.realtor.com/realestateandhomes-search/San-Francisco_CA"
-LISTING_URL_RE = re.compile(r"https?://www\.realtor\.com/realestateandhomes-detail/[^\"'\\s]+")
+DEFAULT_SEARCH_URL = (
+    "https://www.realtor.com/realestateandhomes-search/San-Francisco_CA"
+)
+LISTING_URL_RE = re.compile(
+    r"https?://www\.realtor\.com/realestateandhomes-detail/[^\"'\\s]+"
+)
 
 
 class RealtorProvider(BaseProvider):
     """Fetch Realtor.com listings via ZenRows universal scraping API."""
 
     def __init__(self, search_url: str | None = None, concurrency: int = 4):
-        self.search_url = search_url or settings.REALTOR_SEARCH_URL or DEFAULT_SEARCH_URL
+        self.search_url = (
+            search_url or settings.REALTOR_SEARCH_URL or DEFAULT_SEARCH_URL
+        )
         self._client = ZenRowsUniversalClient(concurrency=concurrency)
 
     async def search(self, bbox=None, page: int = 1) -> Iterable[Dict[str, Any]]:  # type: ignore[override]
-        html = await self._client.fetch(self.search_url, js_render=True, premium_proxy=True)
+        html = await self._client.fetch(
+            self.search_url, js_render=True, premium_proxy=True
+        )
         urls = extract_item_list_urls(html)
         if not urls:
             urls = LISTING_URL_RE.findall(html)

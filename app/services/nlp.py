@@ -4,171 +4,439 @@ KEYWORDS = {
     # Essential Attributes
     "natural_light": [
         # Direct mentions of light
-        "natural light", "abundant light", "abundance of light", "bright",
-        "sun-drenched", "light-filled", "luminous", "sunlit", "sun-soaked",
-        "bathed in light", "floods of light", "flooded with light",
-        "light and bright", "tons of light", "plenty of light",
-        "ample light", "filled with light", "drenched in light",
-
+        "natural light",
+        "abundant light",
+        "abundance of light",
+        "bright",
+        "sun-drenched",
+        "light-filled",
+        "luminous",
+        "sunlit",
+        "sun-soaked",
+        "bathed in light",
+        "floods of light",
+        "flooded with light",
+        "light and bright",
+        "tons of light",
+        "plenty of light",
+        "ample light",
+        "filled with light",
+        "drenched in light",
         # Exposure/orientation
-        "southern exposure", "western exposure", "south-facing",
-        "west-facing", "east-facing", "southwest facing",
-
+        "southern exposure",
+        "western exposure",
+        "south-facing",
+        "west-facing",
+        "east-facing",
+        "southwest facing",
         # Windows
-        "floor-to-ceiling windows", "floor to ceiling windows",
-        "panoramic windows", "oversized windows", "large windows",
-        "wall of windows", "expansive windows", "massive windows",
-        "picture windows", "bay windows", "huge windows",
-
+        "floor-to-ceiling windows",
+        "floor to ceiling windows",
+        "panoramic windows",
+        "oversized windows",
+        "large windows",
+        "wall of windows",
+        "expansive windows",
+        "massive windows",
+        "picture windows",
+        "bay windows",
+        "huge windows",
         # Architectural features
-        "skylights", "skylight", "clerestory", "light well",
-        "corner unit", "glass", "window wall",
-
+        "skylights",
+        "skylight",
+        "clerestory",
+        "light well",
+        "corner unit",
+        "glass",
+        "window wall",
         # Descriptive phrases
-        "airy", "open and bright", "light and airy", "naturally lit",
-        "sun fills", "sunshine", "daylight"
+        "airy",
+        "open and bright",
+        "light and airy",
+        "naturally lit",
+        "sun fills",
+        "sunshine",
+        "daylight",
     ],
     "high_ceilings": [
-        "high ceilings", "vaulted", "10 ft ceiling", "10-foot ceiling",
-        "11 ft ceiling", "12 ft ceiling", "soaring", "cathedral",
-        "coffered", "double-height", "dramatic ceiling", "tall ceiling",
-        "lofty", "voluminous", "vertical space", "ceiling height"
+        "high ceilings",
+        "vaulted",
+        "10 ft ceiling",
+        "10-foot ceiling",
+        "11 ft ceiling",
+        "12 ft ceiling",
+        "soaring",
+        "cathedral",
+        "coffered",
+        "double-height",
+        "dramatic ceiling",
+        "tall ceiling",
+        "lofty",
+        "voluminous",
+        "vertical space",
+        "ceiling height",
     ],
     "outdoor_space": [
         # Basic outdoor features
-        "balcony", "deck", "patio", "yard", "garden", "terrace",
-        "rooftop", "outdoor", "outdoor space", "private outdoor",
-        "backyard", "back yard", "front yard", "courtyard",
-
+        "balcony",
+        "deck",
+        "patio",
+        "yard",
+        "garden",
+        "terrace",
+        "rooftop",
+        "outdoor",
+        "outdoor space",
+        "private outdoor",
+        "backyard",
+        "back yard",
+        "front yard",
+        "courtyard",
         # Enhanced descriptions
-        "landscaped", "outdoor living", "al fresco", "outdoor entertaining",
-        "bbq area", "fire pit", "outdoor kitchen", "outdoor fireplace",
-        "deck space", "patio area", "deck area", "terrace space",
-
+        "landscaped",
+        "outdoor living",
+        "al fresco",
+        "outdoor entertaining",
+        "bbq area",
+        "fire pit",
+        "outdoor kitchen",
+        "outdoor fireplace",
+        "deck space",
+        "patio area",
+        "deck area",
+        "terrace space",
         # Quality indicators
-        "private patio", "private balcony", "private deck",
-        "large deck", "large patio", "spacious deck", "spacious patio",
-        "wrap-around deck", "wraparound deck", "rooftop deck",
-        "roof deck", "shared garden", "common garden"
+        "private patio",
+        "private balcony",
+        "private deck",
+        "large deck",
+        "large patio",
+        "spacious deck",
+        "spacious patio",
+        "wrap-around deck",
+        "wraparound deck",
+        "rooftop deck",
+        "roof deck",
+        "shared garden",
+        "common garden",
     ],
     "parking": [
-        "garage", "parking", "carport", "driveway", "off-street",
-        "deeded parking", "1-car", "2-car", "tandem", "side-by-side",
-        "attached garage", "detached garage", "parking space",
-        "ev charging", "electric vehicle", "tesla charger"
+        "garage",
+        "parking",
+        "carport",
+        "driveway",
+        "off-street",
+        "deeded parking",
+        "1-car",
+        "2-car",
+        "tandem",
+        "side-by-side",
+        "attached garage",
+        "detached garage",
+        "parking space",
+        "ev charging",
+        "electric vehicle",
+        "tesla charger",
     ],
     "view": [
         # General view terms
-        "view", "views", "panoramic", "vista", "vistas",
-        "overlook", "overlooks", "sweeping view", "stunning view",
-        "spectacular view", "breathtaking view", "unobstructed view",
-
+        "view",
+        "views",
+        "panoramic",
+        "vista",
+        "vistas",
+        "overlook",
+        "overlooks",
+        "sweeping view",
+        "stunning view",
+        "spectacular view",
+        "breathtaking view",
+        "unobstructed view",
         # SF-specific landmarks
-        "bay view", "ocean view", "golden gate", "bridge view",
-        "coit tower", "alcatraz view", "twin peaks",
-
+        "bay view",
+        "ocean view",
+        "golden gate",
+        "bridge view",
+        "coit tower",
+        "alcatraz view",
+        "twin peaks",
         # View types
-        "cityscape", "city view", "downtown view", "skyline",
-        "water view", "hill view", "park view", "tree-lined",
-        "garden view", "courtyard view", "street view",
-
+        "cityscape",
+        "city view",
+        "downtown view",
+        "skyline",
+        "water view",
+        "hill view",
+        "park view",
+        "tree-lined",
+        "garden view",
+        "courtyard view",
+        "street view",
         # Quality descriptors
-        "panoramic view", "180 degree", "270 degree", "360 degree",
-        "floor to ceiling view", "walls of windows", "picture windows"
+        "panoramic view",
+        "180 degree",
+        "270 degree",
+        "360 degree",
+        "floor to ceiling view",
+        "walls of windows",
+        "picture windows",
     ],
     "updated_systems": [
-        "updated", "renovated", "remodeled", "new roof", "new hvac",
-        "new plumbing", "new electrical", "new windows", "upgraded",
-        "recent updates", "move-in ready", "turn-key", "newly",
-        "modern systems", "central air", "central heat", "new furnace"
+        "updated",
+        "renovated",
+        "remodeled",
+        "new roof",
+        "new hvac",
+        "new plumbing",
+        "new electrical",
+        "new windows",
+        "upgraded",
+        "recent updates",
+        "move-in ready",
+        "turn-key",
+        "newly",
+        "modern systems",
+        "central air",
+        "central heat",
+        "new furnace",
     ],
     "home_office": [
-        "home office", "office", "study", "den", "workspace",
-        "work from home", "wfh", "remote work", "zoom room",
-        "dedicated office", "bonus room", "flex space", "third bedroom office",
-        "converted bedroom", "office nook", "built-in desk"
+        "home office",
+        "office",
+        "study",
+        "den",
+        "workspace",
+        "work from home",
+        "wfh",
+        "remote work",
+        "zoom room",
+        "dedicated office",
+        "bonus room",
+        "flex space",
+        "third bedroom office",
+        "converted bedroom",
+        "office nook",
+        "built-in desk",
     ],
     "storage": [
-        "storage", "closet", "walk-in", "pantry", "built-in",
-        "abundant storage", "attic", "basement", "crawl space",
-        "shed", "workshop", "linen closet", "coat closet",
-        "california closets", "custom closets", "organizational"
+        "storage",
+        "closet",
+        "walk-in",
+        "pantry",
+        "built-in",
+        "abundant storage",
+        "attic",
+        "basement",
+        "crawl space",
+        "shed",
+        "workshop",
+        "linen closet",
+        "coat closet",
+        "california closets",
+        "custom closets",
+        "organizational",
     ],
     "open_floor_plan": [
-        "open floor", "open concept", "open plan", "open layout",
-        "great room", "flowing", "seamless", "open kitchen",
-        "kitchen opens to", "combined living", "loft-like",
-        "spacious layout", "entertaining space", "connected spaces"
+        "open floor",
+        "open concept",
+        "open plan",
+        "open layout",
+        "great room",
+        "flowing",
+        "seamless",
+        "open kitchen",
+        "kitchen opens to",
+        "combined living",
+        "loft-like",
+        "spacious layout",
+        "entertaining space",
+        "connected spaces",
     ],
     "architectural_details": [
-        "crown molding", "wainscoting", "hardwood", "exposed beam",
-        "brick", "original detail", "period detail", "character",
-        "charm", "architectural", "designer", "custom", "millwork",
-        "built-in", "fireplace", "bay window", "french door",
-        "pocket door", "transom", "restored", "preserved"
+        "crown molding",
+        "wainscoting",
+        "hardwood",
+        "exposed beam",
+        "brick",
+        "original detail",
+        "period detail",
+        "character",
+        "charm",
+        "architectural",
+        "designer",
+        "custom",
+        "millwork",
+        "built-in",
+        "fireplace",
+        "bay window",
+        "french door",
+        "pocket door",
+        "transom",
+        "restored",
+        "preserved",
     ],
-    
     # Quality Indicators
     "luxury": [
-        "luxury", "luxurious", "high-end", "premium", "exclusive",
-        "prestigious", "designer", "custom", "bespoke", "upscale",
-        "sophisticated", "elegant", "refined", "exceptional",
-        "extraordinary", "stunning", "magnificent", "exquisite"
+        "luxury",
+        "luxurious",
+        "high-end",
+        "premium",
+        "exclusive",
+        "prestigious",
+        "designer",
+        "custom",
+        "bespoke",
+        "upscale",
+        "sophisticated",
+        "elegant",
+        "refined",
+        "exceptional",
+        "extraordinary",
+        "stunning",
+        "magnificent",
+        "exquisite",
     ],
     "designer": [
-        "designer", "architect", "designed by", "custom design",
-        "professionally designed", "interior designer", "staged",
-        "curated", "thoughtfully designed", "magazine-worthy",
-        "showplace", "showcase", "model home"
+        "designer",
+        "architect",
+        "designed by",
+        "custom design",
+        "professionally designed",
+        "interior designer",
+        "staged",
+        "curated",
+        "thoughtfully designed",
+        "magazine-worthy",
+        "showplace",
+        "showcase",
+        "model home",
     ],
     "tech_ready": [
-        "smart home", "nest", "ring", "automated", "smart",
-        "fiber", "high-speed internet", "cat6", "wired",
-        "security system", "video doorbell", "keyless entry",
-        "app-controlled", "alexa", "google home", "homekit"
+        "smart home",
+        "nest",
+        "ring",
+        "automated",
+        "smart",
+        "fiber",
+        "high-speed internet",
+        "cat6",
+        "wired",
+        "security system",
+        "video doorbell",
+        "keyless entry",
+        "app-controlled",
+        "alexa",
+        "google home",
+        "homekit",
     ],
-    
     # Deal Indicators (positive)
     "motivated_seller": [
-        "motivated", "must sell", "bring offers", "priced to sell",
-        "estate sale", "relocation", "transferred", "moving",
-        "quick sale", "below market", "reduced", "price improvement",
-        "back on market", "fell through", "previous buyer"
+        "motivated",
+        "must sell",
+        "bring offers",
+        "priced to sell",
+        "estate sale",
+        "relocation",
+        "transferred",
+        "moving",
+        "quick sale",
+        "below market",
+        "reduced",
+        "price improvement",
+        "back on market",
+        "fell through",
+        "previous buyer",
     ],
-    
     # Red Flags (negative indicators)
     "busy_street": [
-        "busy street", "high traffic", "main road", "arterial",
-        "commercial", "mixed use", "noise", "freeway", "highway",
-        "van ness", "geary", "19th avenue", "market street",
-        "mission street", "columbus", "lombard street"
+        "busy street",
+        "high traffic",
+        "main road",
+        "arterial",
+        "commercial",
+        "mixed use",
+        "noise",
+        "freeway",
+        "highway",
+        "van ness",
+        "geary",
+        "19th avenue",
+        "market street",
+        "mission street",
+        "columbus",
+        "lombard street",
     ],
     "foundation_issues": [
-        "foundation", "settling", "cracks", "seismic", "retrofit needed",
-        "soft story", "unreinforced", "structural", "sagging",
-        "sloping floors", "uneven", "repair needed", "as-is",
-        "fixer", "needs work", "tlc needed", "contractor special"
+        "foundation",
+        "settling",
+        "cracks",
+        "seismic",
+        "retrofit needed",
+        "soft story",
+        "unreinforced",
+        "structural",
+        "sagging",
+        "sloping floors",
+        "uneven",
+        "repair needed",
+        "as-is",
+        "fixer",
+        "needs work",
+        "tlc needed",
+        "contractor special",
     ],
     "hoa_issues": [
-        "litigation", "lawsuit", "special assessment", "hoa lawsuit",
-        "pending litigation", "legal", "dispute", "high hoa",
-        "hoa issues", "deferred maintenance", "reserves"
-    ]
+        "litigation",
+        "lawsuit",
+        "special assessment",
+        "hoa lawsuit",
+        "pending litigation",
+        "legal",
+        "dispute",
+        "high hoa",
+        "hoa issues",
+        "deferred maintenance",
+        "reserves",
+    ],
 }
 
 # Red flag detection keywords
 RED_FLAGS = {
-    "north_facing_only": ["north facing", "north-facing", "faces north", "northern exposure only"],
-    "basement_unit": ["garden level", "lower level", "basement", "below grade", "bottom unit"],
+    "north_facing_only": [
+        "north facing",
+        "north-facing",
+        "faces north",
+        "northern exposure only",
+    ],
+    "basement_unit": [
+        "garden level",
+        "lower level",
+        "basement",
+        "below grade",
+        "bottom unit",
+    ],
     "tandem_parking": ["tandem", "tandem parking", "one behind"],
     "street_parking_only": ["street parking only", "no parking", "permit parking"],
 }
 
 # Positive sentiment boosters
 POSITIVE_SIGNALS = {
-    "rare": ["rare", "rarely available", "seldom", "unique opportunity", "once in a lifetime"],
+    "rare": [
+        "rare",
+        "rarely available",
+        "seldom",
+        "unique opportunity",
+        "once in a lifetime",
+    ],
     "coveted": ["coveted", "sought-after", "desirable", "prime", "premier"],
-    "quiet": ["quiet street", "tree-lined", "peaceful", "tranquil", "serene", "cul-de-sac"],
+    "quiet": [
+        "quiet street",
+        "tree-lined",
+        "peaceful",
+        "tranquil",
+        "serene",
+        "cul-de-sac",
+    ],
     "walkable": ["walkable", "walk to", "steps from", "walking distance", "pedestrian"],
 }
 
@@ -180,13 +448,25 @@ def extract_flags(text: str) -> dict[str, bool]:
 
     # Define valid flags that match PropertyListing model columns
     valid_positive_flags = [
-        "natural_light", "high_ceilings", "outdoor_space", "parking", "view",
-        "updated_systems", "home_office", "storage", "open_floor_plan",
-        "architectural_details", "luxury", "designer", "tech_ready",
+        "natural_light",
+        "high_ceilings",
+        "outdoor_space",
+        "parking",
+        "view",
+        "updated_systems",
+        "home_office",
+        "storage",
+        "open_floor_plan",
+        "architectural_details",
+        "luxury",
+        "designer",
+        "tech_ready",
     ]
 
     valid_red_flags = [
-        "busy_street", "foundation_issues", "hoa_issues",
+        "busy_street",
+        "foundation_issues",
+        "hoa_issues",
     ]
 
     # Check for positive features
@@ -198,9 +478,15 @@ def extract_flags(text: str) -> dict[str, bool]:
         elif key == "motivated_seller":
             # Map motivated seller indicators to price reduction/back on market flags
             if any(t in text_lower for t in terms):
-                if any(t in text_lower for t in ["reduced", "price improvement", "below market"]):
+                if any(
+                    t in text_lower
+                    for t in ["reduced", "price improvement", "below market"]
+                ):
                     flags["price_reduced"] = True
-                if any(t in text_lower for t in ["back on market", "fell through", "previous buyer"]):
+                if any(
+                    t in text_lower
+                    for t in ["back on market", "fell through", "previous buyer"]
+                ):
                     flags["back_on_market"] = True
 
     # Check for additional red flags
@@ -217,10 +503,10 @@ def calculate_text_quality_score(text: str, criteria: dict = None) -> float:
     """Calculate a quality score based on text analysis and criteria matching."""
     if not text:
         return 0.0
-    
+
     text_lower = text.lower()
     score = 0.0
-    
+
     # Default weights if no criteria weights provided
     default_weights = {
         "natural_light": 10,
@@ -237,24 +523,24 @@ def calculate_text_quality_score(text: str, criteria: dict = None) -> float:
         "designer": 3,
         "tech_ready": 4,
     }
-    
+
     weights = (criteria.get("feature_weights") if criteria else None) or default_weights
-    
+
     # Add points for positive features
     for key, terms in KEYWORDS.items():
         if any(t in text_lower for t in terms):
             score += weights.get(key, 1)
-    
+
     # Add bonus for positive signals
     for key, terms in POSITIVE_SIGNALS.items():
         if any(t in text_lower for t in terms):
             score += 2
-    
+
     # Subtract for red flags
     for key, terms in RED_FLAGS.items():
         if any(t in text_lower for t in terms):
             score -= 5
-    
+
     # Normalize score to 0-100 range
     max_possible = sum(weights.values()) + (len(POSITIVE_SIGNALS) * 2)
     normalized_score = max(0, min(100, (score / max_possible) * 100))
@@ -268,25 +554,63 @@ def calculate_text_quality_score(text: str, criteria: dict = None) -> float:
 
 # Keywords that indicate good light potential
 LIGHT_POSITIVE_KEYWORDS = [
-    "south-facing", "south facing", "southwest", "southwest-facing",
-    "west-facing", "west facing", "western exposure", "southern exposure",
-    "top floor", "top level", "upper floor", "penthouse",
-    "corner unit", "corner apartment", "end unit",
-    "floor-to-ceiling windows", "floor to ceiling windows",
-    "wall of windows", "walls of windows", "panoramic windows",
-    "skylights", "skylight", "clerestory",
-    "bright", "sun-drenched", "sun-filled", "light-filled",
-    "natural light", "floods of light", "bathed in light",
-    "sunny", "sunlit", "luminous", "airy",
+    "south-facing",
+    "south facing",
+    "southwest",
+    "southwest-facing",
+    "west-facing",
+    "west facing",
+    "western exposure",
+    "southern exposure",
+    "top floor",
+    "top level",
+    "upper floor",
+    "penthouse",
+    "corner unit",
+    "corner apartment",
+    "end unit",
+    "floor-to-ceiling windows",
+    "floor to ceiling windows",
+    "wall of windows",
+    "walls of windows",
+    "panoramic windows",
+    "skylights",
+    "skylight",
+    "clerestory",
+    "bright",
+    "sun-drenched",
+    "sun-filled",
+    "light-filled",
+    "natural light",
+    "floods of light",
+    "bathed in light",
+    "sunny",
+    "sunlit",
+    "luminous",
+    "airy",
 ]
 
 # Keywords that indicate poor light potential (heavy penalties)
 LIGHT_NEGATIVE_KEYWORDS = [
-    "north-facing", "north facing", "northern exposure", "faces north",
-    "garden level", "basement", "lower level", "below grade", "bottom unit",
-    "interior unit", "no view", "no natural light",
-    "dark", "dimly lit", "limited light", "shaded",
-    "windowless", "few windows", "small windows",
+    "north-facing",
+    "north facing",
+    "northern exposure",
+    "faces north",
+    "garden level",
+    "basement",
+    "lower level",
+    "below grade",
+    "bottom unit",
+    "interior unit",
+    "no view",
+    "no natural light",
+    "dark",
+    "dimly lit",
+    "limited light",
+    "shaded",
+    "windowless",
+    "few windows",
+    "small windows",
 ]
 
 
@@ -366,7 +690,11 @@ def estimate_light_potential(
         confidence = "high"  # We're confident this is BAD
 
     # Heuristic: Top floor / penthouse bonus
-    if "top floor" in text_lower or "penthouse" in text_lower or "top level" in text_lower:
+    if (
+        "top floor" in text_lower
+        or "penthouse" in text_lower
+        or "top level" in text_lower
+    ):
         score += 10
         signals.append("top_floor_unit")
 
@@ -397,7 +725,7 @@ def estimate_light_potential(
         "score": int(round(score)),
         "signals": signals,
         "confidence": confidence,
-        "note": "Light potential estimated from description keywords. True orientation cannot be determined from listing data."
+        "note": "Light potential estimated from description keywords. True orientation cannot be determined from listing data.",
     }
 
 

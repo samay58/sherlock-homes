@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { PropertyListing } from '@/lib/types'
-
-const USER_ID = 'test-user' // TODO: Replace with actual user management
+import { TEST_USER_ID } from '@/lib/user'
 
 export function useMatches() {
   return useQuery({
-    queryKey: ['matches', USER_ID],
-    queryFn: () => api.get<PropertyListing[]>(`/matches/${USER_ID}`),
+    queryKey: ['matches', TEST_USER_ID],
+    queryFn: () => api.get<PropertyListing[]>(`/matches/user/${TEST_USER_ID}`),
   })
 }

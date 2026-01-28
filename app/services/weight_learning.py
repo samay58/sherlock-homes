@@ -436,7 +436,7 @@ def get_learning_summary(user_id: int, db: Session) -> Dict[str, Any]:
     reduced.sort(key=lambda x: x[1])
 
     # Map criterion keys to human-readable labels
-    from app.services.advanced_matching import CRITERION_LABELS
+    from app.services.scoring.primitives import CRITERION_LABELS
 
     summary = {
         "user_id": user_id,

@@ -78,8 +78,8 @@ clean:
 
 # Code formatting
 fmt:
-	black app/
-	isort app/
+	@if [ -x .venv/bin/black ]; then .venv/bin/black app/; else black app/; fi
+	@if [ -x .venv/bin/isort ]; then .venv/bin/isort app/; else isort app/; fi
 	cd frontend && npm run format
 
 # Linting

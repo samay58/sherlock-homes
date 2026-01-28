@@ -99,14 +99,16 @@ def get_listing_feedback_summary(
 ):
     """Get feedback summary for a listing including current user's feedback."""
     # Get counts by type
+    # pylint: disable=not-callable
     counts = db.execute(
         select(
             ListingFeedback.feedback_type,
-            func.count(ListingFeedback.id).label("count"),  # pylint: disable=not-callable
+            func.count(ListingFeedback.id).label("count"),
         )
         .where(ListingFeedback.listing_id == listing_id)
         .group_by(ListingFeedback.feedback_type)
     ).all()
+    # pylint: enable=not-callable
 
     summary = FeedbackSummary(listing_id=listing_id)
     for feedback_type, count in counts:

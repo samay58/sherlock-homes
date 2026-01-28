@@ -1,23 +1,21 @@
+# Dependencies
 node_modules
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
+# Build output
+dist
+dist-node
+*.tsbuildinfo
+
+# Vite
+*.local
+
+# IDE
+.idea
+.vscode
 
 # OS
 .DS_Store
-Thumbs.db
 
-# Env
-.env
-.env.*
-!.env.example
-!.env.test
-
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+# TypeScript declaration files (generated)
+vite.config.d.ts
+vite.config.js

@@ -1,0 +1,128 @@
+.criteria-page h2 {
+  font-family: var(--font-family-serif, Georgia, serif);
+  font-size: var(--font-size-2xl, 32px);
+  font-weight: var(--font-weight-normal, 400);
+  margin-bottom: 1.5rem;
+}
+
+.criteria-form fieldset {
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 4px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.criteria-form legend {
+  font-weight: bold;
+  padding: 0 0.5em;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  flex: 1;
+  min-width: 150px;
+}
+
+.form-group label {
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+  padding: 0.6rem;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 4px;
+  font-size: 1rem;
+  background: var(--color-paper, #fff);
+  color: var(--color-ink, #000);
+}
+
+.checkbox-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.checkbox-group label {
+  margin-bottom: 0;
+  font-weight: normal;
+}
+
+.neighborhood-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.neighborhood-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.criteria-form button {
+  padding: 0.7rem 1.5rem;
+  background-color: var(--color-ink, #007bff);
+  color: var(--color-paper, white);
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.criteria-form button:disabled {
+  background-color: var(--color-gray-300, #ccc);
+  cursor: not-allowed;
+}
+
+.criteria-form button:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.criteria-page .error {
+  color: var(--color-error, #dc2626);
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-error, #dc2626);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  background: var(--color-error-bg, #fef2f2);
+}
+
+.criteria-page .success {
+  color: #16a34a;
+  margin-bottom: 1rem;
+  border: 1px solid #16a34a;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  background: #f0fdf4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .criteria-page .error {
+    background: rgba(220, 38, 38, 0.1);
+  }
+
+  .criteria-page .success {
+    background: rgba(22, 163, 74, 0.1);
+  }
+}

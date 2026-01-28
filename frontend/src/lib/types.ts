@@ -52,20 +52,20 @@ export interface PropertyListing {
 
   // Sherlock Homes Intelligence
   tranquility_score: number | null;  // 0-100, from geospatial
-  tranquility_factors: Record<string, any> | null;
+  tranquility_factors: Record<string, unknown> | null;
   light_potential_score: number | null;  // 0-100, from NLP
   light_potential_signals: string[] | null;
 
   // Visual Quality Intelligence (from Claude Vision photo analysis)
   visual_quality_score: number | null;  // 0-100, overall visual appeal
-  visual_assessment: Record<string, any> | null;  // {modernity, condition, brightness, staging, cleanliness, red_flags, highlights}
+  visual_assessment: Record<string, unknown> | null;  // {modernity, condition, brightness, staging, cleanliness, red_flags, highlights}
   photos_hash: string | null;
   visual_analyzed_at: string | null;
 
   // Match data
   match_score?: number | null;
   match_narrative?: string | null;
-  feature_scores?: Record<string, any> | null;
+  feature_scores?: Record<string, unknown> | null;
   match_reasons?: string[] | null;
   match_tradeoff?: string | null;
   score_points?: number | null;
@@ -74,7 +74,7 @@ export interface PropertyListing {
   score_tier?: string | null;
   top_positives?: string[] | null;
   key_tradeoff?: string | null;
-  signals?: Record<string, any> | null;
+  signals?: Record<string, unknown> | null;
   why_now?: string | null;
 
   photos: string[] | null;
@@ -102,5 +102,3 @@ export interface Criteria {
     recency_mode?: string | null;
     avoid_busy_streets?: boolean | null;
 }
-
-// Add other types as needed (e.g., User, Auth responses) 

@@ -1,22 +1,42 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
-// Use env var to support Docker Compose (api:8000) and local dev (localhost:8000)
-// When running inside Docker, use 'http://api:8000'
-// When running standalone, use 'http://localhost:8000'
-const API_TARGET = process.env.VITE_API_TARGET || (process.env.DOCKER_ENV ? 'http://api:8000' : 'http://localhost:8000');
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
 
+// https://vite.dev/config/
 export default defineConfig({
-	plugins: [sveltekit()],
-	server: {
-		proxy: {
-			// Proxy API requests to the backend server
-			// Adjust target if your backend runs on a different port
-			'/criteria': { target: API_TARGET, changeOrigin: true },
-			'/listings': { target: API_TARGET, changeOrigin: true },
-			'/matches': { target: API_TARGET, changeOrigin: true },
-			'/ingestion': { target: API_TARGET, changeOrigin: true },
-			'/admin': { target: API_TARGET, changeOrigin: true }
-			// Use 'changeOrigin: true' if needed, but usually not for localhost
-		}
-	}
-});
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/health': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/listings': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/matches': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/criteria': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/feedback': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/admin': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+})

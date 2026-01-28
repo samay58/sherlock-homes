@@ -6,7 +6,11 @@ import './ListingDetailPage.css'
 
 const formatPrice = (price: number | null) => {
   if (price == null) return 'Price N/A'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(price)
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(price)
 }
 
 const formatSqft = (sqft: number | null) => {
@@ -123,10 +127,20 @@ export function ListingDetailPage() {
             {listing.score_tier && <span className="score-tier">{listing.score_tier}</span>}
           </div>
           <ul className="quick-stats">
-            <li><strong>{listing.beds ?? 'N/A'}</strong> bds</li>
-            <li><strong>{listing.baths ?? 'N/A'}</strong> ba</li>
-            <li><strong>{formatSqft(listing.sqft)}</strong></li>
-            {listing.year_built && <li>Built <strong>{listing.year_built}</strong></li>}
+            <li>
+              <strong>{listing.beds ?? 'N/A'}</strong> bds
+            </li>
+            <li>
+              <strong>{listing.baths ?? 'N/A'}</strong> ba
+            </li>
+            <li>
+              <strong>{formatSqft(listing.sqft)}</strong>
+            </li>
+            {listing.year_built && (
+              <li>
+                Built <strong>{listing.year_built}</strong>
+              </li>
+            )}
           </ul>
 
           <div className="status-type">
@@ -135,13 +149,20 @@ export function ListingDetailPage() {
           </div>
 
           {listing.url && (
-            <a href={listing.url} target="_blank" rel="noopener noreferrer" className="external-link">
+            <a
+              href={listing.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="external-link"
+            >
               View on Zillow
             </a>
           )}
 
           {listing.walk_score && (
-            <p><strong>Walk Score®:</strong> {listing.walk_score}</p>
+            <p>
+              <strong>Walk Score®:</strong> {listing.walk_score}
+            </p>
           )}
 
           {featureTags.length > 0 && (
@@ -149,13 +170,18 @@ export function ListingDetailPage() {
               <span className="feature-label">FEATURES</span>
               <div className="feature-tags">
                 {featureTags.map((feature) => (
-                  <span key={feature} className="feature-tag">{feature}</span>
+                  <span key={feature} className="feature-tag">
+                    {feature}
+                  </span>
                 ))}
               </div>
             </div>
           )}
 
-          {(listing.match_reasons?.length || listing.key_tradeoff || listing.why_now || listing.match_narrative) && (
+          {(listing.match_reasons?.length ||
+            listing.key_tradeoff ||
+            listing.why_now ||
+            listing.match_narrative) && (
             <div className="explain-block">
               <span className="feature-label">EXPLAINABILITY</span>
               {listing.match_reasons?.length && (

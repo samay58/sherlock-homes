@@ -226,16 +226,3 @@ def delete_scout(scout_id: int, db: Session = Depends(get_db)):
     db.delete(scout)
     db.commit()
     return {"message": f"Scout '{name}' deleted", "scout_id": scout_id}
-
-
-def delete_scout(scout_id: int, db: Session = Depends(get_db)):
-    """Delete a scout and all its runs."""
-    scout = db.query(Scout).filter(Scout.id == scout_id).first()
-    if not scout:
-        raise HTTPException(status_code=404, detail="Scout not found")
-
-    name = scout.name
-    db.delete(scout)
-    db.commit()
-
-    return {"message": f"Scout '{name}' deleted successfully"}

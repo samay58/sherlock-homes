@@ -20,7 +20,8 @@ const PRICE_FORMATTER = new Intl.NumberFormat('en-US', {
 })
 const NUMBER_FORMATTER = new Intl.NumberFormat('en-US')
 
-const formatPrice = (price: number | null) => (price == null ? 'Price TBD' : PRICE_FORMATTER.format(price))
+const formatPrice = (price: number | null) =>
+  price == null ? 'Price TBD' : PRICE_FORMATTER.format(price)
 const formatNumber = (num: number | null) => (num == null ? '—' : NUMBER_FORMATTER.format(num))
 
 const getScoreTier = (score: number) => {
@@ -101,7 +102,10 @@ export function DossierCard({
 
   if (loading || !listing) {
     return (
-      <div className="dossier-card dossier-card--skeleton" style={{ animationDelay: `${index * 30}ms` }}>
+      <div
+        className="dossier-card dossier-card--skeleton"
+        style={{ animationDelay: `${index * 30}ms` }}
+      >
         <div className="skeleton skeleton-image"></div>
         <div className="dossier-body">
           <div className="skeleton skeleton-price"></div>
@@ -113,13 +117,18 @@ export function DossierCard({
   }
 
   const primaryPhoto = listing.photos?.[0] || '/placeholder-image.svg'
-  const pricePerSqft = listing.price && listing.sqft ? Math.round(listing.price / listing.sqft) : null
+  const pricePerSqft =
+    listing.price && listing.sqft ? Math.round(listing.price / listing.sqft) : null
   const intel = buildIntel(listing)
   const signalData = buildSignalData(listing)
   const scoreTier = listing.match_score != null ? getScoreTier(listing.match_score) : null
 
   return (
-    <Link to={`/listings/${listing.id}`} className="dossier-link" style={{ animationDelay: `${index * 30}ms` }}>
+    <Link
+      to={`/listings/${listing.id}`}
+      className="dossier-link"
+      style={{ animationDelay: `${index * 30}ms` }}
+    >
       <article className={`dossier-card ${isTopMatch ? 'dossier-card--top' : ''}`}>
         {/* Photo Section */}
         <div className="dossier-photo">
@@ -138,7 +147,9 @@ export function DossierCard({
 
           {/* Badges */}
           {listing.days_on_market != null && listing.days_on_market <= 7 && (
-            <span className="dossier-badge dossier-badge--fresh">{listing.days_on_market}D NEW</span>
+            <span className="dossier-badge dossier-badge--fresh">
+              {listing.days_on_market}D NEW
+            </span>
           )}
           {listing.days_on_market != null && listing.days_on_market > 90 && (
             <span className="dossier-badge dossier-badge--stale">{listing.days_on_market}D</span>
@@ -195,7 +206,9 @@ export function DossierCard({
                   <span className="intel-label">INTEL</span>
                   <div className="intel-tags">
                     {intel.slice(0, 3).map((feature) => (
-                      <span key={feature.key} className="intel-tag">{feature.label}</span>
+                      <span key={feature.key} className="intel-tag">
+                        {feature.label}
+                      </span>
                     ))}
                     {intel.length > 3 && (
                       <span className="intel-tag intel-tag--more">+{intel.length - 3}</span>
@@ -220,7 +233,7 @@ export function DossierCard({
           )}
 
           {/* Why this matched */}
-          {((listing.match_reasons && listing.match_reasons.length) || listing.match_tradeoff) ? (
+          {(listing.match_reasons && listing.match_reasons.length) || listing.match_tradeoff ? (
             <div className="dossier-why">
               {listing.match_reasons && listing.match_reasons.length > 0 && (
                 <>
@@ -231,9 +244,7 @@ export function DossierCard({
               {listing.match_tradeoff && (
                 <span className="why-tradeoff">Tradeoff: {listing.match_tradeoff}</span>
               )}
-              {listing.why_now && (
-                <span className="why-now">Why now: {listing.why_now}</span>
-              )}
+              {listing.why_now && <span className="why-now">Why now: {listing.why_now}</span>}
             </div>
           ) : listing.match_narrative ? (
             <p className="dossier-narrative">{listing.match_narrative}</p>

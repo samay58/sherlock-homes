@@ -9,20 +9,22 @@
    * ============================================ */
 
   /* Font Families - Three distinct voices */
-  --font-family-serif: 'Instrument Serif', Georgia, serif;           /* Prices, property names - authority */
-  --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;  /* UI, labels - clean */
-  --font-family-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;  /* Addresses, data, scores - precision */
+  --font-family-serif: 'Instrument Serif', Georgia, serif; /* Prices, property names - authority */
+  --font-family-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; /* UI, labels - clean */
+  --font-family-mono:
+    'JetBrains Mono', 'SF Mono', Consolas, monospace; /* Addresses, data, scores - precision */
 
   /* Typography Scale */
-  --font-size-xs: 0.625rem;   /* 10px - tiny labels */
-  --font-size-sm: 0.75rem;    /* 12px - small labels, badges */
+  --font-size-xs: 0.625rem; /* 10px - tiny labels */
+  --font-size-sm: 0.75rem; /* 12px - small labels, badges */
   --font-size-base: 0.875rem; /* 14px - body text */
-  --font-size-md: 1rem;       /* 16px - default */
-  --font-size-lg: 1.25rem;    /* 20px - subheadings */
-  --font-size-xl: 1.5rem;     /* 24px - section headers */
-  --font-size-2xl: 2rem;      /* 32px - prices, important numbers */
-  --font-size-3xl: 2.5rem;    /* 40px - hero text */
-  --font-size-4xl: 3rem;      /* 48px - display */
+  --font-size-md: 1rem; /* 16px - default */
+  --font-size-lg: 1.25rem; /* 20px - subheadings */
+  --font-size-xl: 1.5rem; /* 24px - section headers */
+  --font-size-2xl: 2rem; /* 32px - prices, important numbers */
+  --font-size-3xl: 2.5rem; /* 40px - hero text */
+  --font-size-4xl: 3rem; /* 48px - display */
 
   /* Font Weights */
   --font-weight-normal: 400;
@@ -37,11 +39,11 @@
   --line-height-relaxed: 1.75;
 
   /* Letter Spacing */
-  --tracking-tight: -0.02em;   /* For large serif text */
+  --tracking-tight: -0.02em; /* For large serif text */
   --tracking-normal: 0;
-  --tracking-wide: 0.02em;     /* For mono addresses */
-  --tracking-wider: 0.05em;    /* For small caps labels */
-  --tracking-widest: 0.1em;    /* For uppercase labels */
+  --tracking-wide: 0.02em; /* For mono addresses */
+  --tracking-wider: 0.05em; /* For small caps labels */
+  --tracking-widest: 0.1em; /* For uppercase labels */
 
   /* ============================================
    * COLORS - Black, White, and Sherlock Orange
@@ -49,22 +51,22 @@
 
   /* Primary - High contrast */
   --color-ink: #000000;
-  --color-paper: #FFFFFF;
-  --color-paper-warm: #FAFAF8;
+  --color-paper: #ffffff;
+  --color-paper-warm: #fafaf8;
 
   /* Accent - Sherlock Orange (differentiation from blue/green competitors) */
-  --color-accent: #FF6600;
-  --color-accent-hover: #E65C00;
-  --color-accent-active: #CC5200;
-  --color-accent-subtle: #FFF4EC;
-  --color-accent-muted: #FFE5D4;
+  --color-accent: #ff6600;
+  --color-accent-hover: #e65c00;
+  --color-accent-active: #cc5200;
+  --color-accent-subtle: #fff4ec;
+  --color-accent-muted: #ffe5d4;
 
   /* Gray Scale - Simplified to 5 key values */
-  --color-gray-100: #F5F5F5;  /* Surfaces, backgrounds */
-  --color-gray-200: #E5E5E5;  /* Borders, dividers */
-  --color-gray-400: #999999;  /* Tertiary text, placeholders */
-  --color-gray-600: #666666;  /* Secondary text */
-  --color-gray-900: #1A1A1A;  /* Primary text (near-black) */
+  --color-gray-100: #f5f5f5; /* Surfaces, backgrounds */
+  --color-gray-200: #e5e5e5; /* Borders, dividers */
+  --color-gray-400: #999999; /* Tertiary text, placeholders */
+  --color-gray-600: #666666; /* Secondary text */
+  --color-gray-900: #1a1a1a; /* Primary text (near-black) */
 
   /* Semantic Colors */
   --color-background: var(--color-paper);
@@ -77,15 +79,15 @@
   --color-text-tertiary: var(--color-gray-400);
 
   /* Match Score Colors - Green gradient */
-  --color-score-excellent: #1B5E20;  /* 80-100% */
-  --color-score-good: #2E7D32;       /* 60-79% */
-  --color-score-fair: #F57C00;       /* 40-59% */
-  --color-score-low: #999999;        /* 0-39% */
+  --color-score-excellent: #1b5e20; /* 80-100% */
+  --color-score-good: #2e7d32; /* 60-79% */
+  --color-score-fair: #f57c00; /* 40-59% */
+  --color-score-low: #999999; /* 0-39% */
 
   /* Status Colors */
-  --color-success: #1B5E20;
-  --color-warning: #F57C00;
-  --color-error: #D32F2F;
+  --color-success: #1b5e20;
+  --color-warning: #f57c00;
+  --color-error: #d32f2f;
   --color-info: var(--color-accent);
 
   /* ============================================
@@ -93,18 +95,18 @@
    * ============================================ */
 
   --space-0: 0;
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-5: 1.25rem;   /* 20px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
-  --space-10: 2.5rem;   /* 40px */
-  --space-12: 3rem;     /* 48px */
-  --space-16: 4rem;     /* 64px */
-  --space-20: 5rem;     /* 80px */
-  --space-24: 6rem;     /* 96px */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-10: 2.5rem; /* 40px */
+  --space-12: 3rem; /* 48px */
+  --space-16: 4rem; /* 64px */
+  --space-20: 5rem; /* 80px */
+  --space-24: 6rem; /* 96px */
 
   /* ============================================
    * BORDERS - No shadows, only borders
@@ -157,17 +159,17 @@
    * CONTAINERS
    * ============================================ */
 
-  --container-xs: 20rem;    /* 320px */
-  --container-sm: 24rem;    /* 384px */
-  --container-md: 28rem;    /* 448px */
-  --container-lg: 32rem;    /* 512px */
-  --container-xl: 36rem;    /* 576px */
-  --container-2xl: 42rem;   /* 672px */
-  --container-3xl: 48rem;   /* 768px */
-  --container-4xl: 56rem;   /* 896px */
-  --container-5xl: 64rem;   /* 1024px */
-  --container-6xl: 72rem;   /* 1152px */
-  --container-7xl: 80rem;   /* 1280px */
+  --container-xs: 20rem; /* 320px */
+  --container-sm: 24rem; /* 384px */
+  --container-md: 28rem; /* 448px */
+  --container-lg: 32rem; /* 512px */
+  --container-xl: 36rem; /* 576px */
+  --container-2xl: 42rem; /* 672px */
+  --container-3xl: 48rem; /* 768px */
+  --container-4xl: 56rem; /* 896px */
+  --container-5xl: 64rem; /* 1024px */
+  --container-6xl: 72rem; /* 1152px */
+  --container-7xl: 80rem; /* 1280px */
 }
 
 /* ============================================
@@ -176,15 +178,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-ink: #FFFFFF;
-    --color-paper: #0A0A0A;
+    --color-ink: #ffffff;
+    --color-paper: #0a0a0a;
     --color-paper-warm: #111111;
 
-    --color-gray-100: #1A1A1A;
-    --color-gray-200: #2A2A2A;
+    --color-gray-100: #1a1a1a;
+    --color-gray-200: #2a2a2a;
     --color-gray-400: #666666;
     --color-gray-600: #999999;
-    --color-gray-900: #F5F5F5;
+    --color-gray-900: #f5f5f5;
 
     --color-background: var(--color-paper);
     --color-surface: var(--color-paper-warm);
@@ -195,8 +197,8 @@
     --color-text-secondary: var(--color-gray-600);
     --color-text-tertiary: var(--color-gray-400);
 
-    --color-accent-subtle: #2A1A0A;
-    --color-accent-muted: #3D2510;
+    --color-accent-subtle: #2a1a0a;
+    --color-accent-muted: #3d2510;
   }
 }
 
@@ -205,40 +207,92 @@
  * ============================================ */
 
 /* Typography Utilities */
-.font-serif { font-family: var(--font-family-serif); }
-.font-sans { font-family: var(--font-family-sans); }
-.font-mono { font-family: var(--font-family-mono); }
+.font-serif {
+  font-family: var(--font-family-serif);
+}
+.font-sans {
+  font-family: var(--font-family-sans);
+}
+.font-mono {
+  font-family: var(--font-family-mono);
+}
 
-.text-xs { font-size: var(--font-size-xs); }
-.text-sm { font-size: var(--font-size-sm); }
-.text-base { font-size: var(--font-size-base); }
-.text-md { font-size: var(--font-size-md); }
-.text-lg { font-size: var(--font-size-lg); }
-.text-xl { font-size: var(--font-size-xl); }
-.text-2xl { font-size: var(--font-size-2xl); }
-.text-3xl { font-size: var(--font-size-3xl); }
+.text-xs {
+  font-size: var(--font-size-xs);
+}
+.text-sm {
+  font-size: var(--font-size-sm);
+}
+.text-base {
+  font-size: var(--font-size-base);
+}
+.text-md {
+  font-size: var(--font-size-md);
+}
+.text-lg {
+  font-size: var(--font-size-lg);
+}
+.text-xl {
+  font-size: var(--font-size-xl);
+}
+.text-2xl {
+  font-size: var(--font-size-2xl);
+}
+.text-3xl {
+  font-size: var(--font-size-3xl);
+}
 
-.tracking-tight { letter-spacing: var(--tracking-tight); }
-.tracking-wide { letter-spacing: var(--tracking-wide); }
-.tracking-wider { letter-spacing: var(--tracking-wider); }
-.tracking-widest { letter-spacing: var(--tracking-widest); }
+.tracking-tight {
+  letter-spacing: var(--tracking-tight);
+}
+.tracking-wide {
+  letter-spacing: var(--tracking-wide);
+}
+.tracking-wider {
+  letter-spacing: var(--tracking-wider);
+}
+.tracking-widest {
+  letter-spacing: var(--tracking-widest);
+}
 
-.uppercase { text-transform: uppercase; }
-.tabular-nums { font-variant-numeric: tabular-nums; }
+.uppercase {
+  text-transform: uppercase;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
 
 /* Color Utilities */
-.text-ink { color: var(--color-ink); }
-.text-secondary { color: var(--color-text-secondary); }
-.text-tertiary { color: var(--color-text-tertiary); }
-.text-accent { color: var(--color-accent); }
+.text-ink {
+  color: var(--color-ink);
+}
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}
+.text-accent {
+  color: var(--color-accent);
+}
 
-.bg-paper { background-color: var(--color-paper); }
-.bg-surface { background-color: var(--color-surface); }
-.bg-accent-subtle { background-color: var(--color-accent-subtle); }
+.bg-paper {
+  background-color: var(--color-paper);
+}
+.bg-surface {
+  background-color: var(--color-surface);
+}
+.bg-accent-subtle {
+  background-color: var(--color-accent-subtle);
+}
 
 /* Border Utilities */
-.border { border: var(--border-thin) solid var(--color-border); }
-.border-hover:hover { border-color: var(--color-border-hover); }
+.border {
+  border: var(--border-thin) solid var(--color-border);
+}
+.border-hover:hover {
+  border-color: var(--color-border-hover);
+}
 
 /* Transition Utilities */
 .transition-colors {
@@ -281,8 +335,12 @@
 }
 
 @keyframes fade-in-fast {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-fade-in {
@@ -295,23 +353,52 @@
   animation: fade-in var(--duration-slow) var(--ease-out) forwards;
 }
 
-.stagger-grid > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-grid > *:nth-child(2) { animation-delay: 30ms; }
-.stagger-grid > *:nth-child(3) { animation-delay: 60ms; }
-.stagger-grid > *:nth-child(4) { animation-delay: 90ms; }
-.stagger-grid > *:nth-child(5) { animation-delay: 120ms; }
-.stagger-grid > *:nth-child(6) { animation-delay: 150ms; }
-.stagger-grid > *:nth-child(7) { animation-delay: 180ms; }
-.stagger-grid > *:nth-child(8) { animation-delay: 210ms; }
-.stagger-grid > *:nth-child(9) { animation-delay: 240ms; }
-.stagger-grid > *:nth-child(10) { animation-delay: 270ms; }
-.stagger-grid > *:nth-child(11) { animation-delay: 300ms; }
-.stagger-grid > *:nth-child(12) { animation-delay: 330ms; }
+.stagger-grid > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-grid > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+.stagger-grid > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+.stagger-grid > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+.stagger-grid > *:nth-child(5) {
+  animation-delay: 120ms;
+}
+.stagger-grid > *:nth-child(6) {
+  animation-delay: 150ms;
+}
+.stagger-grid > *:nth-child(7) {
+  animation-delay: 180ms;
+}
+.stagger-grid > *:nth-child(8) {
+  animation-delay: 210ms;
+}
+.stagger-grid > *:nth-child(9) {
+  animation-delay: 240ms;
+}
+.stagger-grid > *:nth-child(10) {
+  animation-delay: 270ms;
+}
+.stagger-grid > *:nth-child(11) {
+  animation-delay: 300ms;
+}
+.stagger-grid > *:nth-child(12) {
+  animation-delay: 330ms;
+}
 
 /* Skeleton Loading */
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .skeleton {

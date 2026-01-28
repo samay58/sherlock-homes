@@ -101,7 +101,8 @@ def get_listing_feedback_summary(
     # Get counts by type
     counts = db.execute(
         select(
-            ListingFeedback.feedback_type, func.count(ListingFeedback.id).label("count")
+            ListingFeedback.feedback_type,
+            func.count(ListingFeedback.id).label("count"),  # pylint: disable=not-callable
         )
         .where(ListingFeedback.listing_id == listing_id)
         .group_by(ListingFeedback.feedback_type)

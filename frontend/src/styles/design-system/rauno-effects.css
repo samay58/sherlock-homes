@@ -8,17 +8,17 @@
   --shimmer-color-2: rgba(255, 119, 198, 0.15);
   --shimmer-color-3: rgba(255, 206, 84, 0.15);
   --shimmer-color-4: rgba(120, 219, 255, 0.15);
-  
+
   /* Glow Colors */
   --glow-primary: rgba(0, 102, 255, 0.4);
   --glow-secondary: rgba(120, 119, 198, 0.3);
   --glow-accent: rgba(255, 206, 84, 0.3);
-  
+
   /* Animation Timings */
   --shimmer-duration: 3s;
   --glow-duration: 2s;
   --shine-duration: 0.6s;
-  
+
   /* Magnetic Effect */
   --magnetic-strength: 0.3;
   --magnetic-distance: 40px;
@@ -59,8 +59,8 @@
   );
   background-size: 300% 300%;
   animation: shimmer-rotate var(--shimmer-duration) ease-in-out infinite;
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -120,12 +120,7 @@
   left: -50%;
   width: 200%;
   height: 200%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(255, 255, 255, 0.13),
-    transparent
-  );
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.13), transparent);
   transform: translateX(-100%) translateY(-100%) rotate(45deg);
   transition: none;
 }
@@ -145,11 +140,7 @@
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  background: radial-gradient(
-    circle at center,
-    var(--glow-primary),
-    transparent 70%
-  );
+  background: radial-gradient(circle at center, var(--glow-primary), transparent 70%);
   opacity: 0;
   transition: opacity var(--duration-normal) var(--ease-out);
   z-index: -1;
@@ -172,7 +163,7 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
+  box-shadow:
     0 8px 32px 0 rgba(31, 38, 135, 0.15),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
 }
@@ -193,14 +184,13 @@
   content: '';
   position: absolute;
   inset: 0;
-  background-image: 
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 35px,
-      rgba(255, 255, 255, 0.01) 35px,
-      rgba(255, 255, 255, 0.01) 70px
-    );
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 35px,
+    rgba(255, 255, 255, 0.01) 35px,
+    rgba(255, 255, 255, 0.01) 70px
+  );
   pointer-events: none;
   opacity: 0.5;
   mix-blend-mode: overlay;
@@ -232,7 +222,7 @@
 
 .hover-lift:hover {
   transform: translateY(-6px) scale(1.02);
-  box-shadow: 
+  box-shadow:
     0 10px 20px -5px rgba(0, 0, 0, 0.1),
     0 20px 40px -10px rgba(0, 0, 0, 0.05);
 }
@@ -255,14 +245,21 @@
 }
 
 @keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* Subtle Pulse */
 @keyframes subtle-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -279,7 +276,7 @@
 /* Enhanced Focus States */
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 
+  box-shadow:
     0 0 0 2px var(--color-background),
     0 0 0 4px var(--color-primary),
     0 0 20px 0 rgba(0, 102, 255, 0.2);
@@ -288,13 +285,13 @@
 /* Smooth Shadow Transition */
 .dynamic-shadow {
   transition: box-shadow var(--duration-normal) var(--ease-out);
-  box-shadow: 
+  box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.02),
     0 4px 8px rgba(0, 0, 0, 0.02);
 }
 
 .dynamic-shadow:hover {
-  box-shadow: 
+  box-shadow:
     0 4px 8px rgba(0, 0, 0, 0.04),
     0 8px 16px rgba(0, 0, 0, 0.04),
     0 16px 32px rgba(0, 0, 0, 0.04);
@@ -313,17 +310,11 @@
   inset: -2px;
   border-radius: inherit;
   padding: 2px;
-  background: linear-gradient(
-    45deg,
-    #ff0080,
-    #ff8c00,
-    #40e0d0,
-    #ff0080
-  );
+  background: linear-gradient(45deg, #ff0080, #ff8c00, #40e0d0, #ff0080);
   background-size: 300% 300%;
   animation: gradient-border 4s ease infinite;
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -336,9 +327,15 @@
 }
 
 @keyframes gradient-border {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* Sophisticated Loading Animation */
@@ -370,12 +367,12 @@
     --shimmer-color-2: rgba(255, 119, 198, 0.25);
     --shimmer-color-3: rgba(255, 206, 84, 0.25);
     --shimmer-color-4: rgba(120, 219, 255, 0.25);
-    
+
     --glow-primary: rgba(59, 130, 246, 0.5);
     --glow-secondary: rgba(168, 85, 247, 0.4);
     --glow-accent: rgba(251, 191, 36, 0.4);
   }
-  
+
   .glass {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.05);

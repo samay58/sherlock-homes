@@ -34,12 +34,12 @@
 
 /* Top match - orange accent border */
 .dossier-card--top {
-  border-color: var(--color-accent, #FF6600);
+  border-color: var(--color-accent, #ff6600);
   border-width: 2px;
 }
 
 .dossier-card--top:hover {
-  border-color: var(--color-accent-hover, #E65C00);
+  border-color: var(--color-accent-hover, #e65c00);
 }
 
 /* Photo Section */
@@ -89,7 +89,7 @@
 }
 
 .dossier-badge--fresh {
-  background: var(--color-score-excellent, #1B5E20);
+  background: var(--color-score-excellent, #1b5e20);
   color: white;
 }
 
@@ -113,17 +113,17 @@
 }
 
 .dossier-score--excellent {
-  background: var(--color-score-excellent, #1B5E20);
+  background: var(--color-score-excellent, #1b5e20);
   color: white;
 }
 
 .dossier-score--good {
-  background: var(--color-score-good, #2E7D32);
+  background: var(--color-score-good, #2e7d32);
   color: white;
 }
 
 .dossier-score--fair {
-  background: var(--color-score-fair, #F57C00);
+  background: var(--color-score-fair, #f57c00);
   color: white;
 }
 
@@ -395,8 +395,8 @@
 }
 
 .feedback-btn--like.active {
-  background: var(--color-score-excellent, #1B5E20);
-  border-color: var(--color-score-excellent, #1B5E20);
+  background: var(--color-score-excellent, #1b5e20);
+  border-color: var(--color-score-excellent, #1b5e20);
 }
 
 .feedback-btn--like.active svg {
@@ -404,8 +404,8 @@
 }
 
 .feedback-btn--dislike.active {
-  background: var(--color-score-low, #C62828);
-  border-color: var(--color-score-low, #C62828);
+  background: var(--color-score-low, #c62828);
+  border-color: var(--color-score-low, #c62828);
 }
 
 .feedback-btn--dislike.active svg {

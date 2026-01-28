@@ -12,12 +12,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
-  };
+  }
 
   const config: RequestInit = {
     ...options,
     headers,
-  };
+  }
 
   try {
     const response = await fetch(url, config)

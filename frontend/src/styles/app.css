@@ -2,7 +2,9 @@
 @import './design-system/sherlock-tokens.css';
 
 /* CSS Reset - Modern Minimal Approach */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -28,7 +30,12 @@ body {
 }
 
 /* Typography System - Sherlock Homes */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-family-sans);
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-snug);
@@ -155,7 +162,9 @@ button:disabled {
 }
 
 /* Forms */
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: var(--font-family-mono);
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
@@ -168,11 +177,15 @@ input, textarea, select {
   width: 100%;
 }
 
-input:hover, textarea:hover, select:hover {
+input:hover,
+textarea:hover,
+select:hover {
   border-color: var(--color-gray-400);
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
   border-color: var(--color-ink);
 }
@@ -205,11 +218,21 @@ input:focus, textarea:focus, select:focus {
   justify-content: space-between;
 }
 
-.gap-2 { gap: var(--space-2); }
-.gap-3 { gap: var(--space-3); }
-.gap-4 { gap: var(--space-4); }
-.gap-6 { gap: var(--space-6); }
-.gap-8 { gap: var(--space-8); }
+.gap-2 {
+  gap: var(--space-2);
+}
+.gap-3 {
+  gap: var(--space-3);
+}
+.gap-4 {
+  gap: var(--space-4);
+}
+.gap-6 {
+  gap: var(--space-6);
+}
+.gap-8 {
+  gap: var(--space-8);
+}
 
 /* Loading States - Sherlock is investigating... */
 .skeleton {
@@ -219,8 +242,13 @@ input:focus, textarea:focus, select:focus {
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Fade In Animation */
@@ -245,18 +273,42 @@ input:focus, textarea:focus, select:focus {
   animation: fade-in var(--duration-slow) var(--ease-out) forwards;
 }
 
-.stagger-in > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-in > *:nth-child(2) { animation-delay: 30ms; }
-.stagger-in > *:nth-child(3) { animation-delay: 60ms; }
-.stagger-in > *:nth-child(4) { animation-delay: 90ms; }
-.stagger-in > *:nth-child(5) { animation-delay: 120ms; }
-.stagger-in > *:nth-child(6) { animation-delay: 150ms; }
-.stagger-in > *:nth-child(7) { animation-delay: 180ms; }
-.stagger-in > *:nth-child(8) { animation-delay: 210ms; }
-.stagger-in > *:nth-child(9) { animation-delay: 240ms; }
-.stagger-in > *:nth-child(10) { animation-delay: 270ms; }
-.stagger-in > *:nth-child(11) { animation-delay: 300ms; }
-.stagger-in > *:nth-child(12) { animation-delay: 330ms; }
+.stagger-in > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-in > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+.stagger-in > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+.stagger-in > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+.stagger-in > *:nth-child(5) {
+  animation-delay: 120ms;
+}
+.stagger-in > *:nth-child(6) {
+  animation-delay: 150ms;
+}
+.stagger-in > *:nth-child(7) {
+  animation-delay: 180ms;
+}
+.stagger-in > *:nth-child(8) {
+  animation-delay: 210ms;
+}
+.stagger-in > *:nth-child(9) {
+  animation-delay: 240ms;
+}
+.stagger-in > *:nth-child(10) {
+  animation-delay: 270ms;
+}
+.stagger-in > *:nth-child(11) {
+  animation-delay: 300ms;
+}
+.stagger-in > *:nth-child(12) {
+  animation-delay: 330ms;
+}
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
@@ -280,13 +332,19 @@ input:focus, textarea:focus, select:focus {
 
 /* Responsive Typography */
 @media (max-width: 640px) {
-  html { font-size: 15px; }
+  html {
+    font-size: 15px;
+  }
 }
 
 @media (min-width: 1280px) {
-  html { font-size: 17px; }
+  html {
+    font-size: 17px;
+  }
 }
 
 @media (min-width: 1536px) {
-  html { font-size: 18px; }
-} 
+  html {
+    font-size: 18px;
+  }
+}

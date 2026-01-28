@@ -33,7 +33,12 @@ const getScoreBadgeText = (score: number) => {
   return 'Fair Match'
 }
 
-export function ListingCard({ listing, index = 0, loading = false, showScore = false }: ListingCardProps) {
+export function ListingCard({
+  listing,
+  index = 0,
+  loading = false,
+  showScore = false,
+}: ListingCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
 
@@ -78,7 +83,11 @@ export function ListingCard({ listing, index = 0, loading = false, showScore = f
   }
 
   return (
-    <Link to={`/listings/${listing?.id}`} className="card-link" style={{ animationDelay: `${index * 30}ms` }}>
+    <Link
+      to={`/listings/${listing?.id}`}
+      className="card-link"
+      style={{ animationDelay: `${index * 30}ms` }}
+    >
       <article className="listing-card">
         <div className="photo-container">
           {!imageLoaded && <div className="image-placeholder skeleton"></div>}
@@ -121,7 +130,9 @@ export function ListingCard({ listing, index = 0, loading = false, showScore = f
               <>
                 <span className="detail-separator">·</span>
                 <span className="detail-item">
-                  <span className="detail-value">{new Intl.NumberFormat('en-US').format(listing.sqft)}</span>
+                  <span className="detail-value">
+                    {new Intl.NumberFormat('en-US').format(listing.sqft)}
+                  </span>
                   <span className="detail-label">sqft</span>
                 </span>
               </>
@@ -133,11 +144,11 @@ export function ListingCard({ listing, index = 0, loading = false, showScore = f
           {features.length > 0 && (
             <div className="features">
               {features.slice(0, 2).map((feature) => (
-                <span key={feature} className="feature-tag">{feature}</span>
+                <span key={feature} className="feature-tag">
+                  {feature}
+                </span>
               ))}
-              {features.length > 2 && (
-                <span className="feature-tag">+{features.length - 2}</span>
-              )}
+              {features.length > 2 && <span className="feature-tag">+{features.length - 2}</span>}
             </div>
           )}
         </div>

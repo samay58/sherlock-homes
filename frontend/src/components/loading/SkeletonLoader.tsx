@@ -7,10 +7,5 @@ interface SkeletonLoaderProps {
 }
 
 export function SkeletonLoader({ width, height, className = '' }: SkeletonLoaderProps) {
-  return (
-    <div
-      className={`skeleton ${className}`}
-      style={{ width, height }}
-    />
-  )
+  return <div className={`skeleton ${className}`} style={{ width, height }} />
 }

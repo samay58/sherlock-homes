@@ -50,7 +50,8 @@ scheduler: BackgroundScheduler | None = None
 @app.on_event("startup")
 def initial_setup():
     """Setup database and test user on startup."""
-    is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+    database_url = str(settings.DATABASE_URL)
+    is_sqlite = database_url.startswith("sqlite")
 
     # --- Database Setup ---
     if is_sqlite:

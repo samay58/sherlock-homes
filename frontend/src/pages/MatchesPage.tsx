@@ -302,7 +302,8 @@ export function MatchesPage() {
         <div className="empty-state">
           <p className="empty-message">No matches found for your current criteria.</p>
           <p className="empty-hint">
-            Try adjusting filters or visit <Link to="/criteria">My Criteria</Link> to update your preferences.
+            Try adjusting filters or visit <Link to="/criteria">My Criteria</Link> to update your
+            preferences.
           </p>
         </div>
       )}

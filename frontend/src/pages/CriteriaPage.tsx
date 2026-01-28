@@ -8,13 +8,13 @@ const focusNeighborhoods = [
   'Potrero Hill',
   'Cole Valley',
   'Haight-Ashbury',
-  'NoPa'
+  'NoPa',
 ]
 
 const recencyOptions = [
   { value: 'fresh', label: 'Fresh' },
   { value: 'balanced', label: 'Balanced' },
-  { value: 'hidden_gems', label: 'Hidden Gems' }
+  { value: 'hidden_gems', label: 'Hidden Gems' },
 ]
 
 export function CriteriaPage() {
@@ -131,7 +131,12 @@ export function CriteriaPage() {
                   type="number"
                   id="price_soft_max"
                   value={formData.price_soft_max || ''}
-                  onChange={(e) => setFormData({ ...formData, price_soft_max: e.target.value ? Number(e.target.value) : null })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_soft_max: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                   placeholder="3000000"
                 />
               </div>
@@ -141,7 +146,12 @@ export function CriteriaPage() {
                   type="number"
                   id="price_max"
                   value={formData.price_max || ''}
-                  onChange={(e) => setFormData({ ...formData, price_max: e.target.value ? Number(e.target.value) : null })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_max: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                   placeholder="3500000"
                 />
               </div>
@@ -196,7 +206,9 @@ export function CriteriaPage() {
                   onChange={(e) => setFormData({ ...formData, recency_mode: e.target.value })}
                 >
                   {recencyOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -214,7 +226,12 @@ export function CriteriaPage() {
                   min="0"
                   id="beds_min"
                   value={formData.beds_min || ''}
-                  onChange={(e) => setFormData({ ...formData, beds_min: e.target.value ? Number(e.target.value) : null })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      beds_min: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                   placeholder="Any"
                 />
               </div>
@@ -226,7 +243,12 @@ export function CriteriaPage() {
                   min="0"
                   id="baths_min"
                   value={formData.baths_min || ''}
-                  onChange={(e) => setFormData({ ...formData, baths_min: e.target.value ? Number(e.target.value) : null })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      baths_min: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                   placeholder="Any"
                 />
               </div>
@@ -238,7 +260,12 @@ export function CriteriaPage() {
                   min="0"
                   id="sqft_min"
                   value={formData.sqft_min || ''}
-                  onChange={(e) => setFormData({ ...formData, sqft_min: e.target.value ? Number(e.target.value) : null })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      sqft_min: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                   placeholder="Any"
                 />
               </div>
@@ -252,7 +279,9 @@ export function CriteriaPage() {
                 type="checkbox"
                 id="natural_light"
                 checked={formData.require_natural_light || false}
-                onChange={(e) => setFormData({ ...formData, require_natural_light: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, require_natural_light: e.target.checked })
+                }
               />
               <label htmlFor="natural_light">Strong natural light</label>
             </div>
@@ -261,7 +290,9 @@ export function CriteriaPage() {
                 type="checkbox"
                 id="outdoor_space"
                 checked={formData.require_outdoor_space || false}
-                onChange={(e) => setFormData({ ...formData, require_outdoor_space: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, require_outdoor_space: e.target.checked })
+                }
               />
               <label htmlFor="outdoor_space">Outdoor space</label>
             </div>

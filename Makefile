@@ -84,7 +84,7 @@ fmt:
 
 # Linting
 lint:
-	pylint app/
+	@if [ -x .venv/bin/pylint ]; then PYLINTHOME=.pylint-cache .venv/bin/pylint app/; else PYLINTHOME=.pylint-cache pylint app/; fi
 	cd frontend && npm run lint
 
 # Install dependencies

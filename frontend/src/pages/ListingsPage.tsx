@@ -9,9 +9,7 @@ export function ListingsPage() {
     <section className="listings-page">
       <h2>Browse Listings</h2>
 
-      {error && (
-        <p className="error">Error loading listings: {error.message}</p>
-      )}
+      {error && <p className="error">Error loading listings: {error.message}</p>}
 
       {isLoading && (
         <div className="listings-grid">
@@ -29,9 +27,7 @@ export function ListingsPage() {
         </div>
       )}
 
-      {!isLoading && (!listings || listings.length === 0) && !error && (
-        <p>No listings found.</p>
-      )}
+      {!isLoading && (!listings || listings.length === 0) && !error && <p>No listings found.</p>}
     </section>
   )
 }

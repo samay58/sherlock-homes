@@ -164,7 +164,7 @@
   cursor: pointer;
 }
 
-.score-filter input[type="range"] {
+.score-filter input[type='range'] {
   width: 80px;
   accent-color: var(--color-ink, #000);
 }
@@ -230,7 +230,7 @@
 }
 
 .empty-hint a {
-  color: var(--color-accent, #FF6600);
+  color: var(--color-accent, #ff6600);
   text-decoration: none;
 }
 

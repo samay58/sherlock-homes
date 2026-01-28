@@ -1,0 +1,9 @@
+[MASTER]
+init-hook=import sys; sys.path.append(".")
+ignore-paths=app/scripts/.*
+
+[MESSAGES CONTROL]
+disable=C,R,W,import-error
+
+[FORMAT]
+max-line-length=120

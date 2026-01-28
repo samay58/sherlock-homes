@@ -20,8 +20,8 @@ export function HomePage() {
         <p className="hero-tagline">Insight over inventory.</p>
 
         <p className="hero-description">
-          Zillow shows you what's for sale. We show you what's worth your time.
-          AI-powered matching that understands light, quiet, and vibe.
+          Zillow shows you what's for sale. We show you what's worth your time. AI-powered matching
+          that understands light, quiet, and vibe.
         </p>
 
         <div className="hero-stats">

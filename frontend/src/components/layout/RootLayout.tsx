@@ -22,16 +22,26 @@ export function RootLayout({ children }: RootLayoutProps) {
             <span className="brand-name">Sherlock Homes</span>
           </Link>
           <ul className="nav-menu">
-            <li><Link to="/listings" className="nav-link">Browse</Link></li>
-            <li><Link to="/matches" className="nav-link">Matches</Link></li>
-            <li><Link to="/criteria" className="nav-link">Criteria</Link></li>
+            <li>
+              <Link to="/listings" className="nav-link">
+                Browse
+              </Link>
+            </li>
+            <li>
+              <Link to="/matches" className="nav-link">
+                Matches
+              </Link>
+            </li>
+            <li>
+              <Link to="/criteria" className="nav-link">
+                Criteria
+              </Link>
+            </li>
           </ul>
         </nav>
       </header>
 
-      <main className={mounted ? 'mounted' : ''}>
-        {children}
-      </main>
+      <main className={mounted ? 'mounted' : ''}>{children}</main>
 
       <footer className="sherlock-footer">
         <span className="footer-brand">Sherlock Homes</span>

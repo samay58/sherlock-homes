@@ -172,10 +172,10 @@ alembic downgrade -1
 - Type hints for all functions
 - Docstrings for public APIs
 
-### JavaScript/Svelte
+### TypeScript/React
 - Prettier for formatting
 - ESLint for linting
-- JSDoc comments for utilities
+- TypeScript for type safety
 
 ## Testing
 
@@ -226,30 +226,30 @@ async def list_examples(db: Session = Depends(get_db)):
 ## Frontend Development
 
 ### Component Structure
-```svelte
-<script>
-  import { onMount } from 'svelte';
-  
-  export let prop;
-  
+```tsx
+import { useState, useEffect } from 'react'
+import './Component.css'
+
+interface Props {
+  prop: string
+}
+
+export function Component({ prop }: Props) {
   // Component logic
-</script>
 
-<!-- Template -->
-<div class="component">
-  <!-- Content -->
-</div>
-
-<style>
-  /* Scoped styles */
-</style>
+  return (
+    <div className="component">
+      {/* Content */}
+    </div>
+  )
+}
 ```
 
 ### Adding Routes
-1. Create folder in `src/routes/`
-2. Add `+page.svelte` for the page
-3. Add `+page.js` for data loading
-4. Update navigation if needed
+1. Create component in `src/pages/`
+2. Add route in `src/App.tsx`
+3. Create React Query hook in `src/hooks/` if needed
+4. Update navigation in RootLayout if needed
 
 ## Debugging
 
@@ -267,7 +267,7 @@ debugpy.wait_for_client()
 ### Frontend
 - Use browser DevTools
 - Add `console.log()` statements
-- Use Svelte DevTools extension
+- Use React Developer Tools extension
 
 ### Docker Logs
 ```bash
@@ -354,6 +354,8 @@ alembic stamp head
 ## Resources
 
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [SvelteKit Documentation](https://kit.svelte.dev/)
+- [React Documentation](https://react.dev/)
+- [React Query Documentation](https://tanstack.com/query/latest)
+- [Vite Documentation](https://vite.dev/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Docker Documentation](https://docs.docker.com/)

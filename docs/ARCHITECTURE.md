@@ -39,24 +39,33 @@ app/
 3. **Async Operations**: Leverages Python's async/await for efficient I/O operations
 4. **Type Safety**: Uses Pydantic models for request/response validation
 
-### Frontend (SvelteKit)
+### Frontend (Vite + React)
 
-The frontend uses SvelteKit for server-side rendering and optimal performance.
+The frontend uses Vite + React 18 with TypeScript for fast development and optimal performance.
 
 ```
 frontend/src/
+├── components/
+│   ├── cards/          # DossierCard, ListingCard
+│   ├── filters/        # ToggleChip, VibeSelector
+│   ├── gallery/        # ImageGallery
+│   ├── layout/         # RootLayout
+│   └── loading/        # SkeletonLoader
+├── hooks/              # React Query hooks
 ├── lib/
-│   ├── components/     # Reusable UI components
-│   ├── design-system/  # Design tokens and system
-│   ├── api.js          # API client
-│   └── utils.js        # Helper functions
-├── routes/
-│   ├── +layout.svelte  # Global layout
-│   ├── +page.svelte    # Home page
-│   ├── listings/       # Listing pages
-│   ├── matches/        # Match results
-│   └── criteria/       # Criteria management
-└── app.css             # Global styles
+│   ├── api.ts          # API client
+│   └── types.ts        # TypeScript interfaces
+├── pages/              # Route components
+│   ├── HomePage.tsx
+│   ├── ListingsPage.tsx
+│   ├── ListingDetailPage.tsx
+│   ├── MatchesPage.tsx
+│   └── CriteriaPage.tsx
+├── styles/
+│   ├── app.css         # Global styles
+│   └── design-system/  # Design tokens
+├── App.tsx             # Router setup
+└── main.tsx            # Entry point
 ```
 
 #### Design System
@@ -139,7 +148,7 @@ services:
     - Health checks
   
   frontend:
-    - SvelteKit application
+    - Vite + React application
     - Hot module replacement
     - Static asset serving
   

@@ -70,7 +70,7 @@ sherlock-homes/
 │   │   ├── geospatial.py        # Tranquility calculations
 │   │   └── visual_scoring.py    # Claude Vision
 │   └── routes/             # API endpoints
-├── frontend/               # SvelteKit app
+├── frontend/               # Vite + React app
 ├── scripts/                # Data tools
 ├── run_local.sh            # Start API
 ├── run_frontend.sh         # Start frontend
@@ -120,7 +120,7 @@ Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`
 ## Stack
 
 - **Backend**: FastAPI, SQLAlchemy, Pydantic
-- **Frontend**: SvelteKit, Svelte 5
+- **Frontend**: Vite, React 18, TypeScript, React Query
 - **Database**: SQLite local, PostgreSQL in Docker
 - **AI**: Claude Vision
 

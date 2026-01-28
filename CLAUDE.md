@@ -60,12 +60,20 @@ Multi-source ingestion with a registry pattern:
 4. Upserts to DB, triggers alerts
 
 ### Frontend (`frontend/`)
-SvelteKit with Svelte 5. Key routes:
+Vite + React 18 with TypeScript. Key routes (via React Router):
 - `/matches` - Scored listing feed with DossierCard components
-- `/listings/[id]` - Detail view with ImageGallery, feature scores
+- `/listings/:id` - Detail view with ImageGallery, feature scores
 - `/criteria` - Buyer preference configuration
 
-API calls use `src/lib/api.ts` which handles SSR/client fetch differences.
+Data fetching uses React Query hooks in `src/hooks/`. API wrapper in `src/lib/api.ts`.
+
+**Key directories:**
+- `src/components/` - Reusable UI (cards, filters, gallery, layout, loading)
+- `src/pages/` - Route components
+- `src/hooks/` - React Query hooks (useMatches, useListings, useCriteria, useFeedback)
+- `src/styles/` - CSS including design system tokens
+
+Agentation toolbar enabled in dev mode for visual feedback.
 
 ### Data Flow
 ```

@@ -8,7 +8,7 @@ active: true
 
 # Hard filters (binary pass/fail before scoring)
 hard_filters:
-  price_max: 3500000
+  price_max: 4000000
   bedrooms_min: 3
   bathrooms_min: 2
   sqft_min: 1600

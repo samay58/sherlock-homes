@@ -15,6 +15,8 @@
 - Enhanced UI with modern design principles
 - Updated global styles with typography scale
 - Improved component animations and transitions
+- Migrated frontend from SvelteKit to Vite + React
+- Aligned vision-scoring docs with OpenAI
 
 ## [0.2.0] - 2024-05-07
 

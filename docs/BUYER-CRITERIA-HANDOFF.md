@@ -12,7 +12,7 @@ This document captures the complete qualitative criteria extracted through a str
 **Use this to:**
 - Configure the PropertyMatcher scoring weights
 - Build NLP keyword extraction rules
-- Guide Claude Vision photo analysis
+- Guide OpenAI Vision photo analysis
 - Set up alert thresholds and triggers
 
 ---
@@ -344,7 +344,7 @@ LOCATION_PENALTIES = {
 
 ---
 
-## Visual Scoring Guidance (Claude Vision)
+## Visual Scoring Guidance (OpenAI Vision)
 
 ### Positive Visual Signals
 ```python
@@ -502,7 +502,7 @@ Source documents for this handoff:
 - [ ] Add hard filters to ingestion pipeline
 - [ ] Implement NLP keyword extraction for positive/negative signals
 - [ ] Add street-level scoring to geospatial service
-- [ ] Configure Claude Vision prompts with visual signals
+- [ ] Configure OpenAI Vision prompts with visual signals
 - [ ] Set up alert thresholds (76+ immediate, 45+ DOM digest)
 - [ ] Build explainability payload with top 3 positives + 1 tradeoff
 - [ ] Add soft cap penalties (price > $2.5M, HOA > $800)

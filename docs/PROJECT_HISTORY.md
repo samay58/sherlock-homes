@@ -2,17 +2,19 @@
 
 **Project Goal:** A real estate intelligence platform for matching users in San Francisco with listings based on quantitative (price, size, beds/baths) and qualitative (natural light, high ceilings, outdoor space, etc.) criteria.
 
-**Core Technologies:** FastAPI (Python), SvelteKit (JS/TS), PostgreSQL, Docker, ZenRows (for Zillow data).
+**Core Technologies:** FastAPI (Python), Vite + React (TypeScript), PostgreSQL, Docker, ZenRows (for Zillow data).
+
+**Frontend Migration:** SvelteKit → Vite + React (2026-01-27).
 
 ---
 
-**Current Focus:** Build the SvelteKit Frontend UI to interact with the core matching backend.
+**Current Focus:** Polish the Vite + React UI and matching intelligence.
 
 ---
 
 ## Phase 1: Foundation & Data Ingestion (Largely Complete)
 
-- [x] **Setup:** Project structure, FastAPI basics, SvelteKit basics, Docker Compose.
+- [x] **Setup:** Project structure, FastAPI basics, frontend basics, Docker Compose.
 - [x] **Database:** Initial Models (`User`, `Criteria`, `PropertyListing`), Alembic migrations setup.
 - [x] **Data Pipeline:**
   - [x] Provider Abstraction (`app/providers/base.py`).
@@ -35,28 +37,22 @@
 - [ ] User Authentication & Authorization (JWT, Hashing, Endpoints, Dependencies)
 - [ ] Full Criteria Management API (CRUD, Scoping, Active flag)
 
-## Phase 4: Frontend User Interface (SvelteKit) (Complete)
+## Phase 4: Frontend User Interface (Vite + React) (Complete)
 
 - [x] **Setup & Base Layout:**
-  - [x] Review/Create basic global layout (`src/routes/+layout.svelte`) with navigation.
-  - [x] Basic global styling setup (CSS or Tailwind).
+  - [x] Vite + React project with navigation and global styling.
 - [x] **API Client/Utility:**
-  - [x] Create utility (`src/lib/api.js` or similar) for backend requests.
+  - [x] API utility in `src/lib/api.ts` for backend requests.
 - [x] **Listing Display Components:**
-  - [x] Create `ListingCard.svelte` component (`src/lib/components/`).
+  - [x] Listing card component and shared UI primitives.
 - [x] **Browse Listings Page:**
-  - [x] Create `/listings/+page.svelte`.
-  - [x] Fetch and display paginated listings using `ListingCard`.
+  - [x] Listings page with pagination and filters.
 - [x] **Listing Detail Page:**
-  - [x] Create Listing Detail page (`src/routes/listings/[id]/+page.svelte`) and load function.
+  - [x] Listing detail page with full intel.
 - [x] **Criteria Management UI (Minimal for Test User):**
-  - [x] Create `/criteria/+page.svelte`.
-  - [x] Fetch criteria from `GET /criteria/test-user`.
-  - [x] Implement form to display and update criteria via `POST /criteria/test-user`.
+  - [x] Criteria page tied to `GET/POST /criteria/test-user`.
 - [x] **Matching Results UI:**
-  - [x] Create `/matches/+page.svelte`.
-  - [x] Fetch results from `GET /matches/test-user`.
-  - [x] Display results using `ListingCard`.
+  - [x] Matches page with explainability and sorting.
 - [ ] **(Deferred UI):** Placeholder/Non-functional Login/Register pages.
 
 ## Phase 5: Refinement & Deployment (Deferred)

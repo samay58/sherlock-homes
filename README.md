@@ -2,7 +2,7 @@
 
 SF real estate is a nightmare. This makes it slightly less of one.
 
-Sherlock Homes ranks listings against your criteria using NLP, geospatial signals, and Claude Vision. Because staring at 47 identical "sun-drenched" listings should not be a full-time job.
+Sherlock Homes ranks listings against your criteria using NLP, geospatial signals, and OpenAI Vision. Because staring at 47 identical "sun-drenched" listings should not be a full-time job.
 
 ## The Problem
 
@@ -31,7 +31,7 @@ Python 3.11/3.12 recommended. If `uv` is installed, `./run_local.sh` will use it
 Reads descriptions like a suspicious buyer. Extracts 32+ keywords across categories: natural light, views, outdoor space, high ceilings, parking. Flags the bad stuff too. "Cozy" usually means small.
 
 **Visual Scoring**
-Claude Vision looks at listing photos. Rates modernity, condition, brightness, staging, cleanliness. Catches water stains, tired fixtures, and the telltale signs of a flipper who watched too much HGTV.
+OpenAI Vision looks at listing photos. Rates modernity, condition, brightness, staging, cleanliness. Catches water stains, tired fixtures, and the telltale signs of a flipper who watched too much HGTV.
 
 **Tranquility Score**
 How close is this place to things that make noise? Freeways, busy streets, fire stations. No API calls. Just local SF data and geometry. Some of us have meetings.
@@ -68,7 +68,7 @@ sherlock-homes/
 │   │   ├── nlp.py               # Keyword extraction
 │   │   ├── advanced_matching.py # Scoring engine
 │   │   ├── geospatial.py        # Tranquility calculations
-│   │   └── visual_scoring.py    # Claude Vision
+│   │   └── visual_scoring.py    # OpenAI Vision
 │   └── routes/             # API endpoints
 ├── frontend/               # Vite + React app
 ├── scripts/                # Data tools
@@ -122,6 +122,6 @@ Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`
 - **Backend**: FastAPI, SQLAlchemy, Pydantic
 - **Frontend**: Vite, React 18, TypeScript, React Query
 - **Database**: SQLite local, PostgreSQL in Docker
-- **AI**: Claude Vision
+- **AI**: OpenAI Vision
 
 MIT licensed. Do whatever.

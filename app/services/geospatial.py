@@ -220,15 +220,21 @@ def distance_to_polyline(
 # =============================================================================
 
 
+def _is_in_sf(lat: float, lon: float) -> bool:
+    """Check if coordinates fall within the San Francisco bounding box."""
+    return 37.707 <= lat <= 37.83 and -122.515 <= lon <= -122.355
+
+
 def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> Dict:
     """
     Calculate a Tranquility Score (0-100) based on proximity to noise sources.
 
-    Higher score = quieter location.
+    Higher score = quieter location. Currently only covers SF noise sources.
+    Returns None score for locations outside SF.
 
     Returns:
         {
-            "score": int (0-100),
+            "score": int (0-100) or None,
             "factors": {
                 "nearest_busy_street": {"name": str, "distance_m": float},
                 "nearest_freeway": {"name": str, "distance_m": float},
@@ -243,6 +249,14 @@ def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> D
             "score": 50,  # Neutral if no data
             "factors": {},
             "warnings": ["No location data available"],
+            "confidence": "low",
+        }
+
+    if not _is_in_sf(lat, lon):
+        return {
+            "score": None,
+            "factors": {},
+            "warnings": ["Outside SF coverage"],
             "confidence": "low",
         }
 

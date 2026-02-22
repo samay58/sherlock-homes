@@ -24,6 +24,36 @@ ZILLOW_PROPERTY_DETAIL_ENDPOINT = (
 API_KEY_ENV = "ZENROWS_API_KEY"
 DEFAULT_LOCATION = "san-francisco-ca"
 
+# Map Zillow location slugs to canonical neighborhood names
+SLUG_TO_NEIGHBORHOOD = {
+    "williamsburg-brooklyn-new-york-ny": "Williamsburg",
+    "north-williamsburg-brooklyn-new-york-ny": "North Williamsburg",
+    "south-williamsburg-brooklyn-new-york-ny": "South Williamsburg",
+    "east-williamsburg-brooklyn-new-york-ny": "East Williamsburg",
+    "greenpoint-brooklyn-new-york-ny": "Greenpoint",
+    "dumbo-brooklyn-new-york-ny": "DUMBO",
+    "brooklyn-heights-brooklyn-new-york-ny": "Brooklyn Heights",
+    "cobble-hill-brooklyn-new-york-ny": "Cobble Hill",
+    "boerum-hill-brooklyn-new-york-ny": "Boerum Hill",
+    "carroll-gardens-brooklyn-new-york-ny": "Carroll Gardens",
+    "fort-greene-brooklyn-new-york-ny": "Fort Greene",
+    "clinton-hill-brooklyn-new-york-ny": "Clinton Hill",
+    "park-slope-brooklyn-new-york-ny": "Park Slope",
+    "prospect-heights-brooklyn-new-york-ny": "Prospect Heights",
+    "west-village-new-york-ny": "West Village",
+    "greenwich-village-new-york-ny": "Greenwich Village",
+    "soho-new-york-ny": "SoHo",
+    "noho-new-york-ny": "NoHo",
+    "nolita-new-york-ny": "Nolita",
+    "flatiron-new-york-ny": "Flatiron",
+    "nomad-new-york-ny": "NoMad",
+    "gramercy-park-new-york-ny": "Gramercy Park",
+    "gramercy-new-york-ny": "Gramercy",
+    "chelsea-new-york-ny": "Chelsea",
+    "east-village-new-york-ny": "East Village",
+    "lower-east-side-new-york-ny": "Lower East Side",
+}
+
 
 class ZillowProvider(BaseProvider):
     """Fetch Zillow search results via ZenRows anti-bot service."""
@@ -44,10 +74,16 @@ class ZillowProvider(BaseProvider):
             raise RuntimeError("ZENROWS_API_KEY env var required for ZillowProvider")
 
         self.api_key = api_key
-        # Use SEARCH_LOCATION from settings, fall back to default
-        self.location_slug = (
-            location_slug if location_slug is not None else settings.SEARCH_LOCATION
-        )
+        # Support multi-neighborhood search via SEARCH_LOCATIONS (comma-separated)
+        if location_slug is not None:
+            self.location_slugs = [location_slug]
+        elif getattr(settings, "SEARCH_LOCATIONS", ""):
+            self.location_slugs = [
+                s.strip() for s in settings.SEARCH_LOCATIONS.split(",") if s.strip()
+            ]
+        else:
+            self.location_slugs = [settings.SEARCH_LOCATION]
+        self.location_slug = self.location_slugs[0]  # default for single-location calls
         # Use settings defaults if not provided
         self.price_min = (
             price_min if price_min is not None else settings.SEARCH_PRICE_MIN
@@ -60,7 +96,11 @@ class ZillowProvider(BaseProvider):
             baths_min if baths_min is not None else settings.SEARCH_BATHS_MIN
         )
         self.sqft_min = sqft_min if sqft_min is not None else settings.SEARCH_SQFT_MIN
-        self.property_types = property_types or ["single-family", "condo", "townhouse"]
+        self.search_mode = getattr(settings, "SEARCH_MODE", "buy").lower()
+        if self.search_mode == "rent":
+            self.property_types = property_types or ["apartment", "condo", "townhouse"]
+        else:
+            self.property_types = property_types or ["single-family", "condo", "townhouse"]
         self.client = httpx.AsyncClient(timeout=settings.ZENROWS_TIMEOUT_SECONDS)
         self.sem = asyncio.Semaphore(concurrency)
 
@@ -124,6 +164,10 @@ class ZillowProvider(BaseProvider):
     def _build_search_url(self, page: int = 1, keyword: Optional[str] = None) -> str:
         base = f"https://www.zillow.com/{self.location_slug}/"
 
+        # Add rental path segment if in rent mode
+        if self.search_mode == "rent":
+            base += "rentals/"
+
         # Build dynamic filters based on initialized parameters
         filters = []
 
@@ -174,12 +218,23 @@ class ZillowProvider(BaseProvider):
             logger.debug("Bad JSON from ZenRows: %s", exc)
             return []
 
+        # Resolve canonical neighborhood from the search slug
+        search_neighborhood = SLUG_TO_NEIGHBORHOOD.get(self.location_slug)
+
         items: List[Dict[str, Any]] = []
         for res in list_results:
             price = res.get("property_price") or res.get("price")
             identifier = res.get("property_id") or res.get("zpid")
             if not identifier:
                 continue
+            # Use the search-slug neighborhood if the API only returns a generic borough
+            raw_neighborhood = res.get("neighborhood") or res.get("city")
+            if search_neighborhood and (
+                not raw_neighborhood
+                or raw_neighborhood.lower() in ("brooklyn", "new york", "manhattan", "queens")
+            ):
+                raw_neighborhood = search_neighborhood
+
             items.append(
                 {
                     "source": "zillow",
@@ -195,6 +250,7 @@ class ZillowProvider(BaseProvider):
                     "url": res.get("property_url"),
                     "listing_status": res.get("property_status"),
                     "property_type": res.get("property_type"),
+                    "neighborhood": raw_neighborhood,
                     "flags": {},
                     "photos": (
                         [res.get("property_image")] if res.get("property_image") else []
@@ -281,6 +337,29 @@ class ZillowProvider(BaseProvider):
     async def close(self):
         await self.client.aclose()
 
+    async def search_all_locations(self) -> List[Dict[str, Any]]:
+        """Search across all configured location slugs, returning combined results."""
+        all_items: List[Dict[str, Any]] = []
+        for slug in self.location_slugs:
+            self.location_slug = slug
+            page = 1
+            max_pages = 5  # cap per neighborhood to avoid API abuse
+            while page <= max_pages:
+                items = await self.search(None, page)
+                all_items.extend(items)
+                has_more = getattr(self, "_next_exists", False)
+                if not has_more or not items:
+                    break
+                page += 1
+                await asyncio.sleep(1.5)
+            logger.info("Fetched %d items from %s (%d pages)", len(all_items), slug, page)
+        return all_items
+
     async def search_page(self, page: int = 1, keyword: Optional[str] = None):
+        # For multi-location, use search_all_locations instead
+        if len(self.location_slugs) > 1 and page == 1:
+            items = await self.search_all_locations()
+            return items, False  # All done in one call
+
         items = await self.search(None, page, keyword)
         return items, getattr(self, "_next_exists", False)

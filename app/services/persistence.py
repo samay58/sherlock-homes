@@ -247,6 +247,11 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                     "hoa_issues": "has_hoa_issues_keywords",
                     "north_facing_only": "is_north_facing_only",
                     "basement_unit": "is_basement_unit",
+                    "pet_friendly": "is_pet_friendly",
+                    "no_pets": "is_no_pets",
+                    "gym_fitness": "has_gym_keywords",
+                    "doorman_concierge": "has_doorman_keywords",
+                    "building_quality": "has_building_quality_keywords",
                 }
 
                 seen_at = datetime.now(timezone.utc)

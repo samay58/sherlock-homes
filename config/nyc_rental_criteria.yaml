@@ -1,0 +1,365 @@
+# Sherlock-Homes Criteria Configuration
+# NYC Rental Search for Samay + Kamya
+# Target: April/May 2026 move-in, 2-year lease
+# Last updated: 2026-02-21
+
+user_id: "samay-kamya"
+profile_name: "NYC Rental - Best Life Search"
+active: true
+
+# Hard filters (binary pass/fail before scoring)
+hard_filters:
+  price_max: 9500       # Monthly rent ceiling
+  bedrooms_min: 2
+  bathrooms_min: 2
+  sqft_min: 550
+  neighborhoods:
+    # Brooklyn - primary targets
+    - "Williamsburg"
+    - "North Williamsburg"
+    - "South Williamsburg"
+    - "East Williamsburg"
+    - "Greenpoint"
+    - "DUMBO"
+    - "Brooklyn Heights"
+    - "Cobble Hill"
+    - "Boerum Hill"
+    - "Carroll Gardens"
+    - "Fort Greene"
+    - "Clinton Hill"
+    - "Park Slope"
+    - "Prospect Heights"
+    # Manhattan - selective
+    - "West Village"
+    - "Greenwich Village"
+    - "SoHo"
+    - "NoHo"
+    - "Nolita"
+    - "Flatiron"
+    - "NoMad"
+    - "Gramercy"
+    - "Gramercy Park"
+    - "Chelsea"
+    - "East Village"
+    - "Lower East Side"
+
+# Soft caps (penalty above, not disqualification)
+soft_caps:
+  price_soft: 7500      # Ideal monthly ceiling, above this needs to be worth it
+
+# Weighted scoring criteria
+weights:
+  # Tier 1: Make or break (total: 57)
+  natural_light: 15       # Non-negotiable, your top priority
+  pet_friendly: 14        # Must-have for you two
+  character_soul: 10      # Not a soulless box
+  location_quiet: 10      # Livable but not dead
+  kitchen_quality: 8      # Cooking together matters
+
+  # Tier 2: Best life enablers (total: 40)
+  gym_fitness: 12          # In-building or walkable gym access
+  outdoor_space: 8        # Rooftop, terrace, balcony - huge NYC plus
+  layout_intelligence: 8  # Wide, expansive feel - not narrow multi-floor
+  high_ceilings: 6        # Breathability, not a low-ceiling cave
+  in_unit_laundry: 5      # Game changer in NYC
+  views: 3                # Nice to have
+
+  # Tier 3: Practical (total: 16)
+  building_quality: 6     # Not a gross high-rise, well-maintained
+  storage: 4              # Closets matter in NYC
+  move_in_ready: 4        # Not a project
+  central_hvac: 2         # Central air vs window units
+  dishwasher: 2           # Basic modern kitchen
+
+# NLP keyword scoring (boost/penalize based on description)
+nlp_signals:
+  positive:
+    light:
+      weight: 1.5
+      keywords:
+        - "sun-filled"
+        - "natural light"
+        - "bright"
+        - "south-facing"
+        - "corner unit"
+        - "light-filled"
+        - "sunny"
+        - "floor-to-ceiling windows"
+        - "oversized windows"
+        - "wall of windows"
+        - "panoramic"
+        - "airy"
+        - "light and airy"
+
+    pet:
+      weight: 1.8
+      keywords:
+        - "pet friendly"
+        - "pet-friendly"
+        - "pets allowed"
+        - "dogs allowed"
+        - "dog friendly"
+        - "cat friendly"
+        - "pets welcome"
+        - "no pet restrictions"
+        - "pet policy"
+        - "dog run"
+        - "pet spa"
+        - "pet grooming"
+
+    gym:
+      weight: 1.4
+      keywords:
+        - "fitness center"
+        - "gym"
+        - "fitness room"
+        - "state-of-the-art fitness"
+        - "yoga studio"
+        - "peloton"
+        - "weight room"
+        - "exercise room"
+        - "equinox"
+        - "health club"
+        - "near gym"
+        - "gym nearby"
+        - "close to gym"
+        - "steps from gym"
+        - "block from gym"
+        - "blocks from equinox"
+        - "walkable to gym"
+
+    outdoor:
+      weight: 1.3
+      keywords:
+        - "rooftop"
+        - "roof deck"
+        - "terrace"
+        - "private terrace"
+        - "balcony"
+        - "courtyard"
+        - "garden"
+        - "outdoor space"
+        - "rooftop lounge"
+        - "sundeck"
+
+    character:
+      weight: 1.3
+      keywords:
+        - "loft"
+        - "exposed brick"
+        - "hardwood floors"
+        - "original details"
+        - "prewar"
+        - "pre-war"
+        - "brownstone"
+        - "converted warehouse"
+        - "high ceilings"
+        - "industrial"
+        - "charming"
+        - "character"
+        - "unique"
+        - "one-of-a-kind"
+        - "townhouse"
+        - "duplex"
+
+    kitchen:
+      weight: 1.2
+      keywords:
+        - "chef's kitchen"
+        - "open kitchen"
+        - "renovated kitchen"
+        - "stainless steel"
+        - "island"
+        - "breakfast bar"
+        - "eat-in kitchen"
+        - "gas range"
+        - "dishwasher"
+        - "marble counters"
+        - "quartz counters"
+
+    amenities:
+      weight: 1.1
+      keywords:
+        - "doorman"
+        - "concierge"
+        - "package room"
+        - "in-unit laundry"
+        - "washer/dryer"
+        - "washer dryer"
+        - "in unit washer"
+        - "laundry in unit"
+        - "central air"
+        - "central AC"
+        - "bike storage"
+        - "storage unit"
+        - "elevator"
+        - "virtual doorman"
+        - "live-in super"
+
+    quality:
+      weight: 1.2
+      keywords:
+        - "luxury"
+        - "boutique building"
+        - "well-maintained"
+        - "recently renovated"
+        - "designer finishes"
+        - "spa-like"
+        - "modern"
+        - "upscale"
+        - "premium"
+
+  negative:
+    gross_highrise:
+      weight: 0.5
+      keywords:
+        - "high-rise"
+        - "high rise"
+        - "tower"
+        - "40+ stories"
+        - "50+ stories"
+
+    dark:
+      weight: 0.5
+      keywords:
+        - "cozy"
+        - "intimate"
+        - "north-facing"
+        - "lower level"
+        - "garden level"
+        - "basement"
+
+    noise:
+      weight: 0.6
+      keywords:
+        - "steps from bars"
+        - "nightlife"
+        - "vibrant nightlife"
+        - "bustling"
+        - "busy intersection"
+        - "above restaurant"
+        - "above bar"
+        - "commercial ground floor"
+
+    condition:
+      weight: 0.5
+      keywords:
+        - "needs work"
+        - "as-is"
+        - "bring your vision"
+        - "TLC needed"
+        - "fixer"
+
+    no_pets:
+      weight: 0.0  # Instant disqualifier
+      keywords:
+        - "no pets"
+        - "no pet"
+        - "no-pet"
+        - "no dogs"
+        - "no animals"
+        - "pet-free"
+        - "no pets allowed"
+        - "no-pet policy"
+
+    railroad:
+      weight: 0.4
+      keywords:
+        - "railroad"
+        - "railroad apartment"
+        - "pass-through"
+        - "walk-through bedroom"
+
+    narrow_layout:
+      weight: 0.5
+      keywords:
+        - "narrow"
+        - "narrow hallway"
+        - "tight layout"
+        - "cramped"
+        - "compact layout"
+        - "cozy layout"
+
+# Street-level scoring adjustments (NYC specific)
+location_modifiers:
+  boost_streets:
+    # Williamsburg gems
+    - "Berry St"
+    - "N 6th St"
+    - "N 7th St"
+    - "Kent Ave"
+    - "Wythe Ave"
+    # Brooklyn Heights
+    - "Montague St"
+    - "Hicks St"
+    - "Henry St"
+    # West Village
+    - "Perry St"
+    - "Charles St"
+    - "Bank St"
+    - "Bleecker St"
+    - "Commerce St"
+    - "Grove St"
+    # Flatiron/NoMad
+    - "Madison Ave"
+    - "Park Ave South"
+    - "Lexington Ave"
+
+  penalize_streets:
+    - "Broadway"       # Can be loud
+    - "Canal St"       # Always chaos
+    - "Houston St"     # Major thoroughfare
+    - "Bowery"
+    - "Delancey St"
+    - "FDR Drive"
+    - "BQE"
+
+  penalize_conditions:
+    - first_floor_busy_street
+    - adjacent_to_bar
+    - on_major_thoroughfare
+    - above_restaurant
+
+# Change tracking alerts
+alerts:
+  new_listing:
+    score_threshold: 76
+    notify: immediate
+
+  price_drop:
+    percent_threshold: 3
+    notify: immediate
+
+  back_on_market:
+    notify: immediate
+
+# Visual scoring preferences (for Claude Vision)
+visual_preferences:
+  boost:
+    - "natural light visible in photos"
+    - "real windows not rendered"
+    - "open floor plan"
+    - "high ceilings visible"
+    - "exposed brick or original details"
+    - "clean modern finishes"
+    - "outdoor space or rooftop"
+
+  penalize:
+    - "all lights on during day (hiding darkness)"
+    - "ultra-wide lens distortion"
+    - "heavily staged"
+    - "gray/beige color palette throughout"
+    - "visible deferred maintenance"
+    - "cramped room layouts"
+    - "drop ceilings"
+    - "window AC units everywhere"
+
+# Explainability preferences
+explain:
+  top_positives: 3
+  key_tradeoff: 1
+  include_signals:
+    - tranquility_score
+    - light_potential
+    - visual_quality
+    - nlp_character_score

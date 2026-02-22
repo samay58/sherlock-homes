@@ -117,9 +117,17 @@ async def _enrich_summaries(
                 detail_calls_made += 1
                 await asyncio.sleep(0.5)
 
+                # Preserve the search-tagged neighborhood over generic API response
+                saved_neighborhood = listing_to_add.get("neighborhood")
                 listing_to_add.update(
                     {k: v for k, v in details.items() if v is not None}
                 )
+                # Restore specific neighborhood if detail response gave a generic one
+                if saved_neighborhood and listing_to_add.get("neighborhood") != saved_neighborhood:
+                    detail_hood = (listing_to_add.get("neighborhood") or "").lower()
+                    generic = {"brooklyn", "manhattan", "new york", "queens", "bronx", "staten island"}
+                    if detail_hood in generic:
+                        listing_to_add["neighborhood"] = saved_neighborhood
 
                 if "photos" in details:
                     listing_to_add["photos"] = details.get("photos") or []
@@ -223,11 +231,38 @@ async def run_ingestion_job():
                     )
 
                 if provider_summaries:
+                    # Deduplicate summaries before detail calls
+                    seen_ids = set()
+                    unique_summaries = []
+                    for s in provider_summaries:
+                        key = (s.get("source"), s.get("source_listing_id"))
+                        if key not in seen_ids:
+                            seen_ids.add(key)
+                            unique_summaries.append(s)
+                    dupes_removed = len(provider_summaries) - len(unique_summaries)
+                    if dupes_removed:
+                        logger.info(
+                            "Deduplicated %d/%d summaries for %s (%d unique)",
+                            dupes_removed,
+                            len(provider_summaries),
+                            spec.key,
+                            len(unique_summaries),
+                        )
+                    # Prioritize in-budget listings, then by photo count
+                    price_max = settings.SEARCH_PRICE_MAX
+                    unique_summaries.sort(
+                        key=lambda s: (
+                            0
+                            if price_max and s.get("price") and s["price"] <= price_max
+                            else 1,
+                            -(len(s.get("photos", []))),
+                        )
+                    )
                     provider_enriched, detail_calls_made = await _enrich_summaries(
                         provider,
                         spec.key,
                         spec.supports_details,
-                        provider_summaries,
+                        unique_summaries,
                     )
                     detail_calls_total += detail_calls_made
             finally:

@@ -74,6 +74,14 @@ _GENERIC_NEIGHBORHOODS = {
     "sf",
     "san-francisco",
     "san francisco ca",
+    "new york",
+    "new york city",
+    "nyc",
+    "brooklyn",
+    "manhattan",
+    "queens",
+    "bronx",
+    "staten island",
 }
 
 

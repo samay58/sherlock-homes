@@ -2,18 +2,19 @@
 
 ## Project Structure & Module Organization
 - `app/` is the FastAPI backend. Key areas include `app/models/`, `app/services/`, and `app/routes/`.
-- `frontend/` contains the SvelteKit app; main code lives under `frontend/src/`.
+- `frontend/` contains the Vite + React + TypeScript app; main code lives under `frontend/src/`.
 - `tests/` holds pytest tests for backend behavior.
 - `scripts/` has one-off data tools (e.g., `scripts/import_from_json.py`).
 - `migrations/` and `alembic.ini` manage schema changes.
 - Top-level helpers: `run_local.sh`, `run_frontend.sh`, `nuke_db.sh`, `Makefile`.
 
 ## Build, Test, and Development Commands
-- `./run_local.sh`: start the API locally (sets up venv, uses SQLite).
-- `./run_frontend.sh`: start the frontend dev server (yarn).
+- `./run_local.sh`: start the API locally (bootstraps `.venv`/`venv`, defaults to SQLite).
+- `./run_frontend.sh`: start the frontend dev server (installs with npm if needed).
 - `make up` / `make dev`: Docker workflow.
 - `make test` or `pytest -q`: run backend tests.
 - `make fmt`: format Python and frontend code.
+- `make lint`: run backend and frontend lint checks.
 - `python -m app.scripts.analyze_visual_scores`: run visual scoring batch job.
 - `python scripts/import_from_json.py`: import data export.
 - `./nuke_db.sh`: reset the local database.
@@ -33,7 +34,7 @@
 ## Configuration & Secrets
 - Local overrides live in `.env.local`; defaults in `.env`.
 - Set `DATABASE_URL` explicitly for local SQLite (e.g., `sqlite:///./homehog.db`).
-- Keep API keys (ZenRows, Anthropic) out of commits.
+- Keep API keys (ZenRows, OpenAI, Anthropic) out of commits.
 
 ## Commit & Pull Request Guidelines
 - Commit history uses short descriptive summaries; no strict convention observed.

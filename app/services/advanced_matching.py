@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.listing import PropertyListing
 from app.models.listing_event import ListingEvent
 from app.services.criteria_config import (BuyerCriteria,
@@ -227,9 +228,13 @@ class PropertyMatcher:
         if layout_negative:
             failures.append("layout red flags")
 
-        no_parking_hits = _find_hits(text_lower, NO_PARKING_KEYWORDS)
-        if no_parking_hits:
-            failures.append("no parking")
+        if settings.SEARCH_MODE != "rent":
+            no_parking_hits = _find_hits(text_lower, NO_PARKING_KEYWORDS)
+            if no_parking_hits:
+                failures.append("no parking")
+
+        if settings.SEARCH_MODE == "rent" and listing.is_no_pets:
+            failures.append("no pets allowed")
 
         return (len(failures) == 0, failures)
 
@@ -286,7 +291,7 @@ class PropertyMatcher:
         listing.match_reasons = top_positives
         listing.match_tradeoff = tradeoff
         listing.score_percent = _score_percent(total_points, total_possible)
-        listing.score_tier = _score_tier(total_points)
+        listing.score_tier = _score_tier(score_percent_value)
         listing.top_positives = top_positives
         listing.key_tradeoff = tradeoff
         listing.signals = {
@@ -416,9 +421,9 @@ class PropertyMatcher:
         if listing.has_architectural_details_keywords:
             character_score = max(character_score, 7.0)
         if listing.year_built:
-            if listing.year_built <= 1910:
+            if listing.year_built <= 1940:
                 character_score = min(10.0, character_score + 2.0)
-            elif listing.year_built <= 1940:
+            elif listing.year_built <= 1960:
                 character_score = min(10.0, character_score + 1.0)
         character_multiplier = float(
             self.config.nlp_signals.get("positive", {})
@@ -662,6 +667,133 @@ class PropertyMatcher:
             evidence=["storage mention"] if storage_score else [],
         )
 
+        # Pet friendly
+        pet_evidence: List[str] = []
+        pet_score = 0.0
+        pet_hits = nlp_hits.get("positive_hits", {}).get("pet", [])
+        if listing.is_pet_friendly:
+            pet_score = 10.0
+            pet_evidence.append("pet_friendly flag")
+        elif pet_hits:
+            pet_score = _score_from_hits(len(pet_hits))
+            pet_evidence.extend([f"mentions '{hit}'" for hit in pet_hits[:3]])
+        pet_multiplier = float(
+            self.config.nlp_signals.get("positive", {})
+            .get("pet", {})
+            .get("weight", 1.0)
+        )
+        if pet_score:
+            pet_score = min(10.0, pet_score * pet_multiplier)
+        no_pets_multiplier = float(
+            self.config.nlp_signals.get("negative", {})
+            .get("no_pets", {})
+            .get("weight", 1.0)
+        )
+        if nlp_hits.get("negative_hits", {}).get("no_pets"):
+            pet_score = pet_score * no_pets_multiplier
+            pet_evidence.append("no pets signal")
+        add_component(
+            "pet_friendly",
+            score=round(pet_score, 2),
+            evidence=pet_evidence,
+        )
+
+        # Gym / fitness
+        gym_evidence: List[str] = []
+        gym_score = 0.0
+        gym_hits = nlp_hits.get("positive_hits", {}).get("gym", [])
+        if listing.has_gym_keywords:
+            gym_score = 10.0
+            gym_evidence.append("gym_fitness flag")
+        elif gym_hits:
+            gym_score = _score_from_hits(len(gym_hits))
+            gym_evidence.extend([f"mentions '{hit}'" for hit in gym_hits[:3]])
+        gym_multiplier = float(
+            self.config.nlp_signals.get("positive", {})
+            .get("gym", {})
+            .get("weight", 1.0)
+        )
+        if gym_score:
+            gym_score = min(10.0, gym_score * gym_multiplier)
+        add_component(
+            "gym_fitness",
+            score=round(gym_score, 2),
+            evidence=gym_evidence,
+        )
+
+        # Building quality
+        bq_evidence: List[str] = []
+        bq_score = 0.0
+        if listing.has_building_quality_keywords:
+            bq_score = max(bq_score, 7.0)
+            bq_evidence.append("building_quality flag")
+        if listing.visual_quality_score:
+            visual_bq = listing.visual_quality_score / 10
+            bq_score = _blend_scores([bq_score, visual_bq]) if bq_score else visual_bq
+            bq_evidence.append(f"visual quality {listing.visual_quality_score}")
+        bq_multiplier = float(
+            self.config.nlp_signals.get("positive", {})
+            .get("quality", {})
+            .get("weight", 1.0)
+        )
+        if bq_score:
+            bq_score = min(10.0, bq_score * bq_multiplier)
+        gross_highrise_multiplier = float(
+            self.config.nlp_signals.get("negative", {})
+            .get("gross_highrise", {})
+            .get("weight", 1.0)
+        )
+        if nlp_hits.get("negative_hits", {}).get("gross_highrise"):
+            bq_score = bq_score * gross_highrise_multiplier
+            bq_evidence.append("gross high-rise signal")
+        add_component(
+            "building_quality",
+            score=round(bq_score, 2),
+            evidence=bq_evidence,
+        )
+
+        # Doorman / concierge
+        dm_evidence: List[str] = []
+        dm_score = 0.0
+        if listing.has_doorman_keywords:
+            dm_score = 8.0
+            dm_evidence.append("doorman flag")
+        amenity_hits = nlp_hits.get("positive_hits", {}).get("amenities", [])
+        doorman_amenity_hits = [
+            h
+            for h in amenity_hits
+            if any(
+                kw in h
+                for kw in [
+                    "doorman",
+                    "concierge",
+                    "lobby attendant",
+                    "virtual doorman",
+                    "live-in super",
+                ]
+            )
+        ]
+        if doorman_amenity_hits:
+            dm_score = max(dm_score, _score_from_hits(len(doorman_amenity_hits)))
+            dm_evidence.extend(
+                [f"mentions '{hit}'" for hit in doorman_amenity_hits[:2]]
+            )
+        if any(
+            kw in text_lower for kw in ["24-hour doorman", "full-time doorman"]
+        ):
+            dm_score = 10.0
+            if "24h/full-time" not in " ".join(dm_evidence):
+                dm_evidence.append("24h/full-time doorman")
+        elif any(
+            kw in text_lower for kw in ["virtual doorman", "part-time doorman"]
+        ):
+            dm_score = max(dm_score, 6.0)
+        add_component(
+            "doorman_concierge",
+            score=round(dm_score, 2),
+            evidence=dm_evidence,
+        )
+
         signals = MatchSignals(
             tranquility_score=(
                 round((tranquility_score or 0) / 10, 1)
@@ -694,7 +826,9 @@ class PropertyMatcher:
             self.config.soft_caps.get("price_soft"),
             self.config.hard_filters.get("price_max"),
         )
-        hoa_penalty = _hoa_penalty(listing.hoa_fee)
+        hoa_penalty = (
+            _hoa_penalty(listing.hoa_fee) if settings.SEARCH_MODE != "rent" else 0.0
+        )
         total = max(0.0, total - price_penalty - hoa_penalty)
 
         return total, components, signals

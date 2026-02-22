@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     SEARCH_LOCATION: str = Field(
         default="san-francisco-ca"
     )  # Zillow location slug (e.g., "dolores-heights-san-francisco-ca")
+    SEARCH_LOCATIONS: str = Field(
+        default=""
+    )  # Comma-separated list of Zillow location slugs for multi-neighborhood search
+    SEARCH_MODE: str = Field(
+        default="buy"
+    )  # "buy" or "rent" — controls URL paths and property types
     TRULIA_SEARCH_URL: str = Field(
         default="https://www.trulia.com/for_sale/San_Francisco,CA/"
     )

@@ -4,125 +4,140 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sherlock Homes is an SF real estate intelligence platform that matches users with property listings using NLP, geospatial analysis, and OpenAI Vision. It scores 17 weighted criteria per listing (natural light, outdoor space, character, tranquility, etc.) to surface what matters beyond basic inventory.
+Sherlock Homes is an SF real estate intelligence platform. The backend ingests listings from multiple providers, enriches them with NLP/geospatial/visual signals, and ranks matches against buyer criteria with explainable scoring.
 
 ## Development Commands
 
 ```bash
-# Local development (start both in separate terminals)
-./run_local.sh      # API at :8000 (auto-creates venv, uses uv if available)
-./run_frontend.sh   # Frontend at :5173
-
-# Database
-./nuke_db.sh && ./run_local.sh                    # Reset and restart
-alembic upgrade head                              # Apply migrations
-alembic revision --autogenerate -m "description"  # Create migration
+# Local development (run in separate terminals)
+./run_local.sh      # API at :8000 (bootstraps .venv/venv, uses SQLite by default)
+./run_frontend.sh   # Frontend at :5173 (Vite + React)
 
 # Testing
-pytest tests/test_matching.py -v                  # Single file
-pytest tests/test_matching.py::test_find_matches  # Single test
+pytest -q
+pytest tests/test_matching.py -v
+pytest tests/test_matching.py::test_find_matches
 
-# Run visual analysis on existing listings
+# Formatting and linting
+make fmt
+make lint
+
+# Database and migrations
+./nuke_db.sh
+alembic upgrade head
+alembic revision --autogenerate -m "description"
+
+# Ingestion and analysis
 python -m app.scripts.analyze_visual_scores
+python scripts/import_from_json.py
 
-# Docker (PostgreSQL-based)
-make up && make logs    # Start services
-make shell-db           # psql into database
-make db-reset           # Nuke and recreate volumes
-
-# Formatting
-make fmt                # black + isort + prettier
+# Docker workflow
+make up
+make dev
+make logs
+make shell-db
 ```
 
 ## Architecture
 
-### Scoring Engine (`services/advanced_matching.py`)
-The `PropertyMatcher` class is the core intelligence layer:
-1. Applies hard filters from `config/user_criteria.yaml` (price, beds, neighborhoods)
-2. Runs NLP analysis on descriptions via `services/nlp.py`
-3. Calculates 17 weighted scores (light, outdoor, character, kitchen, quiet location, etc.)
-4. Applies soft-cap penalties (price, HOA) and generates match narratives
-5. Returns tiered results: Exceptional (100+), Strong (88+), Interesting (76+), Pass
+### Backend (`app/`)
 
-Scoring criteria weights and NLP signals are configured in `config/user_criteria.yaml` (path set via `BUYER_CRITERIA_PATH` env var).
+- FastAPI app entrypoint: `app/main.py`
+- Routers:
+  - `app/routes/admin.py`
+  - `app/routes/listings.py`
+  - `app/routes/criteria.py`
+  - `app/routes/feedback.py`
+  - `app/routes/scouts.py`
+  - `app/routes/users.py`
+- Models: `app/models/`
+- Schemas: `app/schemas/`
+- Services: `app/services/`
+- Providers: `app/providers/`
 
-### Provider System (`providers/`)
-Multi-source ingestion with a registry pattern:
-- `registry.py`: Maps source keys to provider classes, configured via `INGESTION_SOURCES` env var
-- Providers: `zillow.py`, `redfin.py`, `trulia.py`, `realtor.py`, `craigslist.py`, `curated.py`
-- All use ZenRows for scraping except Redfin (direct API with ZenRows fallback)
+Startup behavior:
+- SQLite: auto-creates tables from SQLAlchemy models.
+- PostgreSQL: can run Alembic migrations on startup when enabled.
+- Ensures a default test user exists.
+- Starts scheduled ingestion when `ZENROWS_API_KEY` and auto-ingestion are enabled.
 
-### Ingestion Pipeline (`services/ingestion.py`)
-`run_ingestion_job()` orchestrates:
-1. Fetches summaries from active providers (paginated, respects `MAX_PAGES`)
-2. Enriches with detail calls (respects `MAX_DETAIL_CALLS`)
-3. Extracts NLP flags, calculates tranquility/light scores
-4. Upserts to DB, triggers alerts
+### Matching and Scoring
+
+- Core engine: `app/services/advanced_matching.py` (`PropertyMatcher`)
+- Criteria config: `app/services/criteria_config.py` + `config/user_criteria.yaml`
+- NLP and light estimation: `app/services/nlp.py`
+- Geospatial tranquility/location modifiers: `app/services/geospatial.py`
+- Optional text intelligence enrichment: `app/services/text_intelligence.py`
+- Visual scoring pipeline: `app/services/visual_scoring.py`
+- Learned preference weights: `app/services/weight_learning.py`
+
+### Ingestion Pipeline
+
+- Orchestration: `app/services/ingestion.py`
+- Provider registry: `app/providers/registry.py`
+- Providers include Zillow, Redfin, Trulia, Realtor, Craigslist, and curated sources.
+- Endpoints:
+  - `POST /admin/ingestion/run`
+  - `GET /admin/ingestion/last-run`
+  - `GET /ingestion/status`
 
 ### Frontend (`frontend/`)
-Vite + React 18 with TypeScript. Key routes (via React Router):
-- `/matches` - Scored listing feed with DossierCard components
-- `/listings/:id` - Detail view with ImageGallery, feature scores
-- `/criteria` - Buyer preference configuration
 
-Data fetching uses React Query hooks in `src/hooks/`. API wrapper in `src/lib/api.ts`.
+- Stack: Vite + React 18 + TypeScript + React Query + React Router.
+- Entry: `frontend/src/main.tsx`
+- Routes/pages: `frontend/src/pages/`
+- Shared components: `frontend/src/components/`
+- Data hooks: `frontend/src/hooks/`
+- API helpers + types: `frontend/src/lib/`
+- Styling: `frontend/src/styles/`
 
-**Key directories:**
-- `src/components/` - Reusable UI (cards, filters, gallery, layout, loading)
-- `src/pages/` - Route components
-- `src/hooks/` - React Query hooks (useMatches, useListings, useCriteria, useFeedback)
-- `src/styles/` - CSS including design system tokens
+## Key Endpoints
 
-Agentation toolbar enabled in dev mode for visual feedback.
-
-### Data Flow
-```
-Providers → Ingestion → NLP/Geospatial Enrichment → DB
-                                                    ↓
-User Criteria (YAML) → PropertyMatcher → Scored Matches + Narratives
-```
-
-## Key Files to Understand
-
-| File | Purpose |
-|------|---------|
-| `services/advanced_matching.py` | Scoring engine with 17 criteria, tier logic |
-| `services/criteria_config.py` | Loads buyer criteria YAML, `BuyerCriteria` dataclass |
-| `services/nlp.py` | Text signal extraction, light potential estimation |
-| `services/geospatial.py` | Tranquility scoring from SF noise data |
-| `providers/registry.py` | Provider factory pattern, source selection |
-| `core/config.py` | Pydantic settings, all env vars documented |
+- `GET /ping`
+- `GET /matches/test-user`
+- `GET /matches/user/{user_id}`
+- `GET /listings`
+- `GET /listings/{id}`
+- `GET /listings/{id}/history`
+- `GET /changes`
+- `GET /criteria/test-user`
+- `POST /criteria/test-user`
+- `POST /feedback/{listing_id}`
+- `GET /users/{user_id}/weights`
+- `POST /users/{user_id}/weights/recalculate`
+- `POST /admin/ingestion/run`
+- `GET /admin/ingestion/last-run`
 
 ## Configuration
 
-Copy `.env.example` to `.env.local`:
-```bash
-# Required for data ingestion
-ZENROWS_API_KEY=your_key
-OPENAI_API_KEY=your_key  # For visual scoring + text intelligence
+Environment is loaded from `.env` and `.env.local` (local overrides).
 
-# Ingestion tuning
-INGESTION_SOURCES=zillow           # Or: zillow,redfin,trulia
-MAX_PAGES=25                        # Pages per source (~40 listings/page)
-MAX_DETAIL_CALLS=200               # Detail enrichment limit
+Common local settings:
 
-# Search filters (applied at source level)
-SEARCH_PRICE_MIN=800000
-SEARCH_BEDS_MIN=2
-SEARCH_SQFT_MIN=1000
-
-# Buyer criteria config
-BUYER_CRITERIA_PATH=config/user_criteria.yaml
+```env
+DATABASE_URL=sqlite:///./homehog.db
+ZENROWS_API_KEY=...
+OPENAI_API_KEY=...
+# Optional legacy key:
+ANTHROPIC_API_KEY=...
 ```
 
-Python 3.11 or 3.12 required (spaCy wheel compatibility).
+Useful tuning variables:
+- `INGESTION_SOURCES`
+- `MAX_PAGES`
+- `MAX_DETAIL_CALLS`
+- `SEARCH_LOCATION` / `SEARCH_LOCATIONS`
+- `SEARCH_MODE` (`buy` or `rent`)
+- `BUYER_CRITERIA_PATH`
+
+Python 3.11 or 3.12 is recommended.
 
 ## Quick Verification
 
 ```bash
 ./run_local.sh
-curl http://localhost:8000/health                       # API health
-curl -X POST http://localhost:8000/admin/ingestion/run  # Trigger ingestion
-curl http://localhost:8000/admin/ingestion/last-run     # Check status
-curl http://localhost:8000/matches/test-user            # Get scored matches
+curl http://localhost:8000/ping
+curl -X POST http://localhost:8000/admin/ingestion/run
+curl http://localhost:8000/admin/ingestion/last-run
+curl http://localhost:8000/matches/test-user
 ```

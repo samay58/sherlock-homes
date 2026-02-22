@@ -58,6 +58,13 @@ class PropertyListing(Base):
     has_designer_keywords = Column(Boolean, default=False)
     has_tech_ready_keywords = Column(Boolean, default=False)
 
+    # NYC rental-specific features
+    is_pet_friendly = Column(Boolean, default=False)
+    is_no_pets = Column(Boolean, default=False)
+    has_gym_keywords = Column(Boolean, default=False)
+    has_doorman_keywords = Column(Boolean, default=False)
+    has_building_quality_keywords = Column(Boolean, default=False)
+
     # Deal Indicators
     is_price_reduced = Column(Boolean, default=False)
     price_reduction_amount = Column(Float, nullable=True)

@@ -21,12 +21,16 @@ CRITERION_LABELS = {
     "gas_stove": "Gas stove",
     "dishwasher": "Dishwasher",
     "storage": "Storage",
+    "pet_friendly": "Pet friendly",
+    "gym_fitness": "Gym / fitness",
+    "building_quality": "Building quality",
+    "doorman_concierge": "Doorman / concierge",
 }
 
 TIER_THRESHOLDS = [
-    (100, "Exceptional"),
-    (88, "Strong"),
-    (76, "Interesting"),
+    (80, "Exceptional"),
+    (70, "Strong"),
+    (60, "Interesting"),
     (0, "Pass"),
 ]
 
@@ -62,6 +66,18 @@ LAYOUT_KEYWORDS = [
     "good flow",
     "functional layout",
     "spacious layout",
+    "loft-like",
+    "loft style",
+    "wide open",
+    "expansive",
+    "sprawling",
+    "generously proportioned",
+    "wide layout",
+    "spacious living",
+    "oversized living",
+    "large living",
+    "open living",
+    "live/work",
 ]
 
 LAYOUT_NEGATIVE_KEYWORDS = [
@@ -71,6 +87,11 @@ LAYOUT_NEGATIVE_KEYWORDS = [
     "chopped up",
     "low ceiling",
     "low ceilings",
+    "narrow",
+    "narrow hallway",
+    "tight layout",
+    "cramped",
+    "compact layout",
 ]
 
 LAUNDRY_KEYWORDS = [
@@ -151,9 +172,10 @@ def _blend_scores(values: List[float]) -> float:
     return sum(values) / len(values)
 
 
-def _score_tier(total_points: float) -> str:
+def _score_tier(score_percent: float) -> str:
+    """Assign tier based on percentage score (0-100)."""
     for threshold, label in TIER_THRESHOLDS:
-        if total_points >= threshold:
+        if score_percent >= threshold:
             return label
     return "Pass"
 

@@ -147,16 +147,18 @@ export function DossierCard({
 
           {/* Badges */}
           {listing.days_on_market != null && listing.days_on_market <= 7 && (
-            <span className="dossier-badge dossier-badge--fresh">
+            <span className="dossier-badge dossier-badge--fresh" aria-label={`New listing, ${listing.days_on_market} days on market`}>
               {listing.days_on_market}D NEW
             </span>
           )}
           {listing.days_on_market != null && listing.days_on_market > 90 && (
-            <span className="dossier-badge dossier-badge--stale">{listing.days_on_market}D</span>
+            <span className="dossier-badge dossier-badge--stale" aria-label={`Stale listing, ${listing.days_on_market} days on market`}>
+              {listing.days_on_market}D
+            </span>
           )}
 
           {showScore && listing.match_score != null && (
-            <div className={`dossier-score dossier-score--${scoreTier}`}>
+            <div className={`dossier-score dossier-score--${scoreTier}`} role="status" aria-label={`${Math.round(listing.match_score)}% match`}>
               <span className="score-pct">{Math.round(listing.match_score)}%</span>
               <span className="score-txt">MATCH</span>
             </div>
@@ -166,15 +168,25 @@ export function DossierCard({
         {/* Body Section */}
         <div className="dossier-body">
           <div className="dossier-price">{formatPrice(listing.price)}</div>
-          {(typeof listing.score_points === 'number' || listing.score_tier) && (
-            <div className="dossier-scoreline">
-              {typeof listing.score_points === 'number' && `${listing.score_points.toFixed(1)} pts`}
-              {typeof listing.score_points === 'number' && listing.score_tier && ' · '}
-              {listing.score_tier}
-            </div>
-          )}
+          <address className="dossier-address" title={listing.address}>{listing.address}</address>
 
-          <address className="dossier-address">{listing.address}</address>
+          {/* Why This Matched - promoted to lead the card body */}
+          {(listing.match_reasons && listing.match_reasons.length) || listing.match_tradeoff ? (
+            <div className="dossier-why">
+              {listing.match_reasons && listing.match_reasons.length > 0 && (
+                <>
+                  <span className="why-label">WHY THIS MATCHED</span>
+                  <span className="why-text">{listing.match_reasons.join(' · ')}</span>
+                </>
+              )}
+              {listing.match_tradeoff && (
+                <span className="why-tradeoff">Tradeoff: {listing.match_tradeoff}</span>
+              )}
+              {listing.why_now && <span className="why-now">Why now: {listing.why_now}</span>}
+            </div>
+          ) : listing.match_narrative ? (
+            <p className="dossier-narrative">{listing.match_narrative}</p>
+          ) : null}
 
           {/* Stats Grid */}
           <div className="dossier-stats">
@@ -198,12 +210,12 @@ export function DossierCard({
             )}
           </div>
 
-          {/* Property Intel */}
+          {/* Evidence: Intel + Signals */}
           {(intel.length > 0 || signalData.length > 0) && (
             <div className="dossier-intel">
               {intel.length > 0 && (
                 <>
-                  <span className="intel-label">INTEL</span>
+                  <span className="intel-label">EVIDENCE</span>
                   <div className="intel-tags">
                     {intel.slice(0, 3).map((feature) => (
                       <span key={feature.key} className="intel-tag">
@@ -232,41 +244,25 @@ export function DossierCard({
             </div>
           )}
 
-          {/* Why this matched */}
-          {(listing.match_reasons && listing.match_reasons.length) || listing.match_tradeoff ? (
-            <div className="dossier-why">
-              {listing.match_reasons && listing.match_reasons.length > 0 && (
-                <>
-                  <span className="why-label">WHY</span>
-                  <span className="why-text">{listing.match_reasons.join(' · ')}</span>
-                </>
-              )}
-              {listing.match_tradeoff && (
-                <span className="why-tradeoff">Tradeoff: {listing.match_tradeoff}</span>
-              )}
-              {listing.why_now && <span className="why-now">Why now: {listing.why_now}</span>}
-            </div>
-          ) : listing.match_narrative ? (
-            <p className="dossier-narrative">{listing.match_narrative}</p>
-          ) : null}
-
           {/* Feedback Buttons */}
           <div className="dossier-feedback">
             <button
               className={`feedback-btn feedback-btn--like ${userFeedback === 'like' ? 'active' : ''}`}
               onClick={(e) => handleFeedback(e, 'like')}
-              title="Like this listing"
+              aria-label="Mark as liked"
+              aria-pressed={userFeedback === 'like'}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
               </svg>
             </button>
             <button
               className={`feedback-btn feedback-btn--dislike ${userFeedback === 'dislike' ? 'active' : ''}`}
               onClick={(e) => handleFeedback(e, 'dislike')}
-              title="Dislike this listing"
+              aria-label="Mark as disliked"
+              aria-pressed={userFeedback === 'dislike'}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
               </svg>
             </button>

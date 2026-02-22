@@ -1,5 +1,6 @@
-/* Sherlock Homes Design System
- * Inspired by Exa.ai aesthetic: high-contrast typography, minimal shadows, instant interactions
+/* Sherlock Homes Design System — "221B"
+ * Warm analytical workspace: parchment surfaces, warm ink, amber accent, paper-stack shadows.
+ * The detective's case files, not a property feed.
  * North Star: Zillow sells inventory; Sherlock Homes sells insight.
  */
 
@@ -46,27 +47,27 @@
   --tracking-widest: 0.1em; /* For uppercase labels */
 
   /* ============================================
-   * COLORS - Black, White, and Sherlock Orange
+   * COLORS - Warm Stone Tones + Amber Accent
    * ============================================ */
 
-  /* Primary - High contrast */
-  --color-ink: #000000;
-  --color-paper: #ffffff;
-  --color-paper-warm: #fafaf8;
+  /* Primary - Warm ink and parchment */
+  --color-ink: #1C1917;
+  --color-paper: #FAFAF7;
+  --color-paper-warm: #F5F0E8;
 
-  /* Accent - Sherlock Orange (differentiation from blue/green competitors) */
-  --color-accent: #ff6600;
-  --color-accent-hover: #e65c00;
-  --color-accent-active: #cc5200;
-  --color-accent-subtle: #fff4ec;
-  --color-accent-muted: #ffe5d4;
+  /* Accent - Amber (warm investigative tone) */
+  --color-accent: #D97706;
+  --color-accent-hover: #B45309;
+  --color-accent-active: #92400E;
+  --color-accent-subtle: #FFFBEB;
+  --color-accent-muted: #FEF3C7;
 
-  /* Gray Scale - Simplified to 5 key values */
-  --color-gray-100: #f5f5f5; /* Surfaces, backgrounds */
-  --color-gray-200: #e5e5e5; /* Borders, dividers */
-  --color-gray-400: #999999; /* Tertiary text, placeholders */
-  --color-gray-600: #666666; /* Secondary text */
-  --color-gray-900: #1a1a1a; /* Primary text (near-black) */
+  /* Gray Scale - Warm stone tones */
+  --color-gray-100: #F5F5F0; /* Surfaces, backgrounds */
+  --color-gray-200: #E7E5E0; /* Borders, dividers */
+  --color-gray-400: #A8A29E; /* Tertiary text, placeholders */
+  --color-gray-600: #57534E; /* Secondary text */
+  --color-gray-900: #1C1917; /* Primary text (warm black) */
 
   /* Semantic Colors */
   --color-background: var(--color-paper);
@@ -78,16 +79,16 @@
   --color-text-secondary: var(--color-gray-600);
   --color-text-tertiary: var(--color-gray-400);
 
-  /* Match Score Colors - Green gradient */
-  --color-score-excellent: #1b5e20; /* 80-100% */
-  --color-score-good: #2e7d32; /* 60-79% */
-  --color-score-fair: #f57c00; /* 40-59% */
-  --color-score-low: #999999; /* 0-39% */
+  /* Match Score Colors - Warmer greens + amber */
+  --color-score-excellent: #166534; /* 80-100% */
+  --color-score-good: #15803D; /* 60-79% */
+  --color-score-fair: #D97706; /* 40-59% */
+  --color-score-low: #A8A29E; /* 0-39% */
 
   /* Status Colors */
-  --color-success: #1b5e20;
-  --color-warning: #f57c00;
-  --color-error: #d32f2f;
+  --color-success: #166534;
+  --color-warning: #D97706;
+  --color-error: #dc2626;
   --color-info: var(--color-accent);
 
   /* ============================================
@@ -109,8 +110,14 @@
   --space-24: 6rem; /* 96px */
 
   /* ============================================
-   * BORDERS - No shadows, only borders
+   * DEPTH - Warm shadows + borders
    * ============================================ */
+
+  /* Shadows - Warm-tinted, layered with borders */
+  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
+  --shadow-md: 0 2px 4px rgba(28, 25, 23, 0.06), 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-lg: 0 4px 8px rgba(28, 25, 23, 0.06), 0 2px 4px rgba(28, 25, 23, 0.04);
+  --shadow-card: 0 1px 3px rgba(28, 25, 23, 0.08);
 
   /* Border Radius - Tight for precision aesthetic */
   --radius-none: 0;
@@ -178,15 +185,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-ink: #ffffff;
-    --color-paper: #0a0a0a;
-    --color-paper-warm: #111111;
+    --color-ink: #F5F5F0;
+    --color-paper: #0C0A09;
+    --color-paper-warm: #1C1917;
 
-    --color-gray-100: #1a1a1a;
-    --color-gray-200: #2a2a2a;
-    --color-gray-400: #666666;
-    --color-gray-600: #999999;
-    --color-gray-900: #f5f5f5;
+    --color-gray-100: #1C1917;
+    --color-gray-200: #292524;
+    --color-gray-400: #78716C;
+    --color-gray-600: #A8A29E;
+    --color-gray-900: #F5F5F0;
 
     --color-background: var(--color-paper);
     --color-surface: var(--color-paper-warm);
@@ -199,6 +206,12 @@
 
     --color-accent-subtle: #2a1a0a;
     --color-accent-muted: #3d2510;
+
+    /* Shadows less visible in dark; borders carry depth */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.25);
   }
 }
 
@@ -437,5 +450,20 @@
 
 .score-badge--low {
   background-color: var(--color-gray-200);
-  color: var(--color-gray-600);
+  color: var(--color-gray-900);
+}
+
+/* ============================================
+ * REDUCED MOTION
+ * ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

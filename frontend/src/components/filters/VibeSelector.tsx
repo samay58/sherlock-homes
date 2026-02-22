@@ -42,8 +42,9 @@ export function VibeSelector({ selected, onChange }: VibeSelectorProps) {
             type="button"
             className={`vibe-card ${selected === vibe.id ? 'vibe-card--active' : ''}`}
             onClick={() => selectVibe(vibe.id)}
+            aria-pressed={selected === vibe.id}
           >
-            <span className="vibe-icon">{vibe.icon}</span>
+            <span className="vibe-icon" role="img" aria-label={vibe.name}>{vibe.icon}</span>
             <span className="vibe-name">{vibe.name}</span>
             <span className="vibe-tagline">{vibe.tagline}</span>
           </button>

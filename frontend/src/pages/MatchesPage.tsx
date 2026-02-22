@@ -182,7 +182,7 @@ export function MatchesPage() {
         </div>
 
         {(ingestionStatus || ingestionMessage || ingestionError) && (
-          <div className="data-freshness">
+          <div className="data-freshness" role="status" aria-live="polite">
             <span className="freshness-label">Data:</span>
             {ingestionStatus?.last_update_display ? (
               <span className={`freshness-value ${ingestionStatus.status}`}>

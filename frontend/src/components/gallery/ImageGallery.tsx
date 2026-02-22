@@ -13,21 +13,22 @@ export function ImageGallery({ images, altText = 'Property photo' }: ImageGaller
     <div className="gallery">
       <div className="main">
         {images && images.length > 0 ? (
-          <img src={images[active]} alt={altText} loading="lazy" />
+          <img src={images[active]} alt={`${altText} ${active + 1} of ${images.length}`} loading="lazy" />
         ) : (
-          <img src="/placeholder-image.svg" alt="No photos" className="placeholder" />
+          <img src="/placeholder-image.svg" alt="No photos available" className="placeholder" />
         )}
       </div>
       {images && images.length > 1 && (
-        <div className="thumbs">
+        <div className="thumbs" role="group" aria-label="Photo thumbnails">
           {images.map((img, i) => (
             <button
               key={i}
               className={i === active ? 'active' : ''}
               onClick={() => setActive(i)}
-              aria-label={`Photo ${i + 1}`}
+              aria-label={`Photo ${i + 1} of ${images.length}`}
+              aria-current={i === active ? 'true' : undefined}
             >
-              <img src={img} alt={altText} loading="lazy" />
+              <img src={img} alt="" loading="lazy" aria-hidden="true" />
             </button>
           ))}
         </div>

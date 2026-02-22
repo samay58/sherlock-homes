@@ -12,8 +12,7 @@ export function HomePage() {
   return (
     <main className={`hero-container ${mounted ? 'mounted' : ''}`}>
       <div className="hero-content">
-        {/* Magnifying glass icon */}
-        <div className="hero-icon">&#128269;</div>
+        <div className="hero-icon" aria-hidden="true">&#128269;</div>
 
         <h1 className="hero-title">Sherlock Homes</h1>
 
@@ -44,7 +43,7 @@ export function HomePage() {
         <div className="hero-actions">
           <Link to="/matches" className="btn-primary">
             View My Matches
-            <span className="btn-arrow">&#8594;</span>
+            <span className="btn-arrow" aria-hidden="true">&#8594;</span>
           </Link>
           <Link to="/criteria" className="btn-secondary">
             Set Criteria
@@ -53,17 +52,17 @@ export function HomePage() {
 
         <div className="hero-features">
           <div className="feature">
-            <span className="feature-icon">&#9728;</span>
+            <span className="feature-icon" role="img" aria-label="Sun">&#9728;</span>
             <span className="feature-name">Light Potential</span>
             <span className="feature-desc">NLP + heuristics</span>
           </div>
           <div className="feature">
-            <span className="feature-icon">&#128263;</span>
+            <span className="feature-icon" role="img" aria-label="Sound waves">&#128263;</span>
             <span className="feature-name">Tranquility Score</span>
             <span className="feature-desc">Geospatial analysis</span>
           </div>
           <div className="feature">
-            <span className="feature-icon">&#128200;</span>
+            <span className="feature-icon" role="img" aria-label="Chart">&#128200;</span>
             <span className="feature-name">Deal Detection</span>
             <span className="feature-desc">Price drop tracking</span>
           </div>

@@ -35,6 +35,12 @@
   border-color: var(--color-border-hover, #d4d4d4);
 }
 
+.card-link:focus-visible {
+  outline: 2px solid var(--color-accent, #ff6600);
+  outline-offset: 2px;
+  border-radius: var(--radius-lg, 8px);
+}
+
 .listing-card::after {
   content: '';
   position: absolute;
@@ -261,7 +267,7 @@
 
 .match-score-badge.score-fair {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.95), rgba(245, 158, 11, 0.95));
-  color: white;
+  color: #1a1a1a;
   box-shadow: 0 4px 6px -1px rgba(251, 191, 36, 0.3);
 }
 

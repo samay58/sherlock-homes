@@ -61,7 +61,9 @@
 }
 
 .nav-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: var(--space-2, 8px) var(--space-3, 12px);
   text-decoration: none;
   font-family: var(--font-family-sans, sans-serif);
@@ -79,6 +81,11 @@
   background: var(--color-gray-100, #f5f5f5);
 }
 
+.nav-link:focus-visible {
+  outline: 2px solid var(--color-accent, #ff6600);
+  outline-offset: 2px;
+}
+
 /* Main Content */
 .app-container main {
   flex-grow: 1;
@@ -91,11 +98,12 @@
   opacity: 1;
 }
 
-/* Footer - Minimal */
+/* Footer - Warm surface tint */
 .sherlock-footer {
   margin-top: auto;
   padding: var(--space-6, 24px);
-  border-top: 1px solid var(--color-border, #e5e5e5);
+  border-top: 1px solid var(--color-border, #E7E5E0);
+  background: var(--color-paper-warm, #F5F0E8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -128,7 +136,8 @@
   }
 
   .sherlock-footer {
-    border-top-color: var(--color-border, #2a2a2a);
+    border-top-color: var(--color-border, #292524);
+    background: var(--color-paper-warm, #1C1917);
   }
 
   .nav-link:hover {

@@ -307,7 +307,7 @@ export function CriteriaPage() {
             </div>
           </fieldset>
 
-          <button type="submit" disabled={updateCriteria.isPending}>
+          <button type="submit" disabled={updateCriteria.isPending} aria-busy={updateCriteria.isPending}>
             {updateCriteria.isPending ? 'Saving...' : 'Save Criteria'}
           </button>
         </form>

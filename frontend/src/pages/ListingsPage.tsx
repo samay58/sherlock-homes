@@ -7,7 +7,7 @@ export function ListingsPage() {
 
   return (
     <section className="listings-page">
-      <h2>Browse Listings</h2>
+      <h1>Browse Listings</h1>
 
       {error && <p className="error">Error loading listings: {error.message}</p>}
 

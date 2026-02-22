@@ -166,7 +166,7 @@ export function ListingDetailPage() {
           )}
 
           {featureTags.length > 0 && (
-            <div className="feature-block">
+            <section className="feature-block" aria-label="Features">
               <span className="feature-label">FEATURES</span>
               <div className="feature-tags">
                 {featureTags.map((feature) => (
@@ -175,14 +175,14 @@ export function ListingDetailPage() {
                   </span>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {(listing.match_reasons?.length ||
             listing.key_tradeoff ||
             listing.why_now ||
             listing.match_narrative) && (
-            <div className="explain-block">
+            <section className="explain-block" aria-label="Match explanation">
               <span className="feature-label">EXPLAINABILITY</span>
               {listing.match_reasons?.length && (
                 <p className="explain-row">
@@ -208,11 +208,11 @@ export function ListingDetailPage() {
                   <span className="explain-value">{listing.match_narrative}</span>
                 </p>
               )}
-            </div>
+            </section>
           )}
 
           {signalData.length > 0 && (
-            <div className="signal-block">
+            <section className="signal-block" aria-label="Property signals">
               <span className="feature-label">SIGNALS</span>
               <div className="signal-tags">
                 {signalData.map((signal) => (
@@ -222,7 +222,7 @@ export function ListingDetailPage() {
                   </span>
                 ))}
               </div>
-            </div>
+            </section>
           )}
         </div>
       </div>

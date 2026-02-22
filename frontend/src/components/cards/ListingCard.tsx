@@ -103,7 +103,7 @@ export function ListingCard({
             className={imageLoaded ? 'loaded' : ''}
           />
           {showScore && listing.match_score != null && (
-            <div className={`match-score-badge ${getScoreColor(listing.match_score)}`}>
+            <div className={`match-score-badge ${getScoreColor(listing.match_score)}`} role="status" aria-label={`${Math.round(listing.match_score)}% - ${getScoreBadgeText(listing.match_score)}`}>
               <span className="score-value">{Math.round(listing.match_score)}%</span>
               <span className="score-label">{getScoreBadgeText(listing.match_score)}</span>
             </div>
@@ -139,7 +139,7 @@ export function ListingCard({
             )}
           </div>
 
-          <address className="address">{listing.address}</address>
+          <address className="address" title={listing.address}>{listing.address}</address>
 
           {features.length > 0 && (
             <div className="features">

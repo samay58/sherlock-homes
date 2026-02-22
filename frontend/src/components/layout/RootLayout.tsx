@@ -16,9 +16,9 @@ export function RootLayout({ children }: RootLayoutProps) {
   return (
     <div className="app-container">
       <header className="sherlock-header">
-        <nav>
+        <nav aria-label="Main navigation">
           <Link to="/" className="brand">
-            <span className="brand-icon">&#128269;</span>
+            <span className="brand-icon" aria-hidden="true">&#128269;</span>
             <span className="brand-name">Sherlock Homes</span>
           </Link>
           <ul className="nav-menu">

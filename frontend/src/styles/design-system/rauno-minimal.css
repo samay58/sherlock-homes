@@ -77,16 +77,7 @@
   outline-offset: 2px;
 }
 
-/* Smooth Fade */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
+/* .fade-in uses @keyframes fade-in from sherlock-tokens.css */
 .fade-in {
   animation: fade-in var(--duration-normal) var(--ease-out);
 }
@@ -104,5 +95,39 @@
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+/* Dark Mode Overrides */
+@media (prefers-color-scheme: dark) {
+  .hover-lift:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-minimal {
+    background: var(--color-surface, #111);
+    border-color: var(--color-border, #2a2a2a);
+  }
+
+  .card-minimal:hover {
+    border-color: var(--color-text, #f5f5f5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .btn-clean {
+    background: var(--color-text, #f5f5f5);
+    color: var(--color-background, #0a0a0a);
+  }
+
+  .btn-clean:hover {
+    background: var(--color-text-secondary, #a3a3a3);
+  }
+
+  .accent-bg {
+    color: var(--color-background, #0a0a0a);
+  }
+
+  .skeleton-minimal {
+    background: var(--color-gray-200, #2a2a2a);
   }
 }

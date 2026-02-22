@@ -7,5 +7,10 @@ interface SkeletonLoaderProps {
 }
 
 export function SkeletonLoader({ width, height, className = '' }: SkeletonLoaderProps) {
-  return <div className={`skeleton ${className}`} style={{ width, height }} />
+  return (
+    <div aria-live="polite" aria-busy="true">
+      <span className="sr-only">Loading...</span>
+      <div className={`skeleton ${className}`} style={{ width, height }} aria-hidden="true" />
+    </div>
+  )
 }

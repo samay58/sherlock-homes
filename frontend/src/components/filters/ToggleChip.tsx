@@ -19,6 +19,7 @@ export function ToggleChip({ label, active = false, disabled = false, onClick }:
       className={`toggle-chip ${active ? 'toggle-chip--active' : ''} ${disabled ? 'toggle-chip--disabled' : ''}`}
       onClick={handleClick}
       disabled={disabled}
+      aria-pressed={active}
     >
       {active && <span className="toggle-dot"></span>}
       {label}

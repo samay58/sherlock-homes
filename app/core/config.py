@@ -1,14 +1,34 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
+def _default_sqlite_database_url() -> str:
+    """
+    Prefer a local `.local/` SQLite file to avoid repo-root clutter.
+    If a legacy root DB exists, keep using it to avoid surprising data loss.
+    """
+
+    preferred = Path(".local/sherlock.db")
+    legacy_candidates = [Path("sherlock.db"), Path("homehog.db")]
+
+    if preferred.exists():
+        return f"sqlite:///./{preferred.as_posix()}"
+
+    for candidate in legacy_candidates:
+        if candidate.exists():
+            return f"sqlite:///./{candidate.as_posix()}"
+
+    return f"sqlite:///./{preferred.as_posix()}"
+
+
 class Settings(BaseSettings):
     # Database - defaults to SQLite for local development
     # Use PostgreSQL URL for Docker/production (set in .env.docker)
-    DATABASE_URL: str = Field(default="sqlite:///./sherlock.db")
+    DATABASE_URL: str = Field(default_factory=_default_sqlite_database_url)
     RUN_DB_MIGRATIONS_ON_STARTUP: bool = Field(
         default=False
     )  # Only for PostgreSQL/Alembic
@@ -97,6 +117,7 @@ class Settings(BaseSettings):
     REDFIN_SEARCH_URL: str = Field(
         default="https://www.redfin.com/city/17151/CA/San-Francisco"
     )
+    STREETEASY_SEARCH_URLS: str = Field(default="")
     CURATED_SOURCES_PATH: str = Field(default="config/curated_sources.yaml")
 
     # Search Filter Settings

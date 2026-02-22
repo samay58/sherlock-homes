@@ -10,6 +10,7 @@ from app.providers.craigslist import CraigslistProvider
 from app.providers.curated import CuratedProvider
 from app.providers.realtor import RealtorProvider
 from app.providers.redfin import RedfinProvider
+from app.providers.streeteasy import StreetEasyProvider
 from app.providers.trulia import TruliaProvider
 from app.providers.zillow import ZillowProvider
 
@@ -54,6 +55,12 @@ def _registry() -> Dict[str, ProviderSpec]:
             key="craigslist",
             label="Craigslist (ZenRows)",
             factory=CraigslistProvider,
+            supports_details=True,
+        ),
+        "streeteasy": ProviderSpec(
+            key="streeteasy",
+            label="StreetEasy (ZenRows)",
+            factory=StreetEasyProvider,
             supports_details=True,
         ),
         "curated": ProviderSpec(

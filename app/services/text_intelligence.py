@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import random
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -184,21 +186,49 @@ def _call_openai(payload: str, model: str) -> Optional[Dict[str, Any]]:
                 ),
             )
 
-    try:
-        with httpx.Client(timeout=settings.OPENAI_TEXT_TIMEOUT_SECONDS) as client:
-            response = client.post(
-                "https://api.openai.com/v1/chat/completions", headers=headers, json=body
-            )
-            response.raise_for_status()
-        data = response.json()
-        usage = data.get("usage")
-        if isinstance(usage, dict):
-            _log_usage(usage)
-        content = data["choices"][0]["message"]["content"]
-        return json.loads(content)
-    except Exception as exc:
-        logger.warning("Text intelligence call failed: %s", exc)
-        return None
+    url = "https://api.openai.com/v1/chat/completions"
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with httpx.Client(timeout=settings.OPENAI_TEXT_TIMEOUT_SECONDS) as client:
+                response = client.post(url, headers=headers, json=body)
+                response.raise_for_status()
+            data = response.json()
+            usage = data.get("usage")
+            if isinstance(usage, dict):
+                _log_usage(usage)
+            content = data["choices"][0]["message"]["content"]
+            return json.loads(content)
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            if status == 429 or status >= 500:
+                if attempt >= max_attempts:
+                    logger.warning(
+                        "Text intelligence call failed after %d attempts: %s",
+                        max_attempts,
+                        exc,
+                    )
+                    return None
+                retry_after = exc.response.headers.get("retry-after")
+                if retry_after:
+                    wait = min(float(retry_after), 10.0)
+                else:
+                    wait = min(2.0 * attempt, 6.0) + random.uniform(0, 1.0)
+                logger.info(
+                    "OpenAI %d, retrying in %.1fs (attempt %d/%d)",
+                    status,
+                    wait,
+                    attempt,
+                    max_attempts,
+                )
+                time.sleep(wait)
+            else:
+                logger.warning("Text intelligence call failed: %s", exc)
+                return None
+        except Exception as exc:
+            logger.warning("Text intelligence call failed: %s", exc)
+            return None
+    return None
 
 
 def analyze_listing_text(
@@ -262,5 +292,7 @@ def enrich_listings_with_text_intelligence(
     max_listings = max(0, settings.OPENAI_TEXT_MAX_LISTINGS)
     if max_listings == 0:
         return
-    for listing in listings[:max_listings]:
+    for i, listing in enumerate(listings[:max_listings]):
+        if i > 0:
+            time.sleep(0.5)
         enrich_listing_with_text_intelligence(listing, db)

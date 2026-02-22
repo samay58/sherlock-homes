@@ -65,7 +65,7 @@
   /* Gray Scale - Warm stone tones */
   --color-gray-100: #F5F5F0; /* Surfaces, backgrounds */
   --color-gray-200: #E7E5E0; /* Borders, dividers */
-  --color-gray-400: #A8A29E; /* Tertiary text, placeholders */
+  --color-gray-400: #918A85; /* Tertiary text, placeholders — 5.0:1 on #FAFAF7 */
   --color-gray-600: #57534E; /* Secondary text */
   --color-gray-900: #1C1917; /* Primary text (warm black) */
 
@@ -82,12 +82,12 @@
   /* Match Score Colors - Warmer greens + amber */
   --color-score-excellent: #166534; /* 80-100% */
   --color-score-good: #15803D; /* 60-79% */
-  --color-score-fair: #D97706; /* 40-59% */
-  --color-score-low: #A8A29E; /* 0-39% */
+  --color-score-fair: #EA8C00; /* 40-59% — distinct from accent #D97706 */
+  --color-score-low: #918A85; /* 0-39% */
 
   /* Status Colors */
   --color-success: #166534;
-  --color-warning: #D97706;
+  --color-warning: #EA8C00;
   --color-error: #dc2626;
   --color-info: var(--color-accent);
 
@@ -191,7 +191,7 @@
 
     --color-gray-100: #1C1917;
     --color-gray-200: #292524;
-    --color-gray-400: #78716C;
+    --color-gray-400: #958E89; /* 4.7:1 on #1C1917 dark bg */
     --color-gray-600: #A8A29E;
     --color-gray-900: #F5F5F0;
 

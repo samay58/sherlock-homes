@@ -266,6 +266,11 @@
 
   .freshness-value.outdated {
     background: #450a0a;
+    color: #f87171;
+  }
+
+  .freshness-error {
+    color: #f87171;
   }
 
   .error-state {

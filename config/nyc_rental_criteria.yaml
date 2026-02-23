@@ -26,7 +26,7 @@ hard_filters:
     - "Boerum Hill"
     - "Carroll Gardens"
     - "Fort Greene"
-    - "Clinton Hill"
+    # Clinton Hill dropped: >20 min subway to Union Sq / 838 Broadway area
     - "Park Slope"
     - "Prospect Heights"
     # Manhattan - selective

@@ -1,7 +1,10 @@
 # Sherlock Homes: Full Technical Explainer for External Assessment
 
 > Note (February 22, 2026): This is a historical deep-dive prepared for an external assessment.
-> Some details may be stale. For the current codebase map and runbook, start with `docs/ARCHITECTURE.md` and `docs/DEVELOPMENT.md`.
+> Some details are stale. Key changes since this was written: StreetEasy provider is now implemented,
+> Clinton Hill was dropped from the neighborhood list (commute constraint), MAX_DETAIL_CALLS is now 300,
+> and the search uses 15 neighborhoods (not 16). For the current codebase map and runbook, start with
+> `docs/ARCHITECTURE.md` and `docs/DEVELOPMENT.md`.
 
 ## Purpose of This Document
 
@@ -465,7 +468,7 @@ IMESSAGE_ENABLED=true
 ### P1: Significantly degrading effectiveness
 3. **Only 7% of listings have descriptions** (24/334) - Detail enrichment is limited by MAX_DETAIL_CALLS and wasted on duplicate listings.
 4. **No deduplication before detail calls** - API credits spent on listings already in the DB.
-5. **No StreetEasy integration** - Missing the dominant NYC rental platform.
+5. ~~**No StreetEasy integration**~~ - **RESOLVED**: StreetEasy provider implemented (`app/providers/streeteasy.py`), active in `INGESTION_SOURCES`.
 6. **SF-specific keywords in NLP** - busy_street keywords include SF streets (van ness, geary, 19th avenue).
 
 ### P2: Limiting quality

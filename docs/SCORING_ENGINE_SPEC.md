@@ -1,4 +1,4 @@
-# Sherlock Homes — Buyer Scoring Engine Spec (Samay & Kamya) v1
+# Sherlock Homes: Buyer Scoring Engine Spec (Samay & Kamya) v1
 
 **Status:** Draft (ready to implement)  
 **Last Updated:** 2026-01-19  

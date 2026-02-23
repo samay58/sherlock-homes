@@ -19,5 +19,7 @@ This folder is the source of truth for Home Hog (Sherlock Homes) documentation.
 
 Historical documents live in `archive/` and are not guaranteed to reflect the current code.
 
+- `archive/PROJECT_HISTORY.md`: phase tracker (archived, unmaintained)
+- `archive/CHANGELOG.md`: changelog (archived, unmaintained)
 - `archive/SESSION_PROGRESS.md`: prior session log (archived)
 - `archive/ai/`: historical agent prompts and reviews (archived)

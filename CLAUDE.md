@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sherlock Homes is a real estate intelligence platform. The backend ingests listings from multiple providers (Zillow, Redfin, Trulia, Realtor, Craigslist, StreetEasy), enriches them with NLP/geospatial/visual signals, and ranks matches against buyer criteria with explainable scoring. Currently SF-focused with NYC adaptation underway.
+Sherlock Homes is a real estate intelligence platform. The backend ingests listings from multiple providers (Zillow, StreetEasy, plus inactive adapters for Redfin, Trulia, Realtor, Craigslist), enriches them with NLP/geospatial/visual signals, and ranks matches against buyer criteria with explainable scoring. Currently configured for NYC rentals (`config/nyc_rental_criteria.yaml`); SF purchase config also available (`config/user_criteria.yaml`).
 
 ## Development Commands
 
@@ -107,7 +107,8 @@ STREETEASY_MAX_PAGES=5    # cap StreetEasy pagination (in addition to global MAX
 
 | File | Role |
 |------|------|
-| `config/user_criteria.yaml` | All scoring weights, filters, NLP keywords, location modifiers |
+| `config/user_criteria.yaml` | SF purchase scoring config |
+| `config/nyc_rental_criteria.yaml` | NYC rental scoring config (active) |
 | `app/services/advanced_matching.py` | Scoring engine (PropertyMatcher) |
 | `app/services/scoring/primitives.py` | Score calculation helpers and dataclasses |
 | `app/services/nlp.py` | Keyword extraction and flag detection |

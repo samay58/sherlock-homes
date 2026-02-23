@@ -65,11 +65,11 @@ Scoring Pipeline:
 | `app/services/visual_scoring.py` | Visual scoring (OpenAI Vision) |
 | `app/services/nlp.py` | Keyword extraction |
 | `app/services/geospatial.py` | Tranquility scoring |
-| `docs/archive/SESSION_PROGRESS.md` | Detailed history (archived) |
+| `config/nyc_rental_criteria.yaml` | NYC scoring weights and filters |
 
 ## Next Steps
 
-1. **Fresh Ingestion**: Get current SF listings
+1. **Fresh Ingestion**: Pull current listings (Zillow + StreetEasy)
    ```bash
    curl -X POST http://localhost:8000/admin/ingestion/run
    ```

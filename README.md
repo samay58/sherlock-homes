@@ -1,8 +1,8 @@
 # Sherlock Homes
 
-SF real estate is a nightmare. This makes it slightly less of one.
+Apartment hunting is a nightmare. This makes it slightly less of one.
 
-Sherlock Homes ranks listings against your criteria using NLP, geospatial signals, and OpenAI Vision. Because staring at 47 identical "sun-drenched" listings should not be a full-time job.
+Sherlock Homes ranks listings against your criteria using NLP, geospatial signals, and OpenAI Vision. Because staring at 47 identical "sun-drenched" listings should not be a full-time job. Currently configured for NYC rentals (previously SF purchases).
 
 ## The Problem
 
@@ -55,7 +55,7 @@ Detects meaningful listing changes like price drops, status flips, and photo upd
 
 ## How It Works
 
-1. **Ingestion**: Scrapes Zillow via ZenRows every 6 hours.
+1. **Ingestion**: Scrapes Zillow + StreetEasy via ZenRows every 6 hours.
 2. **Enrichment**: NLP, geospatial, and visual scoring per listing.
 3. **Matching**: Weighted scoring against your preferences with soft and hard caps.
 4. **Ranking**: Top matches, with explanations of why.
@@ -129,6 +129,7 @@ Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`
 - **Backend**: FastAPI, SQLAlchemy, Pydantic
 - **Frontend**: Vite, React 18, TypeScript, React Query
 - **Database**: SQLite local, PostgreSQL in Docker
-- **AI**: OpenAI (vision + optional text intelligence), optional DeepInfra fallback for text intelligence
+- **Sources**: Zillow (ZenRows), StreetEasy (ZenRows)
+- **AI**: OpenAI (vision + optional text intelligence), DeepInfra fallback
 
 License: not specified (no `LICENSE` file in this repo).

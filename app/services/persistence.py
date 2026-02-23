@@ -195,6 +195,12 @@ def upsert_listings(listings: List[Dict[str, Any]]):
             if not data.get("address"):
                 continue
 
+            # If a provider explicitly sets a model boolean (e.g. `has_doorman_keywords=True`),
+            # we should not allow NLP-derived `flags` to overwrite it with a `False` default.
+            explicit_attrs = {
+                k for k, v in data.items() if k != "flags" and v is not None
+            }
+
             for attempt in range(1, 6):
                 try:
                     source = data.get("source")
@@ -275,6 +281,8 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                                 for fk, fv in flags.items():
                                     if fk in valid_flags:
                                         attr = valid_flags[fk]
+                                        if attr in explicit_attrs:
+                                            continue
                                         setattr(existing, attr, fv)
                             elif k == "photos":
                                 if v:
@@ -298,7 +306,10 @@ def upsert_listings(listings: List[Dict[str, Any]]):
                         record_attrs = {k: v for k, v in data.items() if k != "flags"}
                         for fk, fv in flags.items():
                             if fk in valid_flags:
-                                record_attrs[valid_flags[fk]] = fv
+                                attr = valid_flags[fk]
+                                if record_attrs.get(attr) is not None:
+                                    continue
+                                record_attrs[attr] = fv
 
                         if source:
                             record_attrs["source"] = source

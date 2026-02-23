@@ -111,17 +111,19 @@ Notes:
 
 - **OpenAI 429s in `/matches`**: set `OPENAI_TEXT_MAX_LISTINGS=0` to disable text intelligence, or configure `DEEPINFRA_API_KEY` + `DEEPINFRA_TEXT_MODEL` to enable fallback.
 
+- **Verify DeepInfra fallback is working**:
+  1. Set `DEEPINFRA_API_KEY` in `.env.local`.
+  2. Temporarily unset `OPENAI_API_KEY` (or leave it blank) and keep `OPENAI_TEXT_MAX_LISTINGS>0`.
+  3. Restart `./run_local.sh` and call `GET /matches/test-user`.
+  4. Confirm the API logs contain `Falling back to DeepInfra for text intelligence`.
+
+- **SQLite `database is locked` during ingestion**: this usually means another process is holding a write transaction against the same SQLite file. Restart the API and re-run ingestion. The ingestion upsert path retries transient lock errors, but long-running requests that write (e.g. criteria creation) should commit promptly before making external calls.
+
 - **bcrypt error on startup**: rebuild the venv (pins `bcrypt==3.2.2`).
   ```bash
   rm -rf .venv
   ./run_local.sh
   ```
-
-# Or use debugger
-import debugpy
-debugpy.listen(5678)
-debugpy.wait_for_client()
-```
 
 ### Frontend
 - Use browser DevTools
@@ -158,8 +160,11 @@ docker compose restart postgres
 
 ### Module Import Errors
 ```bash
-# Reinstall dependencies
-pip install -r requirements.txt
+# Recreate the backend venv + reinstall deps
+rm -rf .venv
+./run_local.sh
+
+# Reinstall frontend deps
 cd frontend && npm install
 ```
 
@@ -170,51 +175,3 @@ alembic current
 # Stamp to head if needed
 alembic stamp head
 ```
-
-## Performance Tips
-
-1. **Use database indexes** for frequently queried columns
-2. **Implement caching** for expensive operations
-3. **Lazy load images** in frontend
-4. **Use pagination** for large datasets
-5. **Profile slow queries** with EXPLAIN ANALYZE
-
-## Security Checklist
-
-- [ ] Never commit `.env` files
-- [ ] Validate all user inputs
-- [ ] Use parameterized queries
-- [ ] Implement rate limiting
-- [ ] Keep dependencies updated
-- [ ] Use HTTPS in production
-- [ ] Sanitize error messages
-
-## Deployment Preparation
-
-1. **Build production images**
-   ```bash
-   make build-prod
-   ```
-
-2. **Run production checks**
-   ```bash
-   # Security scan
-   pip-audit
-   
-   # Dependency check
-   npm audit
-   ```
-
-3. **Environment variables**
-   - Set `DEBUG=false`
-   - Use strong database password
-   - Configure proper CORS origins
-
-## Resources
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [React Documentation](https://react.dev/)
-- [React Query Documentation](https://tanstack.com/query/latest)
-- [Vite Documentation](https://vite.dev/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Docker Documentation](https://docs.docker.com/)

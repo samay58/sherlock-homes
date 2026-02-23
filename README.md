@@ -115,6 +115,11 @@ Create `.env.local`:
 DATABASE_URL=sqlite:///./.local/sherlock.db
 ZENROWS_API_KEY=your_key
 OPENAI_API_KEY=your_key
+# Optional: fallback for text intelligence when OpenAI is rate-limited/unset
+DEEPINFRA_API_KEY=your_key
+
+# Switch criteria profiles (SF default vs NYC rentals)
+BUYER_CRITERIA_PATH=config/user_criteria.yaml
 ```
 
 Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`.
@@ -124,6 +129,6 @@ Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`
 - **Backend**: FastAPI, SQLAlchemy, Pydantic
 - **Frontend**: Vite, React 18, TypeScript, React Query
 - **Database**: SQLite local, PostgreSQL in Docker
-- **AI**: OpenAI Vision
+- **AI**: OpenAI (vision + optional text intelligence), optional DeepInfra fallback for text intelligence
 
 License: not specified (no `LICENSE` file in this repo).

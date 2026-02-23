@@ -48,6 +48,7 @@ Matching (read-time scoring):
 2. Apply hard filters
 3. Score weighted criteria (`app/services/advanced_matching.py` + `app/services/scoring/primitives.py`)
 4. Attach explainability fields directly to the ORM object for API responses
+5. Optional: run text intelligence (`app/services/text_intelligence.py`) on the top-N scored listings to improve explainability fields (OpenAI first, DeepInfra fallback)
 
 ## Storage
 
@@ -58,3 +59,11 @@ Matching (read-time scoring):
 
 - Providers should stay focused on fetching/parsing; scoring lives in `app/services/`
 - Routes should remain thin; business logic belongs in services
+
+## Configuration Notes
+
+- Criteria config is selected via `BUYER_CRITERIA_PATH`:
+  - SF default: `config/user_criteria.yaml`
+  - NYC rentals: `config/nyc_rental_criteria.yaml`
+- StreetEasy ingestion is enabled by including `streeteasy` in `INGESTION_SOURCES` and providing `STREETEASY_SEARCH_URLS` (comma-separated).
+- StreetEasy pagination is capped by `STREETEASY_MAX_PAGES` (in addition to the global `MAX_PAGES` ingestion cap).

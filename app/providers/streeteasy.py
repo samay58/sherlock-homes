@@ -50,10 +50,13 @@ class StreetEasyProvider(BaseProvider):
     def __init__(self, concurrency: int = 4):
         raw_urls = getattr(settings, "STREETEASY_SEARCH_URLS", "") or ""
         self._search_urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
-        self._client = ZenRowsUniversalClient(concurrency=concurrency)
+        self._client = ZenRowsUniversalClient(concurrency=concurrency, timeout=90)
 
     async def search(self, bbox=None, page: int = 1) -> Iterable[Dict[str, Any]]:  # type: ignore[override]
         """Search a single page across all configured neighborhood URLs."""
+        if not self._search_urls:
+            logger.info("StreetEasy search skipped: STREETEASY_SEARCH_URLS is empty")
+            return []
         all_listings: List[Dict[str, Any]] = []
         for base_url in self._search_urls:
             try:
@@ -78,7 +81,6 @@ class StreetEasyProvider(BaseProvider):
             url,
             js_render=True,
             premium_proxy=True,
-            extra_params={"wait_for": ".listingCard,.searchCardList,.listing-row"},
         )
 
         # Extract neighborhood from URL slug
@@ -123,11 +125,12 @@ class StreetEasyProvider(BaseProvider):
 
         return listings
 
-    async def search_page(self, page: int = 1) -> tuple:
+    async def search_page(self, page: int = 1) -> tuple[list[Dict[str, Any]], bool]:
         """Multi-page interface used by ingestion.py."""
         items = await self.search(bbox=None, page=page)
-        # StreetEasy pagination: assume more pages if we got results
-        has_more = len(items) > 0 and page < 5  # cap at 5 pages per neighborhood
+        max_pages = max(1, min(settings.MAX_PAGES, settings.STREETEASY_MAX_PAGES))
+        # StreetEasy pagination: assume more pages exist when results are non-empty.
+        has_more = len(items) > 0 and page < max_pages
         return list(items), has_more
 
     async def get_details(self, listing_id: str) -> Dict[str, Any]:
@@ -140,7 +143,6 @@ class StreetEasyProvider(BaseProvider):
                 normalized_id,
                 js_render=True,
                 premium_proxy=True,
-                extra_params={"wait_for": ".price,.details_info,.BuildingInfo"},
             )
         except Exception as exc:
             logger.warning(
@@ -310,13 +312,17 @@ def _normalize_streeteasy_url(url: str) -> Optional[str]:
         url = urljoin(BASE_URL, url)
 
     parts = urlsplit(url)
-    if not parts.netloc:
+    if not parts.netloc or not parts.hostname:
         return None
-    netloc = parts.netloc.lower()
-    if netloc.startswith("www."):
-        netloc = netloc[4:]
-    if "streeteasy.com" not in netloc:
+    host = parts.hostname.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if host != "streeteasy.com" and not host.endswith(".streeteasy.com"):
         return None
+
+    netloc = host
+    if parts.port:
+        netloc = f"{host}:{parts.port}"
 
     clean = parts._replace(
         scheme="https", netloc=netloc, query="", fragment="", path=parts.path.rstrip("/")

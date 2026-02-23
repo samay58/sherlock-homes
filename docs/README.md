@@ -13,7 +13,7 @@ This folder is the source of truth for Home Hog (Sherlock Homes) documentation.
 - `ARCHITECTURE.md`: codebase map + data flow
 - `SCORING_ENGINE_SPEC.md`: scoring rubric and explainability requirements
 - `SCORING_DEEP_DIVE_2026-02-22.md`: runtime diagnostics snapshot (NYC rental)
-- `../config/user_criteria.yaml`: active scoring configuration (source of truth)
+- `../config/user_criteria.yaml` / `../config/nyc_rental_criteria.yaml`: scoring configuration (selected via `BUYER_CRITERIA_PATH`)
 
 ## History (Archive)
 

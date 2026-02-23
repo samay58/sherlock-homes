@@ -14,9 +14,10 @@ Sherlock Homes is a real estate intelligence platform. The backend ingests listi
 ./run_frontend.sh   # Frontend at :5173 (Vite + React)
 
 # Testing
-pytest -q                                    # All tests
-pytest tests/test_scoring.py -v              # Single file
-pytest tests/test_scoring.py::test_name      # Single test
+make test                                    # All tests (prefers .venv when present)
+.venv/bin/python -m pytest -q                 # All tests (explicit)
+.venv/bin/python -m pytest tests/test_scoring.py -v            # Single file
+.venv/bin/python -m pytest tests/test_scoring.py::test_name    # Single test
 
 # Formatting and linting
 make fmt             # black + isort (Python), npm run format (frontend)
@@ -61,7 +62,12 @@ Providers are registered in `app/providers/registry.py` as `ProviderSpec` object
 
 ### Text Intelligence Layer
 
-`app/services/text_intelligence.py`: Optional OpenAI-powered enrichment that runs on top-N scored listings (default 5). Sends description + event timeline to GPT-4o-mini and can override NLP-derived explainability fields. Results cached in-memory by content hash.
+`app/services/text_intelligence.py`: Optional LLM enrichment that runs at match time (`PropertyMatcher.find_matches`) on the top-N scored listings (default `OPENAI_TEXT_MAX_LISTINGS=5`). It uses the listing description plus a short event timeline to improve explainability fields (`top_positives`, `key_tradeoff`, `why_now`). Results are cached in-process by payload hash (no TTL; cache resets on process restart).
+
+Provider selection:
+- If `OPENAI_API_KEY` is set, call OpenAI first.
+- If OpenAI fails or is unset and `DEEPINFRA_API_KEY` is set, fall back to DeepInfra (OpenAI-compatible endpoint).
+- Disable entirely by setting `OPENAI_TEXT_MAX_LISTINGS=0`.
 
 ### State Management
 
@@ -89,10 +95,12 @@ ZENROWS_API_KEY=...
 OPENAI_API_KEY=...
 DEEPINFRA_API_KEY=...       # optional OpenAI-compatible fallback for text intelligence
 DEEPINFRA_TEXT_MODEL=meta-llama/Meta-Llama-3.1-8B-Instruct
+BUYER_CRITERIA_PATH=config/user_criteria.yaml    # SF (default) or config/nyc_rental_criteria.yaml
 SEARCH_MODE=buy          # "buy" or "rent"
 SEARCH_LOCATION=san-francisco-ca
 INGESTION_SOURCES=zillow  # comma-separated: zillow,redfin,trulia,realtor,craigslist,streeteasy,curated
 STREETEASY_SEARCH_URLS=   # comma-separated StreetEasy neighborhood URLs (only used when `streeteasy` is in INGESTION_SOURCES)
+STREETEASY_MAX_PAGES=5    # cap StreetEasy pagination (in addition to global MAX_PAGES)
 ```
 
 ## Key Files
@@ -106,6 +114,8 @@ STREETEASY_SEARCH_URLS=   # comma-separated StreetEasy neighborhood URLs (only u
 | `app/services/geospatial.py` | Tranquility score from SF noise source proximity |
 | `app/services/ingestion.py` | Ingestion orchestration |
 | `app/services/persistence.py` | Upsert logic and change detection |
+| `app/services/text_intelligence.py` | Optional LLM explainability enrichment (OpenAI, DeepInfra fallback) |
 | `app/models/listing.py` | Central model (~60 columns, feature flags as booleans) |
 | `app/models/listing_event.py` | Snapshot + event models for change tracking |
 | `app/core/config.py` | All environment settings |
+| `app/providers/streeteasy.py` | StreetEasy provider (ZenRows; NYC rentals) |

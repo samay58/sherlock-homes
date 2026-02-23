@@ -143,38 +143,30 @@ Outputs:
 Provider (v1):
 - Use **OpenAI** for photo analysis (Responses API with image inputs).
 
-#### 4.4 Text LLM Intelligence (NEW: supplemental, “cheap leverage”)
-This is a **supplemental layer**, not the primary score source.
+#### 4.4 Text LLM Intelligence (supplemental, explainability-first)
+This is a supplemental layer used to improve explainability fields. It is not the primary source of the match score.
 
-Why it’s worth it:
-- Faster iteration than building a large keyword “NLP portal”
-- Better at nuance (marketing language, contradictions, implied tradeoffs)
+Guardrails:
+- JSON-only output
+- Evidence must be verbatim quotes from the input payload
+- If evidence is missing, return null/[] (no guessing)
 
-Risks:
-- Hallucinations and overconfidence
-- Non-determinism
-- Latency/cost if run for all listings
+When it runs (current implementation):
+- After base scoring, for the top `OPENAI_TEXT_MAX_LISTINGS` listings (default 5)
+- Only when `include_intelligence=true` for the request (matches endpoints default to true)
+- Cached in-process by payload hash (no TTL; cache resets on process restart)
 
-Guardrails (trust):
-- Must return **structured JSON only**
-- Must cite **verbatim evidence quotes** from the input text for each claim
-- If not present: output `unknown` (not a guess)
-- Bounded influence on scoring (v1 defaults to explainability-first)
-
-When it runs:
-- Only for listings that pass hard filters
-- Only for a small candidate set (e.g., top K after base scoring), OR on-demand for alert candidates
-- Cached by `listing_text_hash` with TTL
-
-Inputs (markdown constructed per listing):
-- Description (full)
-- Key facts (beds/baths/sqft/price/neighborhood)
-- Timeline/events summary (price drops, back-on-market, DOM)
+Inputs (constructed per listing):
+- Key facts (beds/baths/sqft/price/neighborhood/DOM)
+- Full description
+- Recent timeline derived from `ListingEvent` rows
 
 Outputs (schema, v1):
-```
+```json
 {
-  "criterion_hints": { "natural_light": { "score_0_10": 7, "confidence": "medium", "evidence": ["..."] }, ... },
+  "criterion_hints": {
+    "natural_light": {"score_0_10": 7, "confidence": "medium", "evidence": ["..."]}
+  },
   "tradeoff_candidates": ["..."],
   "top_positive_candidates": ["..."],
   "red_flags": ["..."],
@@ -183,19 +175,17 @@ Outputs (schema, v1):
 ```
 
 Integration (v1):
-- Use LLM results primarily to:
-  - improve `top_positives` and `key_tradeoff`
-  - produce better `why_now` phrasing (still grounded in real events)
-  - mark “unknowns” explicitly
-- Optional later: allow LLM to influence criterion scores when confidence is high AND evidence is strong, capped to a small delta.
+- Results are used to update explainability fields (`top_positives`, `key_tradeoff`, `why_now`).
+- Scores/weights are still computed deterministically from DB columns + deterministic intelligence (NLP/geospatial/vision).
 
-Provider (v1):
-- Use **OpenAI** for this layer (do not depend on Claude/Anthropic for text analysis).
-- Configuration:
-  - `OPENAI_API_KEY` (required)
-  - Default model: `gpt-4o-mini` (best price/performance for structured extraction + grounded summaries)
-  - Optional “higher intelligence” override for difficult listings: `gpt-4.1-mini` (use sparingly; bounded to top-K candidates)
-  - All prompts must enforce **JSON-only** output and require **verbatim evidence quotes**.
+Providers:
+- OpenAI first (when `OPENAI_API_KEY` is set)
+- DeepInfra fallback (OpenAI-compatible API) when OpenAI fails or is unset and `DEEPINFRA_API_KEY` is set
+
+Key settings:
+- `OPENAI_TEXT_MAX_LISTINGS` (0 disables)
+- `OPENAI_TEXT_MODEL`, `OPENAI_TEXT_MODEL_HARD`
+- `DEEPINFRA_TEXT_MODEL`, `DEEPINFRA_TEXT_MODEL_HARD`, `DEEPINFRA_BASE_URL`
 
 ---
 

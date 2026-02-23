@@ -61,6 +61,10 @@ Response: list of `PropertyListing` objects with match fields:
 - `match_tradeoff`
 - `feature_scores`
 
+Notes:
+- Scoring runs at request time (read-time scoring).
+- If text intelligence is enabled (`OPENAI_TEXT_MAX_LISTINGS>0`) this endpoint may make best-effort external LLM calls to improve explainability fields (`top_positives`, `key_tradeoff`, `why_now`). OpenAI is used when configured; DeepInfra can be configured as a fallback.
+
 ### Criteria
 
 ```http

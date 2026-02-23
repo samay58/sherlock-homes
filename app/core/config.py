@@ -126,6 +126,7 @@ class Settings(BaseSettings):
         default="https://www.redfin.com/city/17151/CA/San-Francisco"
     )
     STREETEASY_SEARCH_URLS: str = Field(default="")
+    STREETEASY_MAX_PAGES: int = Field(default=5)
     CURATED_SOURCES_PATH: str = Field(default="config/curated_sources.yaml")
 
     # Search Filter Settings

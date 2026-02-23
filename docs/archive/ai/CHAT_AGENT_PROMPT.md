@@ -1,6 +1,6 @@
 # Prompt for Chat Agent: Sherlock Homes Technical Assessment
 
-Copy everything below the line into Chat Agent, along with the contents of `TECHNICAL_EXPLAINER.md` as context.
+Copy everything below the line into Chat Agent, along with the contents of `docs/TECHNICAL_EXPLAINER.md` as context.
 
 ---
 

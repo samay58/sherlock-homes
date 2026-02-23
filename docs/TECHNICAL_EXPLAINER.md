@@ -1,5 +1,8 @@
 # Sherlock Homes: Full Technical Explainer for External Assessment
 
+> Note (February 22, 2026): This is a historical deep-dive prepared for an external assessment.
+> Some details may be stale. For the current codebase map and runbook, start with `docs/ARCHITECTURE.md` and `docs/DEVELOPMENT.md`.
+
 ## Purpose of This Document
 
 This document provides a comprehensive technical walkthrough of **Sherlock Homes** (codebase: `home-hog`), a property intelligence platform that scrapes real estate listings, enriches them with NLP and computer vision analysis, scores them against weighted buyer criteria, and delivers personalized match alerts. The system was originally built for SF home purchases and has been adapted for NYC rental search.
@@ -425,7 +428,7 @@ From actual ingestion runs during development:
 
 ### `.env.local` (active configuration)
 ```
-DATABASE_URL=sqlite:///./homehog.db
+DATABASE_URL=sqlite:///./.local/sherlock.db
 ZENROWS_API_KEY=<key>
 ANTHROPIC_API_KEY=<key>
 OPENAI_API_KEY=<key>

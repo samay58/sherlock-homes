@@ -33,7 +33,7 @@
 
 ## Configuration & Secrets
 - Local overrides live in `.env.local`; defaults in `.env`.
-- Set `DATABASE_URL` explicitly for local SQLite (e.g., `sqlite:///./homehog.db`).
+- Local SQLite defaults to `sqlite:///./.local/sherlock.db` (legacy `./sherlock.db` and `./homehog.db` are auto-detected if present).
 - Keep API keys (ZenRows, OpenAI, Anthropic) out of commits.
 
 ## Commit & Pull Request Guidelines

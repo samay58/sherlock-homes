@@ -3,6 +3,10 @@ Export all tables to JSON for SQLite import.
 
 Run this while Docker is still up:
     docker compose exec api python scripts/export_to_json.py
+    mkdir -p .local
+    docker cp sherlock-api:/code/.local/data_export.json ./.local/data_export.json
+
+Legacy (older versions):
     docker cp sherlock-api:/code/data_export.json ./data_export.json
 """
 import json
@@ -66,7 +70,9 @@ def export_all():
         }
 
         # Write to file
-        output_path = Path(__file__).parent.parent / "data_export.json"
+        project_root = Path(__file__).parent.parent
+        output_path = project_root / ".local" / "data_export.json"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(data, f, indent=2, default=json_serializer)
 

@@ -178,7 +178,6 @@ export function MatchesPage() {
       <header className="page-header">
         <div className="header-content">
           <h1 className="page-title">Your Matches</h1>
-          <p className="page-subtitle">Properties matching your criteria, ranked by fit.</p>
         </div>
 
         {(ingestionStatus || ingestionMessage || ingestionError) && (
@@ -300,10 +299,9 @@ export function MatchesPage() {
 
       {!isLoading && !error && sortedMatches.length === 0 && (
         <div className="empty-state">
-          <p className="empty-message">No matches found for your current criteria.</p>
+          <p className="empty-message">Nothing here yet.</p>
           <p className="empty-hint">
-            Try adjusting filters or visit <Link to="/criteria">My Criteria</Link> to update your
-            preferences.
+            Loosen your filters or <Link to="/criteria">update your criteria</Link>.
           </p>
         </div>
       )}

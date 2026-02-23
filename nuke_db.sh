@@ -10,22 +10,33 @@ echo "=================================="
 echo "Database Reset (Nuke and Pave)"
 echo "=================================="
 
-# Remove old homehog.db if it exists (legacy name)
-if [ -f "homehog.db" ]; then
-    echo "Removing legacy homehog.db..."
-    rm -f homehog.db homehog.db-journal homehog.db-shm homehog.db-wal
-fi
+delete_sqlite_family() {
+    local base="$1"
 
-# Remove sherlock.db
-if [ -f "sherlock.db" ]; then
-    echo "Deleting sherlock.db..."
-    rm -f sherlock.db
-    rm -f sherlock.db-journal
-    rm -f sherlock.db-shm
-    rm -f sherlock.db-wal
-    echo "Database deleted."
+    if [ -f "$base" ] || [ -f "${base}-journal" ] || [ -f "${base}-shm" ] || [ -f "${base}-wal" ]; then
+        echo "Deleting $base..."
+        rm -f "$base" "${base}-journal" "${base}-shm" "${base}-wal"
+        return 0
+    fi
+    return 1
+}
+
+found_any=0
+
+# Preferred local path (keeps repo root clean)
+if delete_sqlite_family ".local/sherlock.db"; then found_any=1; fi
+
+# Legacy root path
+if delete_sqlite_family "sherlock.db"; then found_any=1; fi
+
+# Legacy names from older iterations
+if delete_sqlite_family ".local/homehog.db"; then found_any=1; fi
+if delete_sqlite_family "homehog.db"; then found_any=1; fi
+
+if [ "$found_any" -eq 0 ]; then
+    echo "No SQLite database files found."
 else
-    echo "No database file found (sherlock.db)"
+    echo "Database deleted."
 fi
 
 echo ""
@@ -33,4 +44,4 @@ echo "Database will be recreated on next app startup."
 echo ""
 echo "Next steps:"
 echo "  1. ./run_local.sh          # Start API (creates tables)"
-echo "  2. python scripts/import_from_json.py  # Optional: restore data"
+echo "  2. python scripts/import_from_json.py  # Optional: restore data (.local/data_export.json)"

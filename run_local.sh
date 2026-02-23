@@ -123,10 +123,19 @@ if [ "$NEED_INSTALL" -eq 1 ]; then
 fi
 
 # Show database info
-if [[ "$DATABASE_URL" == sqlite* ]]; then
-    echo "Database: SQLite (sherlock.db)"
+DB_URL="$($VENV_PYTHON -c 'from app.core.config import settings; print(settings.DATABASE_URL)' 2>/dev/null || true)"
+if [ -n "$DB_URL" ]; then
+    if [[ "$DB_URL" == sqlite* ]]; then
+        echo "Database: SQLite ($DB_URL)"
+    else
+        echo "Database: $DB_URL"
+    fi
 else
-    echo "Database: $DATABASE_URL"
+    if [ -n "${DATABASE_URL:-}" ]; then
+        echo "Database: $DATABASE_URL"
+    else
+        echo "Database: (unset; see app/core/config.py)"
+    fi
 fi
 
 echo ""

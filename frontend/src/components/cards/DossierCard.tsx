@@ -134,6 +134,8 @@ export function DossierCard({
         <div className="dossier-photo">
           {!imageLoaded && <div className="photo-placeholder skeleton"></div>}
           <img
+            width="1600"
+            height="1000"
             src={imageError ? '/placeholder-image.svg' : primaryPhoto}
             alt={listing.address}
             loading="lazy"

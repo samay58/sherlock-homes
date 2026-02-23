@@ -152,7 +152,7 @@ KEYWORDS = {
         "spectacular view",
         "breathtaking view",
         "unobstructed view",
-        # SF-specific landmarks
+        # Landmark views
         "bay view",
         "ocean view",
         "golden gate",
@@ -160,6 +160,15 @@ KEYWORDS = {
         "coit tower",
         "alcatraz view",
         "twin peaks",
+        "central park view",
+        "hudson river view",
+        "east river view",
+        "brooklyn bridge view",
+        "manhattan skyline",
+        "empire state building",
+        "one world trade",
+        "freedom tower view",
+        "statue of liberty view",
         # View types
         "cityscape",
         "city view",
@@ -347,7 +356,7 @@ KEYWORDS = {
         "fell through",
         "previous buyer",
     ],
-    # NYC rental features
+    # NYC rental pet policy signals
     "pet_friendly": [
         "pet friendly",
         "pet-friendly",
@@ -378,6 +387,7 @@ KEYWORDS = {
         "no-pet policy",
         "sorry no pets",
     ],
+    # NYC rental amenities & lifestyle
     "gym_fitness": [
         "fitness center",
         "gym",
@@ -423,7 +433,6 @@ KEYWORDS = {
         "designer finishes",
         "spa-like",
     ],
-    # Red Flags (negative indicators)
     "busy_street": [
         "busy street",
         "high traffic",

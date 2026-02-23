@@ -26,6 +26,9 @@ class IngestionState(BaseModel):
         default=None,
         description="Error message if the last run failed catastrophically",
     )
+    is_running: bool = Field(
+        default=False, description="Whether an ingestion job is currently running"
+    )
 
 
 # Global instance to hold the state

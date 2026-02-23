@@ -1,0 +1,32 @@
+.git
+.beads
+.specstory
+.interface-design
+.claude
+
+# Local data / caches
+.local
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+data_export.json
+
+# Python
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.coverage
+htmlcov
+
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/dist-node
+
+# OS
+.DS_Store

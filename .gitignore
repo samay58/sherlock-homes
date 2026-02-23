@@ -68,6 +68,12 @@ tmp/
 temp/
 *.tmp
 
+# Local-only workspace artifacts
+.local/
+.specstory/
+.interface-design/
+.claude/
+
 # Project specific
 test_nlp.py
 MASTER_PROJECT_TRACKER.md

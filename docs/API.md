@@ -2,6 +2,10 @@
 
 Base URL: `http://localhost:8000`
 
+FastAPI interactive docs:
+- Swagger UI: `http://localhost:8000/docs`
+- OpenAPI JSON: `http://localhost:8000/openapi.json`
+
 ## Authentication
 Currently uses a test user. Authentication is planned.
 
@@ -79,6 +83,18 @@ POST /admin/ingestion/run
 GET /ingestion/status
 ```
 
+### Admin Utilities
+
+```http
+POST /admin/migrate
+POST /admin/migrate/stamp/{revision}
+
+POST /admin/scraper/run
+GET  /admin/scraper/status
+
+GET  /admin/ingestion/last-run
+```
+
 ### Scouts
 
 ```http
@@ -86,4 +102,13 @@ POST /scouts/
 POST /scouts/{id}/run
 GET /scouts/
 GET /scouts/{id}/matches
+```
+
+### Users (Weight Learning)
+
+```http
+GET    /users/{id}/weights
+GET    /users/{id}/weights/summary
+POST   /users/{id}/weights/recalculate
+DELETE /users/{id}/weights
 ```

@@ -277,7 +277,7 @@ LIMIT 5;
 
 ```env
 # ZenRows API (Required)
-ZENROWS_API_KEY=3f05e02f2fcd9d0de313b60efb0687ca58bf8189
+ZENROWS_API_KEY=your_zenrows_key_here
 
 # Location - Your Priority Neighborhood
 SEARCH_LOCATION=dolores-heights-san-francisco-ca

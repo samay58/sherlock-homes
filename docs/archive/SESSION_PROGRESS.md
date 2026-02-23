@@ -1,5 +1,7 @@
 # Sherlock Homes: Session Progress Log
 
+> Archived: historical session notes. Treat as context/history, not as the current runbook.
+
 **Last Updated**: January 19, 2026 (Session 12)
 
 ---

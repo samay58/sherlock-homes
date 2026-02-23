@@ -60,6 +60,11 @@ def _write_test_criteria(tmp_path):
                 - dim
                 - cozy
               weight: 0.6
+            no_pets:
+              keywords:
+                - no pets
+                - no pets allowed
+              weight: 0.0
             location_noise:
               keywords:
                 - busy street
@@ -186,4 +191,33 @@ def test_score_listing_blocks_dark_without_light(db_session, tmp_path):
         matcher = PropertyMatcher(criteria=None, db=db_session)
         assert matcher.score_listing(listing) is False
     finally:
+        _restore_criteria(original_path)
+
+
+def test_score_listing_blocks_rentals_with_no_pets_signal(db_session, tmp_path):
+    original_path = _configure_criteria(tmp_path)
+    original_mode = settings.SEARCH_MODE
+    settings.SEARCH_MODE = "rent"
+    try:
+        listing = PropertyListing(
+            listing_id="Z3000",
+            address="3000 Beacon St, San Francisco, CA",
+            price=2100000,
+            beds=3,
+            baths=2.0,
+            sqft=1700,
+            neighborhood="Noe Valley",
+            property_type="condo",
+            url="https://example.com/listing/Z3000",
+            description="Bright home with natural light and garden deck. No pets allowed.",
+            is_no_pets=False,
+        )
+        db_session.add(listing)
+        db_session.commit()
+        db_session.refresh(listing)
+
+        matcher = PropertyMatcher(criteria=None, db=db_session)
+        assert matcher.score_listing(listing) is False
+    finally:
+        settings.SEARCH_MODE = original_mode
         _restore_criteria(original_path)

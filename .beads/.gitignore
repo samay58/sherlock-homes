@@ -11,6 +11,9 @@ daemon.log
 daemon.pid
 bd.sock
 
+# Ephemeral local state
+last-touched
+
 # Local version tracking (prevents upgrade notification spam after git ops)
 .local_version
 

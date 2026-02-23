@@ -26,7 +26,7 @@ services:
     # comment out live bind mount to avoid node_modules mismatch
     # volumes:
     #   - ./frontend:/app
-    command: yarn dev --host 0.0.0.0
+    command: npm run dev -- --host 0.0.0.0 --port 5173
 
   db:
     image: postgres:16-alpine

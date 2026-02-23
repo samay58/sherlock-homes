@@ -39,7 +39,26 @@ from app.services.text_intelligence import \
 
 logger = logging.getLogger(__name__)
 
-TOTAL_POINTS = 126
+NEGATED_DOORMAN_PHRASES = [
+    "no doorman",
+    "without doorman",
+    "no concierge",
+    "without concierge",
+    "does not include doorman",
+    "does not include concierge",
+    "no 24-hour doorman",
+    "no full-time doorman",
+    "no full time doorman",
+    "without 24-hour doorman",
+    "without 24 hour doorman",
+    "without full-time doorman",
+    "without full time doorman",
+    "no virtual doorman",
+    "without virtual doorman",
+    "non-doorman",
+    "non doorman",
+    "not a doorman building",
+]
 
 
 def _build_why_now(listing: PropertyListing, db: Session) -> Optional[str]:
@@ -95,6 +114,10 @@ class PropertyMatcher:
         self._effective_weights = (
             user_weights if user_weights else dict(self.config.weights)
         )
+
+    def _total_possible_points(self) -> float:
+        total = sum(self._effective_weights.values())
+        return total if total > 0 else 1.0
 
     def _build_listing_context(
         self, listing: PropertyListing
@@ -233,7 +256,8 @@ class PropertyMatcher:
             if no_parking_hits:
                 failures.append("no parking")
 
-        if settings.SEARCH_MODE == "rent" and listing.is_no_pets:
+        no_pets_signal = nlp_hits.get("negative_hits", {}).get("no_pets")
+        if settings.SEARCH_MODE == "rent" and (listing.is_no_pets or no_pets_signal):
             failures.append("no pets allowed")
 
         return (len(failures) == 0, failures)
@@ -733,7 +757,7 @@ class PropertyMatcher:
             bq_evidence.append(f"visual quality {listing.visual_quality_score}")
         bq_multiplier = float(
             self.config.nlp_signals.get("positive", {})
-            .get("quality", {})
+            .get("building_quality", {})
             .get("weight", 1.0)
         )
         if bq_score:
@@ -755,9 +779,6 @@ class PropertyMatcher:
         # Doorman / concierge
         dm_evidence: List[str] = []
         dm_score = 0.0
-        if listing.has_doorman_keywords:
-            dm_score = 8.0
-            dm_evidence.append("doorman flag")
         amenity_hits = nlp_hits.get("positive_hits", {}).get("amenities", [])
         doorman_amenity_hits = [
             h
@@ -773,21 +794,28 @@ class PropertyMatcher:
                 ]
             )
         ]
-        if doorman_amenity_hits:
-            dm_score = max(dm_score, _score_from_hits(len(doorman_amenity_hits)))
-            dm_evidence.extend(
-                [f"mentions '{hit}'" for hit in doorman_amenity_hits[:2]]
-            )
-        if any(
-            kw in text_lower for kw in ["24-hour doorman", "full-time doorman"]
-        ):
-            dm_score = 10.0
-            if "24h/full-time" not in " ".join(dm_evidence):
-                dm_evidence.append("24h/full-time doorman")
-        elif any(
-            kw in text_lower for kw in ["virtual doorman", "part-time doorman"]
-        ):
-            dm_score = max(dm_score, 6.0)
+        negated_doorman = any(phrase in text_lower for phrase in NEGATED_DOORMAN_PHRASES)
+        if negated_doorman:
+            dm_evidence.append("doorman explicitly excluded")
+        else:
+            if listing.has_doorman_keywords:
+                dm_score = 8.0
+                dm_evidence.append("doorman flag")
+            if doorman_amenity_hits:
+                dm_score = max(dm_score, _score_from_hits(len(doorman_amenity_hits)))
+                dm_evidence.extend(
+                    [f"mentions '{hit}'" for hit in doorman_amenity_hits[:2]]
+                )
+            if any(
+                kw in text_lower for kw in ["24-hour doorman", "full-time doorman"]
+            ):
+                dm_score = 10.0
+                if "24h/full-time" not in " ".join(dm_evidence):
+                    dm_evidence.append("24h/full-time doorman")
+            elif any(
+                kw in text_lower for kw in ["virtual doorman", "part-time doorman"]
+            ):
+                dm_score = max(dm_score, 6.0)
         add_component(
             "doorman_concierge",
             score=round(dm_score, 2),
@@ -836,7 +864,7 @@ class PropertyMatcher:
     def score_listing(
         self, listing: PropertyListing, min_score_percent: float = 0.0
     ) -> bool:
-        total_possible = sum(self._effective_weights.values()) or TOTAL_POINTS
+        total_possible = self._total_possible_points()
 
         passes, _ = self._passes_hard_filters(listing)
         if not passes:
@@ -873,7 +901,7 @@ class PropertyMatcher:
         min_score: float = 0.0,
     ) -> List[Tuple[PropertyListing, float, Dict[str, Any]]]:
         query = self._build_base_query()
-        total_possible = sum(self._effective_weights.values()) or TOTAL_POINTS
+        total_possible = self._total_possible_points()
         listings = self.db.scalars(query).all()
         self.total_analyzed = len(listings)
 

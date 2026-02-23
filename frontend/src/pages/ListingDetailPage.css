@@ -48,6 +48,7 @@
   gap: var(--space-3, 0.75rem);
   font-family: var(--font-family-mono, monospace);
   font-size: var(--font-size-base, 14px);
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-tertiary, #999);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -167,6 +168,7 @@
 .signal-value {
   font-family: var(--font-family-mono, monospace);
   font-size: var(--font-size-sm, 12px);
+  font-variant-numeric: tabular-nums;
 }
 
 .explain-row {
@@ -210,4 +212,20 @@
 
 .error {
   color: var(--color-error, #dc2626);
+}
+
+@media (prefers-color-scheme: dark) {
+  .info-container {
+    box-shadow: none;
+  }
+  .feature-block, .signal-block, .explain-block {
+    background: var(--color-accent-subtle);
+    border-color: var(--color-border);
+  }
+  .gallery-container {
+    background-color: var(--color-gray-200);
+  }
+  .tag { background-color: var(--color-gray-200); }
+  .tag.status { background-color: var(--color-accent-subtle); }
+  .description { border-top-color: var(--color-border); }
 }

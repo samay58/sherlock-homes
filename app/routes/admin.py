@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 from alembic import command as alembic_command
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.dependencies import get_db
-from app.services.ingestion import run_ingestion_job_sync
+from app.services.ingestion import run_ingestion_job
 from app.services.scraper import run_scrape_job, scraper_status
 from app.state import IngestionState, ingestion_state
 
@@ -21,9 +22,11 @@ def trigger_scraper():
 
 
 @router.post("/ingestion/run")
-def trigger_ingestion():
-    run_ingestion_job_sync()
-    return {"detail": "ingestion executed"}
+async def trigger_ingestion():
+    if ingestion_state.is_running:
+        raise HTTPException(status_code=409, detail="Ingestion job is already running.")
+    asyncio.create_task(run_ingestion_job())
+    return {"detail": "ingestion job started"}
 
 
 @router.get("/scraper/status")

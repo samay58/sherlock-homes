@@ -25,6 +25,8 @@ Frontend: http://localhost:5173
 
 Python 3.11/3.12 recommended. If `uv` is installed, `./run_local.sh` will use it automatically.
 
+Local data (SQLite DB, JSON exports) is kept under `.local/` by default to avoid repo-root file sprawl. Existing legacy DBs at `./sherlock.db` or `./homehog.db` are still detected and used automatically.
+
 ## What It Actually Does
 
 **NLP Scoring**
@@ -61,7 +63,7 @@ Detects meaningful listing changes like price drops, status flips, and photo upd
 ## Architecture
 
 ```
-sherlock-homes/
+home-hog/
 ├── app/                    # FastAPI backend
 │   ├── models/             # SQLAlchemy models
 │   ├── services/
@@ -110,9 +112,9 @@ python -m app.scripts.analyze_visual_scores
 Create `.env.local`:
 
 ```env
-DATABASE_URL=sqlite:///./sherlock.db
+DATABASE_URL=sqlite:///./.local/sherlock.db
 ZENROWS_API_KEY=your_key
-ANTHROPIC_API_KEY=your_key
+OPENAI_API_KEY=your_key
 ```
 
 Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`.
@@ -124,4 +126,4 @@ Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`
 - **Database**: SQLite local, PostgreSQL in Docker
 - **AI**: OpenAI Vision
 
-MIT licensed. Do whatever.
+License: not specified (no `LICENSE` file in this repo).

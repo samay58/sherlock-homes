@@ -1,14 +1,13 @@
-import asyncio
 import logging
 import re
 from typing import Any, Dict, Iterable, List, Optional
-from urllib.parse import urljoin
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
 from app.providers.base import BaseProvider
-from app.providers.html_parsing import parse_listing_from_html
+from app.providers.html_parsing import extract_item_list_urls, parse_listing_from_html
 from app.providers.zenrows_universal import ZenRowsUniversalClient
 
 logger = logging.getLogger(__name__)
@@ -74,7 +73,7 @@ class StreetEasyProvider(BaseProvider):
     async def _search_neighborhood(
         self, base_url: str, page: int = 1
     ) -> List[Dict[str, Any]]:
-        url = base_url if page <= 1 else f"{base_url}?page={page}"
+        url = _with_page_param(base_url, page)
         html = await self._client.fetch(
             url,
             js_render=True,
@@ -85,28 +84,32 @@ class StreetEasyProvider(BaseProvider):
         # Extract neighborhood from URL slug
         neighborhood = _neighborhood_from_url(base_url)
 
-        # Try structured JSON-LD first, then regex for listing URLs
+        # Try structured JSON-LD first, then regex + DOM anchors.
         soup = BeautifulSoup(html, "html.parser")
-        urls = LISTING_URL_RE.findall(html)
+        urls = extract_item_list_urls(html)
+        urls.extend(LISTING_URL_RE.findall(html))
 
         # Also look for relative listing links
         for a_tag in soup.select("a[href*='/building/']"):
             href = a_tag.get("href", "")
-            if "/rental/" in href:
-                full_url = urljoin(BASE_URL, href) if href.startswith("/") else href
-                urls.append(full_url)
+            if "/rental/" not in href:
+                continue
+            full_url = urljoin(BASE_URL, href) if href.startswith("/") else href
+            urls.append(full_url)
 
         # Dedupe
         seen: set[str] = set()
         listings: List[Dict[str, Any]] = []
         for listing_url in urls:
-            normalized = listing_url.split("?")[0]  # strip query params
+            normalized = _normalize_streeteasy_url(listing_url)
+            if not normalized:
+                continue
             if normalized in seen:
                 continue
             seen.add(normalized)
 
             # Try to extract minimal info from card HTML near the link
-            card_data = _extract_card_data(soup, listing_url)
+            card_data = _extract_card_data(soup, normalized)
 
             listings.append(
                 {
@@ -131,9 +134,10 @@ class StreetEasyProvider(BaseProvider):
         """Fetch and parse a StreetEasy detail page. listing_id is the full URL."""
         if not listing_id:
             return {}
+        normalized_id = _normalize_streeteasy_url(listing_id) or listing_id
         try:
             html = await self._client.fetch(
-                listing_id,
+                normalized_id,
                 js_render=True,
                 premium_proxy=True,
                 extra_params={"wait_for": ".price,.details_info,.BuildingInfo"},
@@ -152,13 +156,9 @@ class StreetEasyProvider(BaseProvider):
         _enrich_from_streeteasy_html(soup, data)
 
         data["source"] = "streeteasy"
-        data["source_listing_id"] = listing_id
+        data["source_listing_id"] = normalized_id
         if not data.get("url"):
-            data["url"] = listing_id
-
-        # Extract neighborhood from URL if not already set
-        if not data.get("neighborhood"):
-            data["neighborhood"] = _neighborhood_from_url(listing_id)
+            data["url"] = normalized_id
 
         return data
 
@@ -242,21 +242,13 @@ def _enrich_from_streeteasy_html(soup: BeautifulSoup, data: Dict[str, Any]) -> N
     )
     if amenity_text:
         if "doorman" in amenity_text:
-            data.setdefault("has_doorman", True)
-        if "elevator" in amenity_text:
-            data.setdefault("has_elevator", True)
+            data.setdefault("has_doorman_keywords", True)
         if re.search(r"\bgym\b|fitness", amenity_text):
-            data.setdefault("has_gym", True)
-        if re.search(r"laundry|washer|dryer", amenity_text):
-            data.setdefault("has_laundry", True)
+            data.setdefault("has_gym_keywords", True)
         if re.search(r"parking|garage", amenity_text):
-            data.setdefault("has_parking", True)
-        if re.search(r"dishwasher", amenity_text):
-            data.setdefault("has_dishwasher", True)
-        if re.search(r"\broof\b|rooftop", amenity_text):
-            data.setdefault("has_roof_deck", True)
+            data.setdefault("has_parking_keywords", True)
         if re.search(r"outdoor|patio|terrace|balcony|garden|yard", amenity_text):
-            data.setdefault("has_outdoor_space", True)
+            data.setdefault("has_outdoor_space_keywords", True)
 
     # Neighborhood from page
     if not data.get("neighborhood"):
@@ -268,8 +260,15 @@ def _enrich_from_streeteasy_html(soup: BeautifulSoup, data: Dict[str, Any]) -> N
 def _extract_card_data(soup: BeautifulSoup, listing_url: str) -> Dict[str, Any]:
     """Try to extract minimal listing data from a search card near the listing link."""
     data: Dict[str, Any] = {}
-    # Find the anchor tag for this listing
-    link = soup.find("a", href=lambda h: h and listing_url.rstrip("/").endswith(h.rstrip("/").split("streeteasy.com")[-1]) if h else False)
+    target_path = urlsplit(listing_url).path.rstrip("/")
+
+    def _href_matches(href: str | None) -> bool:
+        if not href:
+            return False
+        full = urljoin(BASE_URL, href) if href.startswith("/") else href
+        return urlsplit(full).path.rstrip("/") == target_path
+
+    link = soup.find("a", href=_href_matches)
     if not link:
         return data
 
@@ -295,12 +294,44 @@ def _neighborhood_from_url(url: str) -> Optional[str]:
     """Extract canonical neighborhood name from a StreetEasy URL."""
     match = re.search(r"streeteasy\.com/for-rent/([^/?#]+)", url)
     if not match:
-        # Try building URL pattern
-        match = re.search(r"streeteasy\.com/building/([^/]+)", url)
-    if match:
-        slug = match.group(1)
-        return SLUG_TO_NEIGHBORHOOD.get(slug, slug.replace("-", " ").title())
+        return None
+    slug = match.group(1)
+    return SLUG_TO_NEIGHBORHOOD.get(slug, slug.replace("-", " ").title())
     return None
+
+
+def _normalize_streeteasy_url(url: str) -> Optional[str]:
+    if not url:
+        return None
+    url = url.strip()
+    if not url:
+        return None
+
+    if url.startswith("/"):
+        url = urljoin(BASE_URL, url)
+
+    parts = urlsplit(url)
+    if not parts.netloc:
+        return None
+    netloc = parts.netloc.lower()
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    if "streeteasy.com" not in netloc:
+        return None
+
+    clean = parts._replace(
+        scheme="https", netloc=netloc, query="", fragment="", path=parts.path.rstrip("/")
+    )
+    return urlunsplit(clean)
+
+
+def _with_page_param(base_url: str, page: int) -> str:
+    if page <= 1:
+        return base_url
+    parts = urlsplit(base_url)
+    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != "page"]
+    query.append(("page", str(page)))
+    return urlunsplit(parts._replace(query=urlencode(query, doseq=True)))
 
 
 def _parse_price(text: str) -> Optional[float]:

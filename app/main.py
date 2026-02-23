@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 
@@ -19,7 +20,8 @@ from app.routes.listings import router as listings_router
 from app.routes.scouts import router as scouts_router
 from app.routes.users import router as users_router
 from app.services.criteria import TEST_USER_ID
-from app.services.ingestion import run_ingestion_job_sync
+from app.services.ingestion import run_ingestion_job
+from app.state import ingestion_state
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +47,22 @@ app.include_router(feedback_router)
 app.include_router(users_router)
 
 scheduler: BackgroundScheduler | None = None
+_event_loop = None
+
+
+def _schedule_ingestion():
+    """Bridge for BackgroundScheduler (runs in a thread) to schedule the async job."""
+    if ingestion_state.is_running:
+        return
+    if _event_loop and _event_loop.is_running():
+        asyncio.run_coroutine_threadsafe(run_ingestion_job(), _event_loop)
 
 
 @app.on_event("startup")
-def initial_setup():
+async def initial_setup():
     """Setup database and test user on startup."""
+    global _event_loop
+    _event_loop = asyncio.get_event_loop()
     database_url = str(settings.DATABASE_URL)
     is_sqlite = database_url.startswith("sqlite")
 
@@ -112,7 +125,7 @@ def initial_setup():
     if os.getenv("ZENROWS_API_KEY") and settings.ENABLE_AUTO_INGESTION:
         scheduler = BackgroundScheduler(timezone="UTC")
         scheduler.add_job(
-            run_ingestion_job_sync,
+            _schedule_ingestion,
             "interval",
             hours=settings.INGESTION_INTERVAL_HOURS,
             id="ingestion_sync_job",

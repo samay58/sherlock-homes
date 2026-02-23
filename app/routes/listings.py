@@ -3,12 +3,14 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
 from app.models.criteria import Criteria
 from app.models.listing import PropertyListing
+from app.services.criteria_config import (load_buyer_criteria,
+                                          get_required_neighborhoods)
 from app.models.listing_event import ListingEvent
 from app.schemas.listing_event import ListingEvent as ListingEventSchema
 from app.schemas.listing_event import \
@@ -32,11 +34,42 @@ def read_listings(
     db: Session = Depends(get_db),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
+    apply_hard_filters: bool = Query(
+        default=False,
+        description="When true, apply buyer hard filters from BUYER_CRITERIA_PATH",
+    ),
 ):
     """Retrieve a paginated list of property listings."""
-    query = (
-        select(PropertyListing).offset(skip).limit(limit).order_by(PropertyListing.id)
-    )
+    query = select(PropertyListing)
+    if apply_hard_filters:
+        config = load_buyer_criteria()
+        hard = config.hard_filters
+        filters = []
+
+        beds_min = hard.get("bedrooms_min")
+        if beds_min is not None:
+            filters.append(PropertyListing.beds >= beds_min)
+
+        baths_min = hard.get("bathrooms_min")
+        if baths_min is not None:
+            filters.append(PropertyListing.baths >= baths_min)
+
+        price_max = hard.get("price_max")
+        if price_max is not None:
+            filters.append(PropertyListing.price <= price_max)
+
+        sqft_min = hard.get("sqft_min")
+        if sqft_min is not None:
+            filters.append(PropertyListing.sqft >= sqft_min)
+
+        neighborhoods = get_required_neighborhoods(config)
+        if neighborhoods:
+            filters.append(PropertyListing.neighborhood.in_(neighborhoods))
+
+        if filters:
+            query = query.where(and_(*filters))
+
+    query = query.offset(skip).limit(limit).order_by(PropertyListing.id)
     listings = db.scalars(query).all()
     return list(listings)
 

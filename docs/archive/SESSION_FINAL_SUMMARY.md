@@ -426,8 +426,8 @@ Built intelligent multi-factor scoring system with 83.3/100 verified accuracy
 ---
 
 **All documentation**:
-- `SESSION_PROGRESS.md` - Detailed session 1 notes
-- `EXECUTIVE_SUMMARY.md` - High-level overview
+- `docs/archive/SESSION_PROGRESS.md` - Detailed session 1 notes (archived)
+- `docs/EXECUTIVE_SUMMARY.md` - High-level overview
 - `FIXES_APPLIED.md` - Technical fix details
 - `TESTING_GUIDE.md` - Step-by-step testing
 - `SESSION_FINAL_SUMMARY.md` - This document

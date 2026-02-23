@@ -195,6 +195,7 @@ async def _enrich_summaries(
 
 
 async def run_ingestion_job():
+    ingestion_state.is_running = True
     start_time = datetime.now(timezone.utc)
     ingestion_state.last_run_start_time = start_time
     ingestion_state.last_run_end_time = None
@@ -235,9 +236,21 @@ async def run_ingestion_job():
                     seen_ids = set()
                     unique_summaries = []
                     for s in provider_summaries:
-                        key = (s.get("source"), s.get("source_listing_id"))
-                        if key not in seen_ids:
-                            seen_ids.add(key)
+                        listing_id_value = s.get("listing_id")
+                        source_listing_id = s.get("source_listing_id")
+                        source_id = None
+                        if source_listing_id not in (None, ""):
+                            source_id = str(source_listing_id)
+                        elif listing_id_value is not None:
+                            source_id = str(listing_id_value)
+                        else:
+                            listing_url = s.get("url")
+                            if isinstance(listing_url, str) and listing_url.strip():
+                                source_id = listing_url.strip()
+                        key = (s.get("source"), source_id)
+                        if not source_id or key not in seen_ids:
+                            if source_id:
+                                seen_ids.add(key)
                             unique_summaries.append(s)
                     dupes_removed = len(provider_summaries) - len(unique_summaries)
                     if dupes_removed:
@@ -307,12 +320,8 @@ async def run_ingestion_job():
     finally:
         end_time = datetime.now(timezone.utc)
         ingestion_state.last_run_end_time = end_time
+        ingestion_state.is_running = False
         duration = (end_time - start_time).total_seconds()
         logger.info(
             "Job finished at %s (Duration: %.2fs)", end_time.isoformat(), duration
         )
-
-
-def run_ingestion_job_sync():
-    """Blocking entry for celery/apscheduler/routes."""
-    asyncio.run(run_ingestion_job())

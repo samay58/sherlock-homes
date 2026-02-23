@@ -4,7 +4,8 @@ Import data from JSON export into SQLite.
 Usage:
     python scripts/import_from_json.py
 
-Expects data_export.json in the project root.
+Looks for `.local/data_export.json` first, then falls back to `data_export.json`
+in the project root for backwards compatibility.
 """
 import json
 import sys
@@ -50,14 +51,27 @@ def parse_datetime(value):
     return value
 
 
+def _resolve_data_export_path() -> Path:
+    project_root = Path(__file__).parent.parent
+    preferred = project_root / ".local" / "data_export.json"
+    legacy = project_root / "data_export.json"
+
+    if preferred.exists():
+        return preferred
+    return legacy
+
+
 def import_all():
     """Import all tables from JSON file."""
-    data_path = Path(__file__).parent.parent / "data_export.json"
+    data_path = _resolve_data_export_path()
 
     if not data_path.exists():
         print(f"ERROR: {data_path} not found")
         print("Run the export script first:")
         print("  docker compose exec api python scripts/export_to_json.py")
+        print("  mkdir -p .local")
+        print("  docker cp sherlock-api:/code/.local/data_export.json ./.local/data_export.json")
+        print("  # Legacy path (older versions):")
         print("  docker cp sherlock-api:/code/data_export.json ./data_export.json")
         sys.exit(1)
 

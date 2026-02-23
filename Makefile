@@ -64,7 +64,7 @@ shell-api:
 	docker compose exec api /bin/bash
 
 shell-db:
-	docker compose exec postgres psql -U postgres -d sherlock
+	docker compose exec db psql -U postgres -d sherlock
 
 # Cleaning
 clean:
@@ -95,7 +95,7 @@ install:
 # Database utilities
 db-reset:
 	docker compose down -v
-	docker compose up -d postgres
+	docker compose up -d db
 	sleep 5
 	make migrate
 
@@ -104,5 +104,5 @@ db-seed:
 
 # Production build
 build-prod:
-	docker build -f Dockerfile.prod -t sherlock-api:latest .
+	docker build -f Dockerfile -t sherlock-api:latest .
 	cd frontend && npm run build

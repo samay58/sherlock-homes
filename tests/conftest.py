@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -13,7 +15,10 @@ from app.models import Base
 from app.dependencies import get_db
 from app.models.user import User
 
-SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///./test.db"
+Path(".local").mkdir(parents=True, exist_ok=True)
+SQLALCHEMY_TEST_DATABASE_URL = os.environ.get(
+    "SQLALCHEMY_TEST_DATABASE_URL", "sqlite:///./.local/test.db"
+)
 
 engine = create_engine(
     SQLALCHEMY_TEST_DATABASE_URL, connect_args={"check_same_thread": False}

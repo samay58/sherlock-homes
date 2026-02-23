@@ -126,6 +126,7 @@
   right: var(--space-3, 12px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
   font-family: var(--font-family-mono, monospace);
+  font-variant-numeric: tabular-nums;
   border-radius: var(--radius-md, 4px);
   display: flex;
   align-items: baseline;
@@ -134,27 +135,38 @@
 }
 
 .dossier-score--excellent {
-  background: rgba(22, 101, 52, 0.85);
+  background: rgba(22, 101, 52, 0.92);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   color: white;
 }
 
 .dossier-score--good {
-  background: rgba(21, 128, 61, 0.85);
+  background: rgba(21, 128, 61, 0.92);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   color: white;
 }
 
 .dossier-score--fair {
-  background: rgba(217, 119, 6, 0.85);
+  background: rgba(234, 140, 0, 0.92);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   color: white;
 }
 
 .dossier-score--low {
-  background: rgba(168, 162, 158, 0.85);
+  background: rgba(145, 138, 133, 0.92);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   color: white;
+}
+
+@supports (backdrop-filter: blur(8px)) {
+  .dossier-score--excellent { background: rgba(22, 101, 52, 0.75); }
+  .dossier-score--good { background: rgba(21, 128, 61, 0.75); }
+  .dossier-score--fair { background: rgba(234, 140, 0, 0.75); }
+  .dossier-score--low { background: rgba(145, 138, 133, 0.75); }
 }
 
 .score-pct {
@@ -192,6 +204,7 @@
 .dossier-scoreline {
   font-family: var(--font-family-mono, monospace);
   font-size: var(--font-size-xs, 10px);
+  font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-wide, 0.02em);
   color: var(--color-text-tertiary, #999);
   text-transform: uppercase;
@@ -239,6 +252,7 @@
   font-family: var(--font-family-mono, monospace);
   font-size: var(--font-size-base, 14px);
   font-weight: var(--font-weight-semibold, 600);
+  font-variant-numeric: tabular-nums;
   color: var(--color-ink, #000);
   line-height: 1;
 }
@@ -339,6 +353,7 @@
 .dossier-intel .signal-value {
   font-family: var(--font-family-mono, monospace);
   font-size: var(--font-size-sm, 12px);
+  font-variant-numeric: tabular-nums;
   color: var(--color-ink, #000);
 }
 

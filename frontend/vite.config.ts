@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+const apiTarget = process.env.VITE_API_TARGET ?? 'http://localhost:8000'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -14,27 +16,31 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/health': {
-        target: 'http://localhost:8000',
+        target: apiTarget,
+        changeOrigin: true,
+      },
+      '/ping': {
+        target: apiTarget,
         changeOrigin: true,
       },
       '/listings': {
-        target: 'http://localhost:8000',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/matches': {
-        target: 'http://localhost:8000',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/criteria': {
-        target: 'http://localhost:8000',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/feedback': {
-        target: 'http://localhost:8000',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/admin': {
-        target: 'http://localhost:8000',
+        target: apiTarget,
         changeOrigin: true,
       },
     },

@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     OPENAI_TEXT_COST_PER_1K_INPUT_USD: Optional[float] = Field(default=None)
     OPENAI_TEXT_COST_PER_1K_OUTPUT_USD: Optional[float] = Field(default=None)
 
+    # DeepInfra (OpenAI-compatible fallback for text intelligence)
+    DEEPINFRA_API_KEY: Optional[str] = Field(default=None)
+    DEEPINFRA_BASE_URL: str = Field(default="https://api.deepinfra.com/v1/openai")
+    DEEPINFRA_TEXT_MODEL: str = Field(
+        default="meta-llama/Meta-Llama-3.1-8B-Instruct"
+    )
+    DEEPINFRA_TEXT_MODEL_HARD: Optional[str] = Field(default=None)
+
     # Alerting (email/SMS/iMessage)
     SMTP_HOST: Optional[str] = Field(default=None)
     SMTP_PORT: int = Field(default=587)

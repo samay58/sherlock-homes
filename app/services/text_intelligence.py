@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 _TEXT_CACHE: Dict[str, Dict[str, Any]] = {}
 
+_DEEPINFRA_DEFAULT_TIMEOUT_SECONDS = 60
+
 SYSTEM_PROMPT = (
     "You are a precise real estate analyst. Only use evidence from the input text. "
     "Return JSON only. If evidence is missing, use null or empty arrays."
@@ -231,12 +233,85 @@ def _call_openai(payload: str, model: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _call_deepinfra(payload: str, model: str) -> Optional[Dict[str, Any]]:
+    """DeepInfra OpenAI-compatible Chat Completions API.
+
+    DeepInfra supports `response_format={"type":"json_object"}` for JSON mode.
+    """
+    api_key = settings.DEEPINFRA_API_KEY
+    if not api_key:
+        return None
+
+    base_url = (settings.DEEPINFRA_BASE_URL or "").rstrip("/")
+    if not base_url:
+        return None
+    url = f"{base_url}/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": model,
+        "temperature": 0.2,
+        "max_tokens": 700,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": USER_PROMPT_TEMPLATE.format(payload=payload)},
+        ],
+    }
+
+    timeout = (
+        settings.OPENAI_TEXT_TIMEOUT_SECONDS
+        if settings.OPENAI_TEXT_TIMEOUT_SECONDS
+        else _DEEPINFRA_DEFAULT_TIMEOUT_SECONDS
+    )
+
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with httpx.Client(timeout=timeout) as client:
+                response = client.post(url, headers=headers, json=body)
+                response.raise_for_status()
+            data = response.json()
+            content = data["choices"][0]["message"]["content"]
+            return json.loads(content)
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            if status == 429 or status >= 500:
+                if attempt >= max_attempts:
+                    logger.warning(
+                        "DeepInfra text intelligence failed after %d attempts: %s",
+                        max_attempts,
+                        exc,
+                    )
+                    return None
+                retry_after = exc.response.headers.get("retry-after")
+                if retry_after:
+                    wait = min(float(retry_after), 10.0)
+                else:
+                    wait = min(2.0 * attempt, 6.0) + random.uniform(0, 1.0)
+                logger.info(
+                    "DeepInfra %d, retrying in %.1fs (attempt %d/%d)",
+                    status,
+                    wait,
+                    attempt,
+                    max_attempts,
+                )
+                time.sleep(wait)
+            else:
+                logger.warning("DeepInfra text intelligence failed: %s", exc)
+                return None
+        except Exception as exc:
+            logger.warning("DeepInfra text intelligence failed: %s", exc)
+            return None
+    return None
+
+
 def analyze_listing_text(
     listing: PropertyListing, db: Session, model: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
-    if not settings.OPENAI_API_KEY:
-        return None
-
     events = (
         db.query(ListingEvent)
         .filter(ListingEvent.listing_id == listing.id)
@@ -250,7 +325,20 @@ def analyze_listing_text(
     if text_hash in _TEXT_CACHE:
         return _TEXT_CACHE[text_hash]
 
-    result = _call_openai(payload, model or settings.OPENAI_TEXT_MODEL)
+    result: Optional[Dict[str, Any]] = None
+    if settings.OPENAI_API_KEY:
+        result = _call_openai(payload, model or settings.OPENAI_TEXT_MODEL)
+    if result is None and settings.DEEPINFRA_API_KEY:
+        deepinfra_model = settings.DEEPINFRA_TEXT_MODEL
+        if (
+            listing.score_points
+            and listing.score_points >= 90
+            and settings.DEEPINFRA_TEXT_MODEL_HARD
+        ):
+            deepinfra_model = settings.DEEPINFRA_TEXT_MODEL_HARD
+        if deepinfra_model:
+            logger.info("Falling back to DeepInfra for text intelligence")
+            result = _call_deepinfra(payload, deepinfra_model)
     if result is not None:
         _TEXT_CACHE[text_hash] = result
     return result
@@ -287,7 +375,7 @@ def enrich_listing_with_text_intelligence(
 def enrich_listings_with_text_intelligence(
     listings: List[PropertyListing], db: Session
 ) -> None:
-    if not settings.OPENAI_API_KEY:
+    if not (settings.OPENAI_API_KEY or settings.DEEPINFRA_API_KEY):
         return
     max_listings = max(0, settings.OPENAI_TEXT_MAX_LISTINGS)
     if max_listings == 0:

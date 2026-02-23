@@ -109,6 +109,8 @@ Notes:
 
 ## Troubleshooting
 
+- **OpenAI 429s in `/matches`**: set `OPENAI_TEXT_MAX_LISTINGS=0` to disable text intelligence, or configure `DEEPINFRA_API_KEY` + `DEEPINFRA_TEXT_MODEL` to enable fallback.
+
 - **bcrypt error on startup**: rebuild the venv (pins `bcrypt==3.2.2`).
   ```bash
   rm -rf .venv

@@ -87,6 +87,8 @@ Environment loaded from `.env` and `.env.local` (local overrides) via Pydantic `
 DATABASE_URL=sqlite:///./.local/sherlock.db
 ZENROWS_API_KEY=...
 OPENAI_API_KEY=...
+DEEPINFRA_API_KEY=...       # optional OpenAI-compatible fallback for text intelligence
+DEEPINFRA_TEXT_MODEL=meta-llama/Meta-Llama-3.1-8B-Instruct
 SEARCH_MODE=buy          # "buy" or "rent"
 SEARCH_LOCATION=san-francisco-ca
 INGESTION_SOURCES=zillow  # comma-separated: zillow,redfin,trulia,realtor,craigslist,streeteasy,curated

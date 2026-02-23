@@ -97,7 +97,7 @@ def read_matches_for_user(user_id: int, db: Session = Depends(get_db)):
     """Retrieve property listings matching the active criteria for a specific user."""
     # TODO: Later, protect this and get user_id from authenticated user
     try:
-        user_criteria = get_or_create_user_criteria(db=db, user_id=user_id)
+        user_criteria = get_or_create_user_criteria(db=db, user_id=user_id, commit_changes=True)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except Exception as exc:

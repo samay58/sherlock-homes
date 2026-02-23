@@ -1,8 +1,12 @@
+import logging
+import random
+import time
 import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -10,6 +14,8 @@ from app.models.listing import PropertyListing
 from app.models.listing_event import ListingEvent, ListingSnapshot
 from app.services.neighborhoods import resolve_neighborhood
 from app.services.visual_scoring import compute_photos_hash
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_price(value: Any) -> Optional[float]:
@@ -177,164 +183,191 @@ def upsert_listings(listings: List[Dict[str, Any]]):
     - Applies extracted `flags` to boolean keyword columns.
     - Avoids mutating `photos` when merging (kept as JSON list on model).
     """
-    db: Session = SessionLocal()
     upserted_count = 0
+    db: Session = SessionLocal()
+
+    def _is_sqlite_locked_error(exc: OperationalError) -> bool:
+        msg = str(exc).lower()
+        return ("database is locked" in msg) or ("database is busy" in msg)
+
     try:
         for data in listings:
             if not data.get("address"):
                 continue
 
-            try:
-                source = data.get("source")
-                source_listing_id = data.get("source_listing_id") or data.get(
-                    "listing_id"
-                )
-                if source and source_listing_id:
-                    data["source_listing_id"] = str(source_listing_id)
-                    if source != "zillow":
-                        data["listing_id"] = _build_listing_id(
-                            source, data["source_listing_id"]
-                        )
-                    elif not data.get("listing_id"):
-                        data["listing_id"] = data["source_listing_id"]
-
-                existing: Optional[PropertyListing] = None
-                if source and data.get("source_listing_id"):
-                    existing = (
-                        db.query(PropertyListing)
-                        .filter_by(
-                            source=source, source_listing_id=data["source_listing_id"]
-                        )
-                        .first()
+            for attempt in range(1, 6):
+                try:
+                    source = data.get("source")
+                    source_listing_id = data.get("source_listing_id") or data.get(
+                        "listing_id"
                     )
+                    if source and source_listing_id:
+                        data["source_listing_id"] = str(source_listing_id)
+                        if source != "zillow":
+                            data["listing_id"] = _build_listing_id(
+                                source, data["source_listing_id"]
+                            )
+                        elif not data.get("listing_id"):
+                            data["listing_id"] = data["source_listing_id"]
 
-                if not existing and data.get("listing_id"):
-                    existing = (
-                        db.query(PropertyListing)
-                        .filter_by(listing_id=data["listing_id"])
-                        .first()
-                    )
-
-                if not existing and data.get("url"):
-                    existing = (
-                        db.query(PropertyListing).filter_by(url=data["url"]).first()
-                    )
-
-                old_snapshot = (
-                    _get_latest_snapshot(db, existing.id) if existing else None
-                )
-                flags = data.get("flags") or {}
-
-                # Map of valid flag names to their corresponding model attributes
-                valid_flags = {
-                    "natural_light": "has_natural_light_keywords",
-                    "high_ceilings": "has_high_ceiling_keywords",
-                    "outdoor_space": "has_outdoor_space_keywords",
-                    "parking": "has_parking_keywords",
-                    "view": "has_view_keywords",
-                    "updated_systems": "has_updated_systems_keywords",
-                    "home_office": "has_home_office_keywords",
-                    "storage": "has_storage_keywords",
-                    "open_floor_plan": "has_open_floor_plan_keywords",
-                    "architectural_details": "has_architectural_details_keywords",
-                    "luxury": "has_luxury_keywords",
-                    "designer": "has_designer_keywords",
-                    "tech_ready": "has_tech_ready_keywords",
-                    "price_reduced": "is_price_reduced",
-                    "back_on_market": "is_back_on_market",
-                    "busy_street": "has_busy_street_keywords",
-                    "foundation_issues": "has_foundation_issues_keywords",
-                    "hoa_issues": "has_hoa_issues_keywords",
-                    "north_facing_only": "is_north_facing_only",
-                    "basement_unit": "is_basement_unit",
-                    "pet_friendly": "is_pet_friendly",
-                    "no_pets": "is_no_pets",
-                    "gym_fitness": "has_gym_keywords",
-                    "doorman_concierge": "has_doorman_keywords",
-                    "building_quality": "has_building_quality_keywords",
-                }
-
-                seen_at = datetime.now(timezone.utc)
-
-                if existing:
-                    for k, v in data.items():
-                        if k == "flags":
-                            for fk, fv in flags.items():
-                                if fk in valid_flags:
-                                    attr = valid_flags[fk]
-                                    setattr(existing, attr, fv)
-                        elif k == "photos":
-                            if v:
-                                setattr(existing, k, v)
-                        else:
-                            setattr(existing, k, v)
-                    if source and not existing.source:
-                        existing.source = source
+                    existing: Optional[PropertyListing] = None
                     if source and data.get("source_listing_id"):
-                        existing.source_listing_id = data.get("source_listing_id")
-                    if source:
-                        sources_seen = existing.sources_seen or []
-                        if source not in sources_seen:
-                            sources_seen.append(source)
-                        existing.sources_seen = sources_seen
-                    existing.last_seen_at = seen_at
-                    existing.last_updated = datetime.utcnow()
-                    listing = existing
-                else:
-                    # Prepare attributes with valid flags
-                    record_attrs = {k: v for k, v in data.items() if k != "flags"}
-                    for fk, fv in flags.items():
-                        if fk in valid_flags:
-                            record_attrs[valid_flags[fk]] = fv
-
-                    if source:
-                        record_attrs["source"] = source
-                        record_attrs["sources_seen"] = [source]
-                    if data.get("source_listing_id"):
-                        record_attrs["source_listing_id"] = data["source_listing_id"]
-                    record_attrs["last_seen_at"] = seen_at
-
-                    new_record = PropertyListing(**record_attrs)
-                    db.add(new_record)
-                    db.flush()
-                    listing = new_record
-
-                if listing.neighborhood is None:
-                    normalized = resolve_neighborhood(None, listing.lat, listing.lon)
-                    if normalized:
-                        listing.neighborhood = normalized
-
-                snapshot_data = _build_snapshot(listing)
-                snapshot_hash = _snapshot_hash(snapshot_data)
-                if not old_snapshot or old_snapshot.snapshot_hash != snapshot_hash:
-                    db.add(
-                        ListingSnapshot(
-                            listing_id=listing.id,
-                            snapshot_hash=snapshot_hash,
-                            snapshot_data=snapshot_data,
+                        existing = (
+                            db.query(PropertyListing)
+                            .filter_by(
+                                source=source,
+                                source_listing_id=data["source_listing_id"],
+                            )
+                            .first()
                         )
-                    )
-                    events = _build_events(
-                        listing_id=listing.id,
-                        old_snapshot=(
-                            old_snapshot.snapshot_data if old_snapshot else None
-                        ),
-                        new_snapshot=snapshot_data,
-                    )
-                    for event in events:
-                        db.add(event)
 
-                # Commit after each listing to handle duplicates gracefully
-                db.commit()
-                upserted_count += 1
+                    if not existing and data.get("listing_id"):
+                        existing = (
+                            db.query(PropertyListing)
+                            .filter_by(listing_id=data["listing_id"])
+                            .first()
+                        )
 
-            except Exception as e:
-                db.rollback()
-                # Log but continue with next listing
-                print(
-                    f"Failed to upsert listing {data.get('listing_id', 'unknown')}: {e}"
-                )
-                continue
+                    if not existing and data.get("url"):
+                        existing = (
+                            db.query(PropertyListing).filter_by(url=data["url"]).first()
+                        )
+
+                    old_snapshot = (
+                        _get_latest_snapshot(db, existing.id) if existing else None
+                    )
+                    flags = data.get("flags") or {}
+
+                    # Map of valid flag names to their corresponding model attributes
+                    valid_flags = {
+                        "natural_light": "has_natural_light_keywords",
+                        "high_ceilings": "has_high_ceiling_keywords",
+                        "outdoor_space": "has_outdoor_space_keywords",
+                        "parking": "has_parking_keywords",
+                        "view": "has_view_keywords",
+                        "updated_systems": "has_updated_systems_keywords",
+                        "home_office": "has_home_office_keywords",
+                        "storage": "has_storage_keywords",
+                        "open_floor_plan": "has_open_floor_plan_keywords",
+                        "architectural_details": "has_architectural_details_keywords",
+                        "luxury": "has_luxury_keywords",
+                        "designer": "has_designer_keywords",
+                        "tech_ready": "has_tech_ready_keywords",
+                        "price_reduced": "is_price_reduced",
+                        "back_on_market": "is_back_on_market",
+                        "busy_street": "has_busy_street_keywords",
+                        "foundation_issues": "has_foundation_issues_keywords",
+                        "hoa_issues": "has_hoa_issues_keywords",
+                        "north_facing_only": "is_north_facing_only",
+                        "basement_unit": "is_basement_unit",
+                        "pet_friendly": "is_pet_friendly",
+                        "no_pets": "is_no_pets",
+                        "gym_fitness": "has_gym_keywords",
+                        "doorman_concierge": "has_doorman_keywords",
+                        "building_quality": "has_building_quality_keywords",
+                    }
+
+                    seen_at = datetime.now(timezone.utc)
+
+                    if existing:
+                        for k, v in data.items():
+                            if k == "flags":
+                                for fk, fv in flags.items():
+                                    if fk in valid_flags:
+                                        attr = valid_flags[fk]
+                                        setattr(existing, attr, fv)
+                            elif k == "photos":
+                                if v:
+                                    setattr(existing, k, v)
+                            else:
+                                setattr(existing, k, v)
+                        if source and not existing.source:
+                            existing.source = source
+                        if source and data.get("source_listing_id"):
+                            existing.source_listing_id = data.get("source_listing_id")
+                        if source:
+                            sources_seen = existing.sources_seen or []
+                            if source not in sources_seen:
+                                sources_seen.append(source)
+                            existing.sources_seen = sources_seen
+                        existing.last_seen_at = seen_at
+                        existing.last_updated = datetime.utcnow()
+                        listing = existing
+                    else:
+                        # Prepare attributes with valid flags
+                        record_attrs = {k: v for k, v in data.items() if k != "flags"}
+                        for fk, fv in flags.items():
+                            if fk in valid_flags:
+                                record_attrs[valid_flags[fk]] = fv
+
+                        if source:
+                            record_attrs["source"] = source
+                            record_attrs["sources_seen"] = [source]
+                        if data.get("source_listing_id"):
+                            record_attrs["source_listing_id"] = data["source_listing_id"]
+                        record_attrs["last_seen_at"] = seen_at
+
+                        new_record = PropertyListing(**record_attrs)
+                        db.add(new_record)
+                        db.flush()
+                        listing = new_record
+
+                    if listing.neighborhood is None:
+                        normalized = resolve_neighborhood(None, listing.lat, listing.lon)
+                        if normalized:
+                            listing.neighborhood = normalized
+
+                    snapshot_data = _build_snapshot(listing)
+                    snapshot_hash = _snapshot_hash(snapshot_data)
+                    if not old_snapshot or old_snapshot.snapshot_hash != snapshot_hash:
+                        db.add(
+                            ListingSnapshot(
+                                listing_id=listing.id,
+                                snapshot_hash=snapshot_hash,
+                                snapshot_data=snapshot_data,
+                            )
+                        )
+                        events = _build_events(
+                            listing_id=listing.id,
+                            old_snapshot=(
+                                old_snapshot.snapshot_data if old_snapshot else None
+                            ),
+                            new_snapshot=snapshot_data,
+                        )
+                        for event in events:
+                            db.add(event)
+
+                    # Commit after each listing to handle duplicates gracefully
+                    db.commit()
+                    upserted_count += 1
+                    break
+
+                except OperationalError as exc:
+                    db.rollback()
+                    db.expunge_all()
+                    if _is_sqlite_locked_error(exc) and attempt < 5:
+                        wait = min(0.5 * (2 ** (attempt - 1)), 5.0) + random.uniform(
+                            0, 0.25
+                        )
+                        logger.warning(
+                            "SQLite locked while upserting %s (attempt %d/5). Retrying in %.2fs",
+                            data.get("listing_id", "unknown"),
+                            attempt,
+                            wait,
+                        )
+                        time.sleep(wait)
+                        continue
+                    print(
+                        f"Failed to upsert listing {data.get('listing_id', 'unknown')}: {exc}"
+                    )
+                    break
+                except Exception as exc:
+                    db.rollback()
+                    db.expunge_all()
+                    print(
+                        f"Failed to upsert listing {data.get('listing_id', 'unknown')}: {exc}"
+                    )
+                    break
 
     finally:
         db.close()

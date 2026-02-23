@@ -28,9 +28,16 @@ def _select_criteria(db: Session, user_id: int) -> Optional[Criteria]:
 
 
 def get_or_create_user_criteria(
-    db: Session, user_id: int, commit_changes: bool = False
+    db: Session, user_id: int, commit_changes: bool = True
 ) -> Criteria:
-    """Retrieve active criteria or prepare a default one. Commit only if requested."""
+    """Retrieve active criteria or prepare a default one.
+
+    This helper is used by read-heavy endpoints (matches, criteria GET).
+    If we create or mutate rows, we should commit by default to avoid:
+    - Rolling back newly created criteria on request teardown.
+    - Holding an open write transaction while doing long-running work (e.g., OpenAI calls),
+      which can lock SQLite for ingestion writes.
+    """
     criteria = _select_criteria(db, user_id)
     changed = False
 

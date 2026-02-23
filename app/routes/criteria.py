@@ -15,7 +15,7 @@ def read_user_criteria(user_id: int, db: Session = Depends(get_db)):
     """Retrieve the active criteria set for a specific user (creates default if none)."""
     # TODO: Later, protect this and get user_id from authenticated user
     try:
-        criteria = get_or_create_user_criteria(db=db, user_id=user_id)
+        criteria = get_or_create_user_criteria(db=db, user_id=user_id, commit_changes=True)
         return criteria
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))

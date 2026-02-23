@@ -297,7 +297,6 @@ def _neighborhood_from_url(url: str) -> Optional[str]:
         return None
     slug = match.group(1)
     return SLUG_TO_NEIGHBORHOOD.get(slug, slug.replace("-", " ").title())
-    return None
 
 
 def _normalize_streeteasy_url(url: str) -> Optional[str]:

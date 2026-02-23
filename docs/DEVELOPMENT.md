@@ -44,7 +44,8 @@ make migrate
 
 ```bash
 # Tests
-pytest -q
+make test   # uses .venv when present
+# or: .venv/bin/python -m pytest -q
 
 # Format + lint
 make fmt

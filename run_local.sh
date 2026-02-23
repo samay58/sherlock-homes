@@ -80,8 +80,7 @@ else
     fi
 fi
 
-echo "Activating virtual environment ($VENV_DIR)..."
-source "$VENV_DIR/bin/activate"
+echo "Using virtual environment python ($VENV_PYTHON)..."
 
 # Install dependencies if needed
 REQ_FILE="requirements.txt"
@@ -113,7 +112,7 @@ if [ "$NEED_INSTALL" -eq 1 ]; then
         echo "Using uv for dependency install."
         uv pip install --python "$VENV_PYTHON" -r requirements.txt
     else
-        pip install -r requirements.txt
+        "$VENV_PYTHON" -m pip install -r requirements.txt
     fi
     if [ -n "$REQ_HASH" ]; then
         echo "$REQ_HASH" > "$INSTALL_MARKER"
@@ -144,4 +143,4 @@ echo "Press Ctrl+C to stop"
 echo ""
 
 # Run API with hot reload
-uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
+exec "$VENV_PYTHON" -m uvicorn app.main:app --reload --port 8000 --host 0.0.0.0

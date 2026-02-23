@@ -40,13 +40,13 @@ dev-frontend:
 
 # Testing
 test:
-	pytest -q
+	@if [ -x .venv/bin/python ]; then .venv/bin/python -m pytest -q; else pytest -q; fi
 
 test-verbose:
-	pytest -v
+	@if [ -x .venv/bin/python ]; then .venv/bin/python -m pytest -v; else pytest -v; fi
 
 test-coverage:
-	pytest --cov=app --cov-report=html
+	@if [ -x .venv/bin/python ]; then .venv/bin/python -m pytest --cov=app --cov-report=html; else pytest --cov=app --cov-report=html; fi
 
 # Database
 migrate:

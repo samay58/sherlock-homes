@@ -294,5 +294,5 @@ def enrich_listings_with_text_intelligence(
         return
     for i, listing in enumerate(listings[:max_listings]):
         if i > 0:
-            time.sleep(0.5)
+            time.sleep(2.0)
         enrich_listing_with_text_intelligence(listing, db)

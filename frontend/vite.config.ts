@@ -43,6 +43,14 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: true,
       },
+      '/ingestion': {
+        target: apiTarget,
+        changeOrigin: true,
+      },
+      '/openapi.json': {
+        target: apiTarget,
+        changeOrigin: true,
+      },
     },
   },
 })

@@ -2,7 +2,7 @@
 Geospatial Intelligence Service for Sherlock Homes
 
 Calculates location-based scores using only latitude/longitude data.
-No external APIs required - uses static datasets for SF noise sources.
+No external APIs required - uses static datasets for SF and NYC noise sources.
 """
 
 import math
@@ -322,8 +322,8 @@ def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> D
     """
     Calculate a Tranquility Score (0-100) based on proximity to noise sources.
 
-    Higher score = quieter location. Currently only covers SF noise sources.
-    Returns None score for locations outside SF.
+    Higher score = quieter location. Covers SF and NYC noise sources.
+    Returns None score for locations outside both coverage areas.
 
     Returns:
         {

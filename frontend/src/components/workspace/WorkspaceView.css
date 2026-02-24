@@ -1,0 +1,67 @@
+/* Three-panel workspace */
+.workspace {
+  display: flex;
+  height: calc(100vh - var(--ed-topbar-h));
+  overflow: hidden;
+}
+
+.workspace-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100vh - var(--ed-topbar-h));
+  font-family: var(--ed-font-sans);
+  color: var(--ed-gray);
+}
+
+/* Responsive: tablet */
+@media (max-width: 1024px) {
+  .workspace .neighborhood-sidebar {
+    display: none;
+  }
+  .workspace .neighborhood-sidebar.visible {
+    display: flex;
+    position: fixed;
+    top: var(--ed-topbar-h);
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    background: var(--ed-white);
+  }
+}
+
+/* Responsive: mobile single-panel */
+@media (max-width: 768px) {
+  .workspace {
+    display: block;
+    height: calc(100vh - var(--ed-topbar-h));
+  }
+
+  .workspace .neighborhood-sidebar,
+  .workspace .listing-list,
+  .workspace .listing-detail {
+    display: none;
+  }
+
+  .workspace .neighborhood-sidebar.visible,
+  .workspace .listing-list.visible,
+  .workspace .listing-detail.visible {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: var(--ed-topbar-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    background: var(--ed-white);
+  }
+
+  .workspace .listing-list.visible {
+    width: 100%;
+  }
+
+  .workspace .listing-detail.visible {
+    width: 100%;
+  }
+}

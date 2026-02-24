@@ -1,14 +1,13 @@
 .gallery {
   display: grid;
-  gap: var(--space-3, 0.75rem);
+  gap: var(--ed-space-3, 0.75rem);
 }
 
 .gallery .main {
   width: 100%;
   aspect-ratio: 16/10;
-  background: var(--color-gray-100, #f2f2f2);
+  background: var(--ed-hover, #fafafa);
   overflow: hidden;
-  border-radius: var(--radius-lg, 8px);
 }
 
 .gallery .main img {
@@ -25,30 +24,30 @@
 .gallery .thumbs {
   display: grid;
   grid-auto-flow: column;
-  gap: var(--space-2, 0.5rem);
+  gap: var(--ed-space-2, 0.5rem);
   overflow-x: auto;
 }
 
 .gallery .thumbs button {
   padding: 0;
   border: 2px solid transparent;
-  border-radius: var(--radius-md, 6px);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
-  transition: border-color 100ms var(--ease-out, ease-out);
+  transition: border-color 100ms ease-out;
 }
 
 .gallery .thumbs button:hover {
-  border-color: var(--color-gray-400, #767676);
+  border-color: var(--ed-gray, #555);
 }
 
 .gallery .thumbs button:focus-visible {
-  outline: 2px solid var(--color-accent, #ff6600);
+  outline: 2px solid var(--ed-black, #000);
   outline-offset: 2px;
 }
 
 .gallery .thumbs button.active {
-  border-color: var(--color-accent, #ff6600);
+  border-color: var(--ed-black, #000);
 }
 
 .gallery .thumbs img {
@@ -56,5 +55,4 @@
   height: 60px;
   object-fit: cover;
   display: block;
-  border-radius: var(--radius-sm, 4px);
 }

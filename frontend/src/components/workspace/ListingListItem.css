@@ -1,0 +1,77 @@
+/* Individual listing row in middle panel */
+.list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  padding: var(--ed-space-3) var(--ed-space-4);
+  border: none;
+  border-bottom: 1px solid var(--ed-border);
+  border-radius: 0;
+  background: var(--ed-white);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--ed-font-sans);
+  transition: background var(--ed-duration-fast) var(--ed-ease);
+}
+
+.list-item:hover {
+  background: var(--ed-hover);
+}
+
+.list-item.selected {
+  background: var(--ed-yellow);
+}
+
+/* Meta row: NEIGHBORHOOD . SCORE */
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--ed-space-1);
+  font-size: var(--ed-label-size);
+  font-weight: var(--ed-label-weight);
+  letter-spacing: var(--ed-label-tracking);
+  text-transform: uppercase;
+  color: var(--ed-gray);
+}
+
+.item-dot {
+  color: var(--ed-gray-light);
+}
+
+.item-score {
+  color: var(--ed-black);
+}
+
+/* Address */
+.item-address {
+  font-family: var(--ed-font-serif);
+  font-size: var(--ed-text-base);
+  font-weight: 400;
+  color: var(--ed-black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Price + stats */
+.item-price {
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-sm);
+  color: var(--ed-black);
+}
+
+.item-stat {
+  color: var(--ed-gray);
+}
+
+/* Description excerpt */
+.item-excerpt {
+  font-size: var(--ed-text-sm);
+  color: var(--ed-gray);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

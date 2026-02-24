@@ -1,0 +1,111 @@
+/* Middle panel: 320px */
+.listing-list {
+  width: var(--ed-list-w);
+  min-width: var(--ed-list-w);
+  border-right: 1px solid var(--ed-black);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ed-space-3);
+  padding: 0 var(--ed-space-4);
+  min-height: 40px;
+  border-bottom: 1px solid var(--ed-border);
+}
+
+.list-sidebar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: var(--ed-space-1);
+  cursor: pointer;
+  color: var(--ed-black);
+}
+
+@media (max-width: 1024px) {
+  .list-sidebar-toggle {
+    display: flex;
+  }
+}
+
+.list-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.list-title {
+  font-family: var(--ed-font-serif);
+  font-size: var(--ed-text-base);
+  font-weight: 700;
+  color: var(--ed-black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-sort {
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-xs);
+  color: var(--ed-gray-light);
+}
+
+/* Scrollable body */
+.list-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Loading skeleton */
+.list-loading {
+  padding: var(--ed-space-3) var(--ed-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ed-space-4);
+}
+
+.list-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ed-space-2);
+}
+
+.skeleton-bar {
+  background: linear-gradient(90deg, #f5f5f5 25%, #e5e5e5 50%, #f5f5f5 75%);
+  background-size: 200% 100%;
+  animation: list-shimmer 1.5s infinite;
+  height: 12px;
+}
+
+.skeleton-hood { width: 40%; }
+.skeleton-addr { width: 75%; }
+.skeleton-desc { width: 90%; height: 10px; }
+
+@keyframes list-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty */
+.list-empty {
+  padding: var(--ed-space-8) var(--ed-space-4);
+  text-align: center;
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-sm);
+  color: var(--ed-gray);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .listing-list {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+  }
+}

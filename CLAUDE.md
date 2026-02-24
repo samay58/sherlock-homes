@@ -97,9 +97,19 @@ Minimal: a single Pydantic `BaseModel` instance at module scope in `app/state.py
 
 ### Frontend
 
-Vite + React 18 + TypeScript + TanStack React Query + React Router. Five routes: `/` (landing), `/matches` (primary results with vibe presets, quick filters, sort options), `/listings` (raw browser), `/listings/:id` (detail), `/criteria` (editor). Design system: Rauno Freiberg-inspired minimal CSS (`sherlock-tokens.css`, `rauno-minimal.css`, `rauno-effects.css`).
+Vite + React 18 + TypeScript + TanStack React Query + React Router. Two routes: `/` (three-panel workspace), `/settings` (criteria editor). Design system: editorial black/white/yellow tokens (`editorial-tokens.css`), Playfair Display (serif headings/addresses) + DM Sans (sans body/labels).
 
-API client in `frontend/src/lib/api.ts` is a thin fetch wrapper. Types in `frontend/src/lib/types.ts` mirror the backend model.
+The primary view is a three-panel notes-app layout: neighborhoods sidebar (240px) | listing rows (320px) | listing detail (flex:1). All state lives in `WorkspaceView.tsx` via `useState` + `useSearchParams`. URL params `?n=Williamsburg&l=42` for deep linking. Detail panel reads from the matches array (no separate API call).
+
+Key frontend files:
+- `components/workspace/WorkspaceView.tsx` - orchestrator (state, filtering, sorting, feedback)
+- `components/workspace/NeighborhoodSidebar.tsx` - left panel (neighborhoods, sort, filters)
+- `components/workspace/ListingList.tsx` + `ListingListItem.tsx` - middle panel
+- `components/workspace/ListingDetail.tsx` - right panel (toolbar, photos, match intel, signals)
+- `components/layout/RootLayout.tsx` - 50px topbar with 1px black border, no footer
+- `lib/format.ts` - shared formatters (`formatPrice`, `buildSignalData`, `buildFeatureTags`)
+- `lib/api.ts` - thin fetch wrapper. `lib/types.ts` - mirrors backend model
+- `styles/design-system/editorial-tokens.css` - colors, typography, spacing, panel widths
 
 ## Testing Patterns
 

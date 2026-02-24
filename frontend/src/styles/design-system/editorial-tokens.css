@@ -1,0 +1,54 @@
+/* Editorial Design Tokens */
+
+:root {
+  /* Colors */
+  --ed-white: #fff;
+  --ed-black: #000;
+  --ed-gray: #555;
+  --ed-gray-light: #767676;
+  --ed-border: #e5e5e5;
+  --ed-yellow: #FFED90;
+  --ed-hover: #fafafa;
+  --ed-error: #dc2626;
+  --ed-success: #16a34a;
+
+  /* Typography */
+  --ed-font-serif: 'Playfair Display', Georgia, serif;
+  --ed-font-sans: 'DM Sans', -apple-system, sans-serif;
+
+  --ed-text-xs: 0.7rem;
+  --ed-text-sm: 0.8125rem;
+  --ed-text-base: 0.875rem;
+  --ed-text-md: 1rem;
+  --ed-text-lg: 1.125rem;
+  --ed-text-xl: 1.5rem;
+  --ed-text-2xl: 2rem;
+
+  /* Micro-label style */
+  --ed-label-size: 0.7rem;
+  --ed-label-weight: 700;
+  --ed-label-tracking: 0.05em;
+
+  /* Panel widths */
+  --ed-sidebar-w: 240px;
+  --ed-list-w: 320px;
+
+  /* Topbar */
+  --ed-topbar-h: 50px;
+
+  /* Spacing */
+  --ed-space-1: 4px;
+  --ed-space-2: 8px;
+  --ed-space-3: 12px;
+  --ed-space-4: 16px;
+  --ed-space-5: 20px;
+  --ed-space-6: 24px;
+  --ed-space-8: 32px;
+  --ed-space-10: 40px;
+  --ed-space-12: 48px;
+
+  /* Motion */
+  --ed-ease: ease-out;
+  --ed-duration-fast: 100ms;
+  --ed-duration-normal: 150ms;
+}

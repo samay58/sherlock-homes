@@ -1,79 +1,90 @@
+.criteria-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--ed-space-8) var(--ed-space-6);
+  height: 100%;
+  overflow-y: auto;
+}
+
 .criteria-page h2 {
-  font-family: var(--font-family-serif, Georgia, serif);
-  font-size: var(--font-size-2xl, 32px);
-  font-weight: var(--font-weight-normal, 400);
-  margin-bottom: 1.5rem;
+  font-family: var(--ed-font-serif);
+  font-size: var(--ed-text-xl);
+  font-weight: 400;
+  margin-bottom: var(--ed-space-6);
+  color: var(--ed-black);
 }
 
 .criteria-form fieldset {
-  border: 1px solid var(--color-border, #E7E5E0);
-  border-radius: var(--radius-md, 4px);
-  padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
-  background: var(--color-paper-warm, #F5F0E8);
+  border: 1px solid var(--ed-border);
+  padding: var(--ed-space-4) var(--ed-space-5);
+  margin-bottom: var(--ed-space-5);
+  background: var(--ed-white);
 }
 
 .criteria-form legend {
-  font-weight: bold;
-  padding: 0 0.5em;
-  color: var(--color-ink, #1C1917);
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-label-size);
+  font-weight: var(--ed-label-weight);
+  letter-spacing: var(--ed-label-tracking);
+  text-transform: uppercase;
+  padding: 0 var(--ed-space-2);
+  color: var(--ed-gray);
 }
 
 .form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-bottom: 1rem;
+  gap: var(--ed-space-4);
+  margin-bottom: var(--ed-space-3);
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  margin-bottom: 1rem;
+  margin-bottom: var(--ed-space-3);
   flex: 1;
   min-width: 150px;
 }
 
 .form-group label {
-  margin-bottom: var(--space-1, 0.3rem);
-  font-size: var(--font-size-base, 14px);
-  font-weight: var(--font-weight-medium, 500);
+  margin-bottom: var(--ed-space-1);
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-sm);
+  font-weight: 500;
+  color: var(--ed-gray);
 }
 
 .form-group input[type='text'],
 .form-group input[type='number'],
 .form-group select {
-  padding: var(--space-3, 0.6rem);
-  border: 1px solid var(--color-border, #E7E5E0);
-  border-radius: var(--radius-md, 4px);
-  font-size: var(--font-size-md, 1rem);
-  background: var(--color-paper, #FAFAF7);
-  color: var(--color-ink, #1C1917);
-  transition: border-color 100ms var(--ease-out, ease-out);
+  padding: var(--ed-space-2) var(--ed-space-3);
+  border: 1px solid var(--ed-border);
+  border-radius: 0;
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-base);
+  background: var(--ed-white);
+  color: var(--ed-black);
+  transition: border-color var(--ed-duration-fast) var(--ed-ease);
 }
 
 .form-group input[type='text']:focus,
 .form-group input[type='number']:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--color-accent, #ff6600);
-  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.25);
-}
-
-.form-group input:invalid:not(:placeholder-shown) {
-  border-color: var(--color-error, #dc2626);
+  border-color: var(--ed-black);
 }
 
 .checkbox-group {
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: var(--ed-space-2);
+  margin-bottom: var(--ed-space-2);
 }
 
 .checkbox-group input[type='checkbox'] {
   width: 1.1em;
   height: 1.1em;
+  accent-color: var(--ed-black);
 }
 
 .checkbox-group label {
@@ -84,72 +95,55 @@
 .neighborhood-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.6rem;
-  margin-bottom: 1rem;
+  gap: var(--ed-space-2);
+  margin-bottom: var(--ed-space-3);
 }
 
 .neighborhood-option {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--ed-space-2);
 }
 
-.criteria-form button {
-  padding: 0.7rem 1.5rem;
-  background-color: var(--color-accent, #D97706);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md, 4px);
-  font-size: 1rem;
+.criteria-form button[type='submit'] {
+  padding: var(--ed-space-2) var(--ed-space-5);
+  background: var(--ed-black);
+  color: var(--ed-white);
+  border: 1px solid var(--ed-black);
+  border-radius: 0;
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background-color 100ms var(--ease-out, ease-out);
+  transition: all var(--ed-duration-fast) var(--ed-ease);
 }
 
-.criteria-form button:disabled {
-  background-color: var(--color-gray-400, #918A85);
+.criteria-form button[type='submit']:disabled {
+  background: var(--ed-gray-light);
+  border-color: var(--ed-gray-light);
   cursor: not-allowed;
 }
 
-.criteria-form button:not(:disabled):hover {
-  background-color: var(--color-accent-hover, #B45309);
+.criteria-form button[type='submit']:not(:disabled):hover {
+  background: var(--ed-white);
+  color: var(--ed-black);
 }
 
 .criteria-page .error {
-  color: var(--color-error, #dc2626);
-  margin-bottom: 1rem;
-  border: 1px solid var(--color-error, #dc2626);
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  background: var(--color-error-bg, #fef2f2);
+  color: var(--ed-error);
+  margin-bottom: var(--ed-space-3);
+  border: 1px solid var(--ed-error);
+  padding: var(--ed-space-2) var(--ed-space-3);
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-sm);
 }
 
 .criteria-page .success {
-  color: #16a34a;
-  margin-bottom: 1rem;
-  border: 1px solid #16a34a;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  background: #f0fdf4;
-}
-
-@media (prefers-color-scheme: dark) {
-  .criteria-form fieldset {
-    background: var(--color-surface);
-    border-color: var(--color-border);
-  }
-  .form-group input[type='text'],
-  .form-group input[type='number'],
-  .form-group select {
-    background: var(--color-gray-100);
-    border-color: var(--color-border);
-  }
-  .criteria-form button {
-    background-color: var(--color-accent);
-  }
-  .criteria-page .error {
-    background: rgba(220, 38, 38, 0.1);
-  }
-  .criteria-page .success {
-    background: rgba(22, 163, 74, 0.1);
-  }
+  color: var(--ed-success);
+  margin-bottom: var(--ed-space-3);
+  border: 1px solid var(--ed-success);
+  padding: var(--ed-space-2) var(--ed-space-3);
+  font-family: var(--ed-font-sans);
+  font-size: var(--ed-text-sm);
 }

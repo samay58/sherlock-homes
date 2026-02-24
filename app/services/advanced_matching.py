@@ -159,7 +159,13 @@ class PropertyMatcher:
 
         sqft_min = hard.get("sqft_min")
         if sqft_min is not None:
-            filters.append(PropertyListing.sqft >= sqft_min)
+            # Allow NULL sqft through; only reject known-small listings
+            filters.append(
+                or_(
+                    PropertyListing.sqft.is_(None),
+                    PropertyListing.sqft >= sqft_min,
+                )
+            )
 
         neighborhoods = get_required_neighborhoods(self.config)
         if neighborhoods:
@@ -208,7 +214,8 @@ class PropertyMatcher:
 
         sqft_min = hard.get("sqft_min")
         if sqft_min is not None:
-            if listing.sqft is None or listing.sqft < sqft_min:
+            # Only reject if sqft is known and below min; NULL sqft passes
+            if listing.sqft is not None and listing.sqft < sqft_min:
                 failures.append("sqft below min")
 
         neighborhoods = get_required_neighborhoods(self.config)

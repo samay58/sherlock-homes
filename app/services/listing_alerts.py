@@ -75,13 +75,23 @@ def process_listing_alerts(since: Optional[datetime] = None) -> Dict[str, int]:
             if event.event_type == "new_listing":
                 if details.get("alerted_immediate"):
                     continue
+                # Try immediate alert first (high threshold)
                 scored = matcher.score_listing(
                     listing, min_score_percent=immediate_threshold
                 )
-                if not scored:
-                    continue
-                immediate_alerts.append(_build_alert_payload(listing, "New listing"))
-                details["alerted_immediate"] = True
+                if scored:
+                    immediate_alerts.append(
+                        _build_alert_payload(listing, "New listing")
+                    )
+                    details["alerted_immediate"] = True
+                elif not details.get("alerted_digest"):
+                    # Didn't meet immediate threshold; try digest (just pass hard filters)
+                    scored_digest = matcher.score_listing(listing, min_score_percent=0)
+                    if scored_digest:
+                        digest_alerts.append(
+                            _build_alert_payload(listing, "New listing")
+                        )
+                        details["alerted_digest"] = True
 
             elif event.event_type == "price_drop":
                 percent = (details or {}).get("percent")

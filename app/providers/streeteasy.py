@@ -76,7 +76,7 @@ class StreetEasyProvider(BaseProvider):
     async def _search_neighborhood(
         self, base_url: str, page: int = 1
     ) -> List[Dict[str, Any]]:
-        url = _with_page_param(base_url, page)
+        url = _with_search_filters(base_url, page)
         html = await self._client.fetch(
             url,
             js_render=True,
@@ -336,6 +336,27 @@ def _with_page_param(base_url: str, page: int) -> str:
     parts = urlsplit(base_url)
     query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != "page"]
     query.append(("page", str(page)))
+    return urlunsplit(parts._replace(query=urlencode(query, doseq=True)))
+
+
+def _with_search_filters(base_url: str, page: int = 1) -> str:
+    """Add price/beds/baths filter params from settings, plus pagination."""
+    parts = urlsplit(base_url)
+    query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)]
+    existing_keys = {k for k, _ in query}
+
+    if "min_price" not in existing_keys and settings.SEARCH_PRICE_MIN:
+        query.append(("min_price", str(settings.SEARCH_PRICE_MIN)))
+    if "max_price" not in existing_keys and settings.SEARCH_PRICE_MAX:
+        query.append(("max_price", str(settings.SEARCH_PRICE_MAX)))
+    if "bedrooms>=" not in existing_keys and settings.SEARCH_BEDS_MIN:
+        query.append(("bedrooms>=", str(settings.SEARCH_BEDS_MIN)))
+    if "bathrooms>=" not in existing_keys and settings.SEARCH_BATHS_MIN:
+        query.append(("bathrooms>=", str(int(settings.SEARCH_BATHS_MIN))))
+    if page > 1:
+        query = [(k, v) for k, v in query if k != "page"]
+        query.append(("page", str(page)))
+
     return urlunsplit(parts._replace(query=urlencode(query, doseq=True)))
 
 

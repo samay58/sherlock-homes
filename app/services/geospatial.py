@@ -124,6 +124,99 @@ SF_FIRE_STATIONS = [
 
 
 # =============================================================================
+# NEW YORK CITY NOISE SOURCE DATA
+# =============================================================================
+
+NYC_BUSY_STREETS = [
+    NoiseSource(
+        name="Broadway (Manhattan)",
+        coords=[(40.7061, -74.0131), (40.7580, -73.9855), (40.7831, -73.9712)],
+        severity=0.85,
+        source_type="street",
+    ),
+    NoiseSource(
+        name="Canal Street",
+        coords=[(40.7195, -74.0066), (40.7166, -73.9982), (40.7149, -73.9909)],
+        severity=0.9,
+        source_type="street",
+    ),
+    NoiseSource(
+        name="Houston Street",
+        coords=[(40.7268, -74.0078), (40.7227, -73.9952), (40.7209, -73.9828)],
+        severity=0.8,
+        source_type="street",
+    ),
+    NoiseSource(
+        name="Bowery",
+        coords=[(40.7149, -73.9974), (40.7242, -73.9927), (40.7316, -73.9892)],
+        severity=0.75,
+        source_type="street",
+    ),
+    NoiseSource(
+        name="Delancey Street",
+        coords=[(40.7188, -73.9989), (40.7178, -73.9878), (40.7148, -73.9778)],
+        severity=0.85,
+        source_type="street",
+    ),
+    NoiseSource(
+        name="Flatbush Avenue",
+        coords=[(40.6905, -73.9764), (40.6832, -73.9773), (40.6705, -73.9631)],
+        severity=0.8,
+        source_type="street",
+    ),
+    NoiseSource(
+        name="Atlantic Avenue (Brooklyn)",
+        coords=[(40.6863, -73.9781), (40.6848, -73.9685), (40.6822, -73.9549)],
+        severity=0.75,
+        source_type="street",
+    ),
+    NoiseSource(
+        name="4th Avenue (Brooklyn)",
+        coords=[(40.6863, -73.9781), (40.6746, -73.9831), (40.6656, -73.9880)],
+        severity=0.7,
+        source_type="street",
+    ),
+]
+
+NYC_FREEWAYS = [
+    NoiseSource(
+        name="BQE (Brooklyn-Queens Expressway)",
+        coords=[
+            (40.6891, -73.9979), (40.6938, -73.9923), (40.6996, -73.9862),
+            (40.7024, -73.9847),
+        ],
+        severity=1.0,
+        source_type="freeway",
+    ),
+    NoiseSource(
+        name="FDR Drive",
+        coords=[
+            (40.7096, -73.9752), (40.7210, -73.9740), (40.7350, -73.9730),
+            (40.7550, -73.9660),
+        ],
+        severity=0.95,
+        source_type="freeway",
+    ),
+]
+
+NYC_FIRE_STATIONS = [
+    {"name": "FDNY Engine 205/Ladder 118 (DUMBO)", "lat": 40.6988, "lon": -73.9872},
+    {"name": "FDNY Engine 224 (Brooklyn Heights)", "lat": 40.6933, "lon": -73.9930},
+    {"name": "FDNY Engine 229 (Williamsburg)", "lat": 40.7114, "lon": -73.9572},
+    {"name": "FDNY Engine 207/Ladder 110 (Fort Greene)", "lat": 40.6898, "lon": -73.9753},
+    {"name": "FDNY Engine 33/Ladder 9 (East Village)", "lat": 40.7274, "lon": -73.9876},
+    {"name": "FDNY Engine 55 (SoHo)", "lat": 40.7230, "lon": -73.9985},
+    {"name": "FDNY Engine 24/Ladder 5 (Chelsea)", "lat": 40.7395, "lon": -73.9998},
+    {"name": "FDNY Engine 14 (East Village/Gramercy)", "lat": 40.7322, "lon": -73.9859},
+]
+
+
+def _is_in_nyc(lat: float, lon: float) -> bool:
+    """Check if coordinates fall within the NYC coverage bounding box."""
+    return 40.62 <= lat <= 40.80 and -74.05 <= lon <= -73.90
+
+
+# =============================================================================
 # DISTANCE CALCULATIONS
 # =============================================================================
 
@@ -252,11 +345,20 @@ def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> D
             "confidence": "low",
         }
 
-    if not _is_in_sf(lat, lon):
+    # Select city-specific noise data
+    if _is_in_sf(lat, lon):
+        busy_streets = SF_BUSY_STREETS
+        freeways = SF_FREEWAYS
+        fire_stations = SF_FIRE_STATIONS
+    elif _is_in_nyc(lat, lon):
+        busy_streets = NYC_BUSY_STREETS
+        freeways = NYC_FREEWAYS
+        fire_stations = NYC_FIRE_STATIONS
+    else:
         return {
             "score": None,
             "factors": {},
-            "warnings": ["Outside SF coverage"],
+            "warnings": ["Outside coverage area"],
             "confidence": "low",
         }
 
@@ -267,7 +369,7 @@ def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> D
     # Check busy street proximity
     min_street_dist = float("inf")
     nearest_street = None
-    for street in SF_BUSY_STREETS:
+    for street in busy_streets:
         dist = distance_to_polyline(lat, lon, street.coords)
         if dist < min_street_dist:
             min_street_dist = dist
@@ -295,7 +397,7 @@ def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> D
     # Check freeway proximity (severe penalty)
     min_freeway_dist = float("inf")
     nearest_freeway = None
-    for freeway in SF_FREEWAYS:
+    for freeway in freeways:
         dist = distance_to_polyline(lat, lon, freeway.coords)
         if dist < min_freeway_dist:
             min_freeway_dist = dist
@@ -321,7 +423,7 @@ def calculate_tranquility_score(lat: Optional[float], lon: Optional[float]) -> D
     # Check fire station proximity (siren noise)
     min_fire_dist = float("inf")
     nearest_fire = None
-    for station in SF_FIRE_STATIONS:
+    for station in fire_stations:
         dist = haversine_meters(lat, lon, station["lat"], station["lon"])
         if dist < min_fire_dist:
             min_fire_dist = dist
@@ -419,7 +521,10 @@ def apply_location_modifiers(
 
 def is_on_busy_street(lat: float, lon: float, threshold_meters: float = 50) -> bool:
     """Check if a location is directly on a busy street."""
-    for street in SF_BUSY_STREETS:
+    streets = SF_BUSY_STREETS
+    if _is_in_nyc(lat, lon):
+        streets = NYC_BUSY_STREETS
+    for street in streets:
         dist = distance_to_polyline(lat, lon, street.coords)
         if dist < threshold_meters:
             return True
@@ -428,7 +533,10 @@ def is_on_busy_street(lat: float, lon: float, threshold_meters: float = 50) -> b
 
 def is_near_freeway(lat: float, lon: float, threshold_meters: float = 200) -> bool:
     """Check if a location is near a freeway."""
-    for freeway in SF_FREEWAYS:
+    freeways = SF_FREEWAYS
+    if _is_in_nyc(lat, lon):
+        freeways = NYC_FREEWAYS
+    for freeway in freeways:
         dist = distance_to_polyline(lat, lon, freeway.coords)
         if dist < threshold_meters:
             return True

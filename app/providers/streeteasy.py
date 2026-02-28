@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from typing import Any, Dict, Iterable, List, Optional
@@ -125,13 +126,67 @@ class StreetEasyProvider(BaseProvider):
 
         return listings
 
-    async def search_page(self, page: int = 1) -> tuple[list[Dict[str, Any]], bool]:
-        """Multi-page interface used by ingestion.py."""
-        items = await self.search(bbox=None, page=page)
+    async def search_all_locations(self) -> List[Dict[str, Any]]:
+        """Search all neighborhoods independently, paginating each one fully."""
+        if not self._search_urls:
+            logger.info("StreetEasy search skipped: STREETEASY_SEARCH_URLS is empty")
+            return []
+
         max_pages = max(1, min(settings.MAX_PAGES, settings.STREETEASY_MAX_PAGES))
-        # StreetEasy pagination: assume more pages exist when results are non-empty.
-        has_more = len(items) > 0 and page < max_pages
-        return list(items), has_more
+        all_listings: List[Dict[str, Any]] = []
+        seen_urls: set[str] = set()
+
+        for base_url in self._search_urls:
+            neighborhood = _neighborhood_from_url(base_url) or base_url
+            nbhd_count = 0
+            page = 1
+
+            while page <= max_pages:
+                try:
+                    listings = await self._search_neighborhood(base_url, page)
+                except Exception as exc:
+                    logger.warning(
+                        "StreetEasy search failed for %s page %d: %s",
+                        neighborhood, page, exc,
+                    )
+                    break
+
+                if not listings:
+                    break
+
+                new_in_page = 0
+                for item in listings:
+                    url = item.get("source_listing_id") or item.get("url")
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        all_listings.append(item)
+                        new_in_page += 1
+
+                nbhd_count += new_in_page
+                page += 1
+                await asyncio.sleep(1.5)
+
+            logger.info(
+                "StreetEasy %s: %d listings across %d pages",
+                neighborhood, nbhd_count, page - 1,
+            )
+
+        logger.info(
+            "StreetEasy total: %d unique listings from %d neighborhoods",
+            len(all_listings), len(self._search_urls),
+        )
+        return all_listings
+
+    async def search_page(self, page: int = 1) -> tuple[list[Dict[str, Any]], bool]:
+        """Multi-page interface used by ingestion.py.
+
+        Delegates to search_all_locations on first call (handles all pagination
+        internally per-neighborhood), then signals no more pages.
+        """
+        if page == 1:
+            items = await self.search_all_locations()
+            return items, False  # All done in one call
+        return [], False
 
     async def get_details(self, listing_id: str) -> Dict[str, Any]:
         """Fetch and parse a StreetEasy detail page. listing_id is the full URL."""

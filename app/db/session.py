@@ -8,6 +8,9 @@ from app.core.config import settings
 
 # Detect SQLite vs PostgreSQL
 database_url = str(settings.DATABASE_URL)
+# Fly.io sets postgres:// but SQLAlchemy requires postgresql://
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 is_sqlite = database_url.startswith("sqlite")
 
 # SQLite needs check_same_thread=False for FastAPI's async nature

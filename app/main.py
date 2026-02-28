@@ -1,10 +1,13 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -46,6 +49,11 @@ app.include_router(scouts_router)
 app.include_router(feedback_router)
 app.include_router(users_router)
 
+# --- Static frontend serving (production: Fly.io) ---
+_frontend_dist = Path(__file__).resolve().parent.parent / "frontend-dist"
+if _frontend_dist.is_dir():
+    app.mount("/assets", StaticFiles(directory=_frontend_dist / "assets"), name="static")
+
 scheduler: BackgroundScheduler | None = None
 _event_loop = None
 
@@ -84,7 +92,10 @@ async def initial_setup():
                 )
                 alembic_ini_path = os.path.abspath(alembic_ini_path)
                 cfg = AlembicConfig(alembic_ini_path)
-                cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+                db_url = settings.DATABASE_URL
+                if db_url.startswith("postgres://"):
+                    db_url = db_url.replace("postgres://", "postgresql://", 1)
+                cfg.set_main_option("sqlalchemy.url", db_url)
                 alembic_command.upgrade(cfg, "head")
                 logger.info("Database migrations applied/up-to-date.")
             except Exception as e:
@@ -156,3 +167,12 @@ def shutdown_scheduler():
 async def ping():
     """Simple health-check endpoint used by Docker compose and uptime monitors."""
     return {"status": "ok"}
+
+
+# SPA catch-all MUST be last route (after all API routes)
+if _frontend_dist.is_dir():
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        """Serve index.html for all non-API routes (SPA client-side routing)."""
+        return FileResponse(_frontend_dist / "index.html")

@@ -1,0 +1,41 @@
+app = 'sherlock-homes-nyc'
+primary_region = 'ewr'
+
+[build]
+
+[deploy]
+  release_command = "alembic upgrade head"
+
+[env]
+  SEARCH_MODE = 'rent'
+  SEARCH_LOCATION = 'williamsburg-brooklyn-new-york-ny'
+  SEARCH_LOCATIONS = 'williamsburg-brooklyn-new-york-ny,west-village-new-york-ny,greenpoint-brooklyn-new-york-ny,soho-new-york-ny,flatiron-new-york-ny,nomad-new-york-ny,dumbo-brooklyn-new-york-ny,brooklyn-heights-brooklyn-new-york-ny,cobble-hill-brooklyn-new-york-ny,fort-greene-brooklyn-new-york-ny,chelsea-new-york-ny,east-village-new-york-ny,gramercy-park-new-york-ny,park-slope-brooklyn-new-york-ny,boerum-hill-brooklyn-new-york-ny,prospect-heights-brooklyn-new-york-ny,greenwich-village-new-york-ny,noho-new-york-ny,nolita-new-york-ny,carroll-gardens-brooklyn-new-york-ny,lower-east-side-new-york-ny'
+  SEARCH_PRICE_MIN = '5000'
+  SEARCH_PRICE_MAX = '9500'
+  SEARCH_BEDS_MIN = '2'
+  SEARCH_BATHS_MIN = '2'
+  SEARCH_SQFT_MIN = '500'
+  INGESTION_INTERVAL_HOURS = '6'
+  ENABLE_AUTO_INGESTION = 'true'
+  MAX_PAGES = '20'
+  MAX_DETAIL_CALLS = '300'
+  BUYER_CRITERIA_PATH = 'config/nyc_rental_criteria.yaml'
+  INGESTION_SOURCES = 'zillow,streeteasy'
+  STREETEASY_SEARCH_URLS = 'https://streeteasy.com/for-rent/williamsburg,https://streeteasy.com/for-rent/west-village,https://streeteasy.com/for-rent/greenpoint,https://streeteasy.com/for-rent/soho,https://streeteasy.com/for-rent/flatiron,https://streeteasy.com/for-rent/nomad,https://streeteasy.com/for-rent/dumbo,https://streeteasy.com/for-rent/brooklyn-heights,https://streeteasy.com/for-rent/cobble-hill,https://streeteasy.com/for-rent/fort-greene,https://streeteasy.com/for-rent/chelsea,https://streeteasy.com/for-rent/east-village,https://streeteasy.com/for-rent/gramercy-park,https://streeteasy.com/for-rent/park-slope,https://streeteasy.com/for-rent/boerum-hill,https://streeteasy.com/for-rent/prospect-heights,https://streeteasy.com/for-rent/greenwich-village,https://streeteasy.com/for-rent/noho,https://streeteasy.com/for-rent/nolita,https://streeteasy.com/for-rent/carroll-gardens,https://streeteasy.com/for-rent/lower-east-side'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

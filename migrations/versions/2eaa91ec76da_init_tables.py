@@ -26,15 +26,15 @@ def upgrade():
             sa.Column("id", sa.Integer(), primary_key=True),
             sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
             sa.Column("name", sa.String(length=100), nullable=False, server_default=sa.text("'My Criteria'")),
-            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
             sa.Column("price_min", sa.Float(), nullable=True),
             sa.Column("price_max", sa.Float(), nullable=True),
             sa.Column("beds_min", sa.Integer(), nullable=True),
             sa.Column("baths_min", sa.Float(), nullable=True),
             sa.Column("sqft_min", sa.Integer(), nullable=True),
-            sa.Column("require_natural_light", sa.Boolean(), nullable=False, server_default=sa.text("0")),
-            sa.Column("require_high_ceilings", sa.Boolean(), nullable=False, server_default=sa.text("0")),
-            sa.Column("require_outdoor_space", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+            sa.Column("require_natural_light", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+            sa.Column("require_high_ceilings", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+            sa.Column("require_outdoor_space", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         )
 
     if "property_listings" not in tables:

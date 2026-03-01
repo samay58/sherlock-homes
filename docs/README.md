@@ -8,13 +8,16 @@ This folder is the source of truth for Home Hog (Sherlock Homes) documentation.
 - `DEVELOPMENT.md`: local + Docker workflows, troubleshooting
 - `API.md`: API endpoints (manual reference; FastAPI also serves `/docs`)
 - `OPERATIONS_FLY.md`: production deploy/ingestion runbook (canonical)
+- `ARCHITECTURE.md`: current codebase map + ingestion/scoring flow
 
 ## Architecture And Scoring
 
-- `ARCHITECTURE.md`: codebase map + data flow
-- `SCORING_ENGINE_SPEC.md`: scoring rubric and explainability requirements
-- `SCORING_DEEP_DIVE_2026-02-22.md`: runtime diagnostics snapshot (NYC rental)
+- `SCORING_ENGINE_SPEC.md`: scoring rubric/explainability design doc (may lag live config)
+- `SCORING_DEEP_DIVE_2026-02-22.md`: point-in-time diagnostics snapshot (historical)
 - `../config/user_criteria.yaml` / `../config/nyc_rental_criteria.yaml`: scoring configuration (selected via `BUYER_CRITERIA_PATH`)
+
+Current production scoring source of truth:
+- `../config/nyc_rental_criteria.yaml` (NYC rental profile)
 
 ## History (Archive)
 

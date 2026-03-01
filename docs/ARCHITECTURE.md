@@ -44,6 +44,11 @@ Ingestion:
 4. Extract flags (NLP), compute cached intelligence (visual/geospatial), normalize neighborhoods
 5. Upsert listings + snapshots/events (`app/services/persistence.py`)
 
+StreetEasy-specific reliability notes:
+- Summary parsing accepts both legacy and modern StreetEasy listing URL formats.
+- Detail enrichment includes escaped payload parsing fallbacks (price/beds/baths/sqft/neighborhood/address) for modern StreetEasy pages.
+- Provider-specific detail caps and request timeouts prevent one slow provider pass from blocking full ingestion completion.
+
 Matching (read-time scoring):
 
 1. Load criteria config (`app/services/criteria_config.py`)
@@ -67,6 +72,7 @@ Matching (read-time scoring):
 - Criteria config is selected via `BUYER_CRITERIA_PATH`:
   - SF default: `config/user_criteria.yaml`
   - NYC rentals: `config/nyc_rental_criteria.yaml`
+- NYC rental outdoor preference is tiered (baseline outdoor + private/premium boosts + weak-outdoor dampening) to capture "a little bit of outdoor space" without brittle hard rejects.
 - StreetEasy ingestion is enabled by including `streeteasy` in `INGESTION_SOURCES` and providing `STREETEASY_SEARCH_URLS` (comma-separated).
 - StreetEasy pagination is capped by `STREETEASY_MAX_PAGES` (in addition to the global `MAX_PAGES` ingestion cap).
 - StreetEasy runtime has provider-specific guardrails (`STREETEASY_REQUEST_TIMEOUT_SECONDS`, `STREETEASY_REQUEST_RETRIES`, `STREETEASY_MAX_DETAIL_CALLS`) so one slow provider pass does not collapse source counts.

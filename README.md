@@ -4,6 +4,13 @@ Apartment hunting is a nightmare. This makes it slightly less of one.
 
 Sherlock Homes ranks listings against your criteria using NLP, geospatial signals, and OpenAI Vision. Because staring at 47 identical "sun-drenched" listings should not be a full-time job. Currently configured for NYC rentals (previously SF purchases).
 
+## Current Production Profile (March 1, 2026)
+
+- Deployment: Fly app `sherlock-homes-nyc` (`https://sherlock-homes-nyc.fly.dev`)
+- Active ingestion sources: `zillow,streeteasy`
+- Active criteria file in production: `config/nyc_rental_criteria.yaml`
+- StreetEasy low-count incident is resolved (runbook + verification in `docs/OPERATIONS_FLY.md`)
+
 ## The Problem
 
 Zillow tells you what exists. It does not tell you what is good. The north-facing "garden unit" with the $15k/year HOA and a fire station next door? Zillow will show it. We will not.
@@ -125,12 +132,27 @@ OPENAI_API_KEY=your_key
 # Optional: fallback for text intelligence when OpenAI is rate-limited/unset
 DEEPINFRA_API_KEY=your_key
 
-# Switch criteria profiles (SF default vs NYC rentals)
-BUYER_CRITERIA_PATH=config/user_criteria.yaml
+# NYC rental scoring profile (current default for this project)
+BUYER_CRITERIA_PATH=config/nyc_rental_criteria.yaml
+
+# Optional StreetEasy runtime guardrails (defaults are safe)
+STREETEASY_REQUEST_TIMEOUT_SECONDS=45
+STREETEASY_REQUEST_RETRIES=1
+STREETEASY_MAX_DETAIL_CALLS=80
 ```
 
 Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`.
 Production operations are documented in `docs/OPERATIONS_FLY.md`.
+
+## Tuning Kamya's Outdoor Preference
+
+The current system intentionally prefers "a little bit or more" outdoor access without being brittle:
+
+- Baseline signals: `nlp_signals.positive.outdoor`
+- Stronger boosts for meaningful private space: `outdoor_private`, `outdoor_premium`
+- Soft penalties for weak/noisy signals: `nlp_signals.negative.weak_outdoor`
+
+Edit these in `config/nyc_rental_criteria.yaml` to calibrate strictness without hard-disqualifying viable listings.
 
 ## Stack
 

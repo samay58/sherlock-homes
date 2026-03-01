@@ -2,6 +2,15 @@
 
 Canonical production runbook for `sherlock-homes-nyc`.
 
+## Current Known Good State (March 1, 2026)
+
+- StreetEasy low-count incident is resolved in production.
+- Verified production DB counts after a production-path StreetEasy run:
+  - `streeteasy: 774`
+  - `zillow: 459`
+  - `total: 1233`
+- If you need to re-validate, run the count query in "Verify listing counts by source" plus the StreetEasy-only diagnostic below.
+
 ## App Facts
 
 - App: `sherlock-homes-nyc`
@@ -69,19 +78,24 @@ curl https://sherlock-homes-nyc.fly.dev/ingestion/status
 Important:
 - `ingestion/status` and `admin/ingestion/last-run` come from in-memory app state.
 - A machine restart can reset those fields.
+- Running ingestion from a one-off external Python process (for debugging) does not update API process in-memory status.
 - For source-of-truth verification, check logs and actual listing counts by source.
 
 ### Verify listing counts by source
 
 ```bash
-curl -sS 'https://sherlock-homes-nyc.fly.dev/listings?limit=500' \
-  | python3 - <<'PY'
-import json,sys
-from collections import Counter
-arr=json.load(sys.stdin)
-print("total", len(arr))
-print("by_source", dict(sorted(Counter((x.get("source") or "unknown") for x in arr).items())))
+fly ssh console -a sherlock-homes-nyc -C "python - <<'PY'
+from app.db.session import SessionLocal
+from sqlalchemy import text
+
+with SessionLocal() as db:
+    total = db.execute(text('select count(*) from property_listings')).scalar()
+    rows = db.execute(text('select source, count(*) from property_listings group by source order by source')).fetchall()
+print('total', total)
+for source, count in rows:
+    print(source, count)
 PY
+"
 ```
 
 ## StreetEasy Low-Count Incident Playbook

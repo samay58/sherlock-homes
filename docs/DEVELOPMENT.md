@@ -50,6 +50,15 @@ It covers:
 - StreetEasy low-count incident playbook
 - rollback
 
+## Current Runtime Defaults (NYC Rentals)
+
+- Criteria profile: `BUYER_CRITERIA_PATH=config/nyc_rental_criteria.yaml`
+- Ingestion sources: `INGESTION_SOURCES=zillow,streeteasy`
+- StreetEasy guardrails:
+  - `STREETEASY_REQUEST_TIMEOUT_SECONDS=45`
+  - `STREETEASY_REQUEST_RETRIES=1`
+  - `STREETEASY_MAX_DETAIL_CALLS=80`
+
 ## Common Commands
 
 ```bash
@@ -86,6 +95,23 @@ curl http://localhost:8000/ingestion/status
 
 # Get matches for the test user
 curl http://localhost:8000/matches/test-user
+```
+
+StreetEasy-only local diagnostic:
+
+```bash
+python - <<'PY'
+import asyncio
+from app.providers.streeteasy import StreetEasyProvider
+
+async def main():
+    p = StreetEasyProvider()
+    items = await p.search_all_locations()
+    print("streeteasy_total", len(items))
+    await p.close()
+
+asyncio.run(main())
+PY
 ```
 
 ## Alerts (Optional)
@@ -128,6 +154,8 @@ Notes:
   4. Confirm the API logs contain `Falling back to DeepInfra for text intelligence`.
 
 - **SQLite `database is locked` during ingestion**: this usually means another process is holding a write transaction against the same SQLite file. Restart the API and re-run ingestion. The ingestion upsert path retries transient lock errors, but long-running requests that write (e.g. criteria creation) should commit promptly before making external calls.
+
+- **Ingestion status looks reset (`last_run_*` zeros/nulls)**: `/ingestion/status` and `/admin/ingestion/last-run` are in-memory per-process state. Machine restarts (or running ingestion from an external Python process) can reset those fields. Treat DB source counts + logs as ground truth.
 
 - **bcrypt error on startup**: rebuild the venv (pins `bcrypt==3.2.2`).
   ```bash

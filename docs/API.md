@@ -91,6 +91,7 @@ GET /ingestion/status
 
 Operational notes:
 - `GET /ingestion/status` and `GET /admin/ingestion/last-run` are in-memory runtime fields and may reset after machine restarts.
+- One-off ingestion/debug scripts run outside the API process do not update these in-memory fields.
 - For production runbooks and source-count validation, use `docs/OPERATIONS_FLY.md`.
 
 ### Admin Utilities

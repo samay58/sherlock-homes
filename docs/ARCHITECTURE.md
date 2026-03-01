@@ -6,6 +6,8 @@ Sherlock Homes (repo: `home-hog`) is a FastAPI backend plus a Vite + React front
 It ingests listings from provider adapters, enriches them (NLP + geospatial + vision),
 and computes per-request match scorecards against a buyer criteria YAML.
 
+Production deployment and operational procedures live in `docs/OPERATIONS_FLY.md`.
+
 ## Repository Map
 
 Backend (`app/`):
@@ -67,3 +69,4 @@ Matching (read-time scoring):
   - NYC rentals: `config/nyc_rental_criteria.yaml`
 - StreetEasy ingestion is enabled by including `streeteasy` in `INGESTION_SOURCES` and providing `STREETEASY_SEARCH_URLS` (comma-separated).
 - StreetEasy pagination is capped by `STREETEASY_MAX_PAGES` (in addition to the global `MAX_PAGES` ingestion cap).
+- Fly.io production keeps one warm machine (`min_machines_running=1`) so the in-process scheduler can execute recurring ingestion.

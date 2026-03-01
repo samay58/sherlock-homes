@@ -304,7 +304,10 @@ def _enrich_from_streeteasy_html(soup: BeautifulSoup, data: Dict[str, Any]) -> N
             data.setdefault("has_gym_keywords", True)
         if re.search(r"parking|garage", amenity_text):
             data.setdefault("has_parking_keywords", True)
-        if re.search(r"outdoor|patio|terrace|balcony|garden|yard", amenity_text):
+        if re.search(
+            r"outdoor space|roof(?:top)? deck|sundeck|patio|terrace|balcony|garden|yard|courtyard",
+            amenity_text,
+        ):
             data.setdefault("has_outdoor_space_keywords", True)
 
     # Neighborhood from page

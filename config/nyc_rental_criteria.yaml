@@ -56,9 +56,9 @@ weights:
   location_quiet: 10      # Livable but not dead
   kitchen_quality: 8      # Cooking together matters
 
-  # Tier 2: Best life enablers (total: 40)
+  # Tier 2: Best life enablers (total: 41)
   gym_fitness: 12          # In-building or walkable gym access
-  outdoor_space: 8        # Rooftop, terrace, balcony - huge NYC plus
+  outdoor_space: 9        # Kamya preference: at least a little real outdoor space
   layout_intelligence: 8  # Wide, expansive feel - not narrow multi-floor
   high_ceilings: 6        # Breathability, not a low-ceiling cave
   in_unit_laundry: 5      # Game changer in NYC
@@ -134,13 +134,36 @@ nlp_signals:
         - "rooftop"
         - "roof deck"
         - "terrace"
-        - "private terrace"
         - "balcony"
+        - "patio"
         - "courtyard"
         - "garden"
         - "outdoor space"
         - "rooftop lounge"
         - "sundeck"
+        - "deck"
+
+    outdoor_private:
+      weight: 1.3
+      keywords:
+        - "private terrace"
+        - "private patio"
+        - "private balcony"
+        - "private deck"
+        - "private yard"
+        - "backyard"
+        - "own outdoor space"
+
+    outdoor_premium:
+      weight: 1.35
+      keywords:
+        - "roof deck"
+        - "large terrace"
+        - "oversized terrace"
+        - "spacious terrace"
+        - "large patio"
+        - "private garden"
+        - "outdoor entertaining"
 
     character:
       weight: 1.3
@@ -279,6 +302,17 @@ nlp_signals:
         - "cramped"
         - "compact layout"
         - "cozy layout"
+
+    weak_outdoor:
+      weight: 0.75
+      keywords:
+        - "juliet balcony"
+        - "tiny balcony"
+        - "shared balcony"
+        - "shared terrace"
+        - "shared rooftop"
+        - "common roof deck"
+        - "no outdoor space"
 
 # Street-level scoring adjustments (NYC specific)
 location_modifiers:

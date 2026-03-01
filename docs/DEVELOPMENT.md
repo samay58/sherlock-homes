@@ -40,6 +40,16 @@ make migrate
 - API: `http://localhost:8000`
 - Frontend: `http://localhost:5173`
 
+## Production Operations (Fly.io)
+
+Use `OPERATIONS_FLY.md` as the canonical production runbook.
+
+It covers:
+- release flow
+- ingestion trigger/verification
+- StreetEasy low-count incident playbook
+- rollback
+
 ## Common Commands
 
 ```bash

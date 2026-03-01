@@ -85,7 +85,6 @@ KEYWORDS = {
         "garden",
         "terrace",
         "rooftop",
-        "outdoor",
         "outdoor space",
         "private outdoor",
         "backyard",

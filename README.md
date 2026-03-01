@@ -55,7 +55,7 @@ Detects meaningful listing changes like price drops, status flips, and photo upd
 
 ## How It Works
 
-1. **Ingestion**: Scrapes Zillow + StreetEasy via ZenRows every 6 hours.
+1. **Ingestion**: Scrapes Zillow + StreetEasy via ZenRows on a recurring scheduler (and on-demand via admin endpoint).
 2. **Enrichment**: NLP, geospatial, and visual scoring per listing.
 3. **Matching**: Weighted scoring against your preferences with soft and hard caps.
 4. **Ranking**: Top matches, with explanations of why.
@@ -107,6 +107,13 @@ Run visual analysis:
 python -m app.scripts.analyze_visual_scores
 ```
 
+## Production (Fly.io)
+
+Production app: `https://sherlock-homes-nyc.fly.dev`
+
+Use the canonical runbook:
+- `docs/OPERATIONS_FLY.md` for deploy, ingestion operations, validation, and rollback.
+
 ## Configuration
 
 Create `.env.local`:
@@ -123,6 +130,7 @@ BUYER_CRITERIA_PATH=config/user_criteria.yaml
 ```
 
 Optional alerts (iMessage / email / SMS) are documented in `docs/DEVELOPMENT.md`.
+Production operations are documented in `docs/OPERATIONS_FLY.md`.
 
 ## Stack
 

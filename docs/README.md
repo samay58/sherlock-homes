@@ -7,6 +7,7 @@ This folder is the source of truth for Home Hog (Sherlock Homes) documentation.
 - `../README.md`: what the product is, how to run it
 - `DEVELOPMENT.md`: local + Docker workflows, troubleshooting
 - `API.md`: API endpoints (manual reference; FastAPI also serves `/docs`)
+- `OPERATIONS_FLY.md`: production deploy/ingestion runbook (canonical)
 
 ## Architecture And Scoring
 

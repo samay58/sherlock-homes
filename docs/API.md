@@ -2,6 +2,8 @@
 
 Base URL: `http://localhost:8000`
 
+Production base URL: `https://sherlock-homes-nyc.fly.dev`
+
 FastAPI interactive docs:
 - Swagger UI: `http://localhost:8000/docs`
 - OpenAPI JSON: `http://localhost:8000/openapi.json`
@@ -86,6 +88,10 @@ Fields include:
 POST /admin/ingestion/run
 GET /ingestion/status
 ```
+
+Operational notes:
+- `GET /ingestion/status` and `GET /admin/ingestion/last-run` are in-memory runtime fields and may reset after machine restarts.
+- For production runbooks and source-count validation, use `docs/OPERATIONS_FLY.md`.
 
 ### Admin Utilities
 

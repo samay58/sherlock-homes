@@ -422,9 +422,33 @@ class PropertyMatcher:
 
         # Outdoor space
         outdoor_hits = nlp_hits.get("positive_hits", {}).get("outdoor", [])
-        outdoor_score = _score_from_hits(len(outdoor_hits))
+        outdoor_private_hits = (
+            nlp_hits.get("positive_hits", {}).get("outdoor_private", [])
+        )
+        outdoor_premium_hits = (
+            nlp_hits.get("positive_hits", {}).get("outdoor_premium", [])
+        )
+        weak_outdoor_hits = nlp_hits.get("negative_hits", {}).get("weak_outdoor", [])
+
+        has_any_outdoor_signal = bool(
+            outdoor_hits
+            or outdoor_private_hits
+            or outdoor_premium_hits
+            or listing.has_outdoor_space_keywords
+        )
+        outdoor_score = 0.0
+        if has_any_outdoor_signal:
+            # "A little bit is enough": any credible outdoor signal gets a meaningful base.
+            outdoor_score = 5.5
+            outdoor_score += min(2.0, len(outdoor_hits) * 0.5)
         if listing.has_outdoor_space_keywords:
-            outdoor_score = max(outdoor_score, 7.5)
+            outdoor_score = max(outdoor_score, 6.0)
+        if outdoor_private_hits:
+            outdoor_score = max(outdoor_score, 7.0)
+            outdoor_score += min(1.0, len(outdoor_private_hits) * 0.4)
+        if outdoor_premium_hits:
+            outdoor_score = max(outdoor_score, 8.5)
+            outdoor_score += min(1.0, len(outdoor_premium_hits) * 0.35)
         outdoor_multiplier = float(
             self.config.nlp_signals.get("positive", {})
             .get("outdoor", {})
@@ -437,12 +461,22 @@ class PropertyMatcher:
             .get("weak_outdoor", {})
             .get("weight", 1.0)
         )
-        if nlp_hits.get("negative_hits", {}).get("weak_outdoor"):
+        if weak_outdoor_hits:
             outdoor_score = outdoor_score * weak_outdoor_multiplier
+            outdoor_score = min(outdoor_score, 6.5)
+        outdoor_score = max(0.0, min(10.0, outdoor_score))
         add_component(
             "outdoor_space",
             score=round(outdoor_score, 2),
-            evidence=[f"mentions '{hit}'" for hit in outdoor_hits[:3]],
+            evidence=[f"mentions '{hit}'" for hit in outdoor_hits[:2]]
+            + [f"private '{hit}'" for hit in outdoor_private_hits[:2]]
+            + [f"premium '{hit}'" for hit in outdoor_premium_hits[:2]]
+            + (
+                ["provider outdoor amenity flag"]
+                if listing.has_outdoor_space_keywords
+                else []
+            )
+            + [f"weak '{hit}'" for hit in weak_outdoor_hits[:2]],
         )
 
         # Character & soul

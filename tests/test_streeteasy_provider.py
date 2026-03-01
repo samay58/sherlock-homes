@@ -1,6 +1,10 @@
 from urllib.parse import parse_qs, urlsplit
 
-from app.providers.streeteasy import _normalize_streeteasy_url, _with_page_param
+from bs4 import BeautifulSoup
+
+from app.providers.streeteasy import (_enrich_from_streeteasy_html,
+                                      _normalize_streeteasy_url,
+                                      _with_page_param)
 
 
 def test_normalize_streeteasy_url_strips_query_fragment_and_forces_https():
@@ -35,3 +39,36 @@ def test_with_page_param_adds_or_replaces_page():
     assert parsed.get("sort_by") == ["price_desc"]
     assert parsed.get("page") == ["3"]
 
+
+def test_enrich_from_streeteasy_html_outdoor_needs_specific_feature_term():
+    soup = BeautifulSoup(
+        """
+        <div class="AmenitiesList">
+          <span>Outdoor</span>
+          <span>Bike Storage</span>
+        </div>
+        """,
+        "html.parser",
+    )
+    data = {}
+
+    _enrich_from_streeteasy_html(soup, data)
+
+    assert data.get("has_outdoor_space_keywords") is None
+
+
+def test_enrich_from_streeteasy_html_sets_outdoor_for_terrace():
+    soup = BeautifulSoup(
+        """
+        <div class="AmenitiesList">
+          <span>Private Terrace</span>
+          <span>Gym</span>
+        </div>
+        """,
+        "html.parser",
+    )
+    data = {}
+
+    _enrich_from_streeteasy_html(soup, data)
+
+    assert data.get("has_outdoor_space_keywords") is True

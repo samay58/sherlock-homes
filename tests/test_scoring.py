@@ -35,8 +35,20 @@ def _write_test_criteria(tmp_path):
               weight: 1.0
             outdoor:
               keywords:
+                - balcony
+                - terrace
                 - deck
                 - garden
+              weight: 1.0
+            outdoor_private:
+              keywords:
+                - private terrace
+                - private balcony
+              weight: 1.0
+            outdoor_premium:
+              keywords:
+                - roof deck
+                - private garden
               weight: 1.0
             character:
               keywords:
@@ -190,6 +202,55 @@ def test_score_listing_blocks_dark_without_light(db_session, tmp_path):
 
         matcher = PropertyMatcher(criteria=None, db=db_session)
         assert matcher.score_listing(listing) is False
+    finally:
+        _restore_criteria(original_path)
+
+
+def test_outdoor_tiers_favor_private_over_weak_signal(db_session, tmp_path):
+    original_path = _configure_criteria(tmp_path)
+    try:
+        private_listing = PropertyListing(
+            listing_id="Z2100",
+            address="2100 Terrace Ave, San Francisco, CA",
+            price=2200000,
+            beds=3,
+            baths=2.0,
+            sqft=1800,
+            neighborhood="Noe Valley",
+            property_type="condo",
+            url="https://example.com/listing/Z2100",
+            description=(
+                "Bright home with natural light and a private terrace off the living room."
+            ),
+        )
+        weak_listing = PropertyListing(
+            listing_id="Z2101",
+            address="2101 Juliet Ave, San Francisco, CA",
+            price=2200000,
+            beds=3,
+            baths=2.0,
+            sqft=1800,
+            neighborhood="Noe Valley",
+            property_type="condo",
+            url="https://example.com/listing/Z2101",
+            description=(
+                "Bright home with natural light and a juliet balcony."
+            ),
+        )
+        db_session.add_all([private_listing, weak_listing])
+        db_session.commit()
+        db_session.refresh(private_listing)
+        db_session.refresh(weak_listing)
+
+        matcher = PropertyMatcher(criteria=None, db=db_session)
+        assert matcher.score_listing(private_listing) is True
+        assert matcher.score_listing(weak_listing) is True
+
+        private_score = private_listing.feature_scores["outdoor_space"]["score"]
+        weak_score = weak_listing.feature_scores["outdoor_space"]["score"]
+        assert private_score > weak_score
+        assert private_score >= 7.0
+        assert weak_score <= 6.5
     finally:
         _restore_criteria(original_path)
 

@@ -398,7 +398,7 @@ def _with_page_param(base_url: str, page: int) -> str:
 
 
 def _with_search_filters(base_url: str, page: int = 1) -> str:
-    """Add price/beds/baths filter params from settings, plus pagination."""
+    """Add safe StreetEasy search filters (price + pagination)."""
     parts = urlsplit(base_url)
     query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)]
     existing_keys = {k for k, _ in query}
@@ -407,10 +407,8 @@ def _with_search_filters(base_url: str, page: int = 1) -> str:
         query.append(("min_price", str(settings.SEARCH_PRICE_MIN)))
     if "max_price" not in existing_keys and settings.SEARCH_PRICE_MAX:
         query.append(("max_price", str(settings.SEARCH_PRICE_MAX)))
-    if "bedrooms>=" not in existing_keys and settings.SEARCH_BEDS_MIN:
-        query.append(("bedrooms>=", str(settings.SEARCH_BEDS_MIN)))
-    if "bathrooms>=" not in existing_keys and settings.SEARCH_BATHS_MIN:
-        query.append(("bathrooms>=", str(int(settings.SEARCH_BATHS_MIN))))
+    # StreetEasy bed/bath operator params are fragile when proxied through ZenRows URL encoding.
+    # We intentionally avoid injecting those here and rely on downstream hard filters in matching.
     if page > 1:
         query = [(k, v) for k, v in query if k != "page"]
         query.append(("page", str(page)))

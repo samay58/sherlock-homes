@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from app.providers.streeteasy import (_enrich_from_streeteasy_html,
                                       _normalize_streeteasy_url,
-                                      _with_page_param)
+                                      _with_page_param, _with_search_filters)
 
 
 def test_normalize_streeteasy_url_strips_query_fragment_and_forces_https():
@@ -38,6 +38,16 @@ def test_with_page_param_adds_or_replaces_page():
     parsed = parse_qs(urlsplit(page3).query)
     assert parsed.get("sort_by") == ["price_desc"]
     assert parsed.get("page") == ["3"]
+
+
+def test_with_search_filters_does_not_inject_bed_bath_operator_params():
+    base = "https://streeteasy.com/for-rent/williamsburg"
+    filtered = _with_search_filters(base, page=2)
+    parsed = parse_qs(urlsplit(filtered).query)
+
+    assert parsed.get("page") == ["2"]
+    assert "bedrooms>=" not in parsed
+    assert "bathrooms>=" not in parsed
 
 
 def test_enrich_from_streeteasy_html_outdoor_needs_specific_feature_term():

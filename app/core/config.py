@@ -101,6 +101,21 @@ class Settings(BaseSettings):
     MAX_DETAIL_CALLS: int = Field(
         default=200
     )  # Max property detail calls per ingestion run
+    INGESTION_PROVIDER_TIMEOUT_SECONDS: int = Field(
+        default=900
+    )  # Max wall-clock time per provider pass
+    INGESTION_DETAIL_CONCURRENCY: int = Field(
+        default=8
+    )  # Parallel detail requests during enrichment
+    INGESTION_DETAIL_REQUEST_TIMEOUT_SECONDS: int = Field(
+        default=60
+    )  # Per-detail request timeout guard
+    INGESTION_PAGE_DELAY_SECONDS: float = Field(
+        default=0.2
+    )  # Inter-page pacing delay
+    INGESTION_DETAIL_DELAY_SECONDS: float = Field(
+        default=0.0
+    )  # Optional per-detail pacing delay
     INGESTION_SOURCES: str = Field(default="zillow")  # Comma-separated provider list
 
     # Location Settings
@@ -127,6 +142,8 @@ class Settings(BaseSettings):
     )
     STREETEASY_SEARCH_URLS: str = Field(default="")
     STREETEASY_MAX_PAGES: int = Field(default=5)
+    STREETEASY_LOCATION_CONCURRENCY: int = Field(default=4)
+    ZILLOW_LOCATION_CONCURRENCY: int = Field(default=4)
     CURATED_SOURCES_PATH: str = Field(default="config/curated_sources.yaml")
 
     # Search Filter Settings

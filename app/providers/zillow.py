@@ -161,8 +161,14 @@ class ZillowProvider(BaseProvider):
         )
         return await self._zenrows_get(detail_url, params, "detail")
 
-    def _build_search_url(self, page: int = 1, keyword: Optional[str] = None) -> str:
-        base = f"https://www.zillow.com/{self.location_slug}/"
+    def _build_search_url(
+        self,
+        page: int = 1,
+        keyword: Optional[str] = None,
+        location_slug: Optional[str] = None,
+    ) -> str:
+        slug = location_slug or self.location_slug
+        base = f"https://www.zillow.com/{slug}/"
 
         # Add rental path segment if in rent mode
         if self.search_mode == "rent":
@@ -207,19 +213,25 @@ class ZillowProvider(BaseProvider):
 
         return base + "".join(parts)
 
-    async def search(self, bbox=None, page: int = 1, keyword: Optional[str] = None) -> Iterable[Dict[str, Any]]:  # type: ignore[override]
-        url = self._build_search_url(page=page, keyword=keyword)
+    async def _search_page_data(
+        self,
+        page: int = 1,
+        keyword: Optional[str] = None,
+        location_slug: Optional[str] = None,
+    ) -> tuple[List[Dict[str, Any]], bool]:
+        slug = location_slug or self.location_slug
+        url = self._build_search_url(page=page, keyword=keyword, location_slug=slug)
         raw = await self._zenrows_get_discovery(url)  # Use renamed helper
         try:
             js = json.loads(raw)
             list_results = js.get("property_list", [])
-            self._next_exists = bool(js.get("pagination", {}).get("next_page"))
+            has_more = bool(js.get("pagination", {}).get("next_page"))
         except Exception as exc:
             logger.debug("Bad JSON from ZenRows: %s", exc)
-            return []
+            return [], False
 
         # Resolve canonical neighborhood from the search slug
-        search_neighborhood = SLUG_TO_NEIGHBORHOOD.get(self.location_slug)
+        search_neighborhood = SLUG_TO_NEIGHBORHOOD.get(slug)
 
         items: List[Dict[str, Any]] = []
         for res in list_results:
@@ -257,6 +269,21 @@ class ZillowProvider(BaseProvider):
                     ),
                 }
             )
+        return items, has_more
+
+    async def search(
+        self,
+        bbox=None,
+        page: int = 1,
+        keyword: Optional[str] = None,
+        location_slug: Optional[str] = None,
+    ) -> Iterable[Dict[str, Any]]:  # type: ignore[override]
+        items, has_more = await self._search_page_data(
+            page=page,
+            keyword=keyword,
+            location_slug=location_slug,
+        )
+        self._next_exists = has_more
         return items
 
     async def get_details(self, listing_id: str) -> Dict[str, Any]:
@@ -339,20 +366,42 @@ class ZillowProvider(BaseProvider):
 
     async def search_all_locations(self) -> List[Dict[str, Any]]:
         """Search across all configured location slugs, returning combined results."""
-        all_items: List[Dict[str, Any]] = []
-        for slug in self.location_slugs:
-            self.location_slug = slug
+        if not self.location_slugs:
+            return []
+
+        max_pages = max(1, min(settings.MAX_PAGES, 5))
+        location_concurrency = max(1, settings.ZILLOW_LOCATION_CONCURRENCY)
+        semaphore = asyncio.Semaphore(location_concurrency)
+
+        async def search_slug(slug: str) -> List[Dict[str, Any]]:
+            slug_items: List[Dict[str, Any]] = []
             page = 1
-            max_pages = 5  # cap per neighborhood to avoid API abuse
             while page <= max_pages:
-                items = await self.search(None, page)
-                all_items.extend(items)
-                has_more = getattr(self, "_next_exists", False)
+                items, has_more = await self._search_page_data(
+                    page=page, location_slug=slug
+                )
+                slug_items.extend(items)
                 if not has_more or not items:
                     break
                 page += 1
-                await asyncio.sleep(1.5)
-            logger.info("Fetched %d items from %s (%d pages)", len(all_items), slug, page)
+                if settings.INGESTION_PAGE_DELAY_SECONDS > 0:
+                    await asyncio.sleep(settings.INGESTION_PAGE_DELAY_SECONDS)
+            logger.info(
+                "Fetched %d items from %s (%d pages)",
+                len(slug_items),
+                slug,
+                page,
+            )
+            return slug_items
+
+        async def run_slug(slug: str) -> List[Dict[str, Any]]:
+            async with semaphore:
+                return await search_slug(slug)
+
+        results = await asyncio.gather(*(run_slug(slug) for slug in self.location_slugs))
+        all_items: List[Dict[str, Any]] = []
+        for items in results:
+            all_items.extend(items)
         return all_items
 
     async def search_page(self, page: int = 1, keyword: Optional[str] = None):

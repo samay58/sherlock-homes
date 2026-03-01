@@ -33,6 +33,11 @@ def test_normalize_streeteasy_url_accepts_modern_unit_path():
     )
 
 
+def test_normalize_streeteasy_url_accepts_rental_paths():
+    url = "https://streeteasy.com/rental/4329421?card=1"
+    assert _normalize_streeteasy_url(url) == "https://streeteasy.com/rental/4329421"
+
+
 def test_normalize_streeteasy_url_rejects_building_only_pages():
     assert (
         _normalize_streeteasy_url("https://streeteasy.com/building/four-williamsburg-wharf")

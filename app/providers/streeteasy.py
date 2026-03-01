@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://streeteasy.com"
 LISTING_URL_RE = re.compile(
-    r"https?://streeteasy\.com/building/[^\"'\s]+/[^\"'\s]+"
+    r"https?://(?:www\.)?streeteasy\.com/(?:building/[^\"'\s]+/[^\"'\s]+(?:/rental/\d+)?|rental/[^\"'\s]+)"
 )
 
 # Map SE neighborhood slugs to canonical names
@@ -93,7 +93,7 @@ class StreetEasyProvider(BaseProvider):
         urls.extend(LISTING_URL_RE.findall(html))
 
         # Also look for relative listing links
-        for a_tag in soup.select("a[href*='/building/']"):
+        for a_tag in soup.select("a[href*='/building/'], a[href*='/rental/']"):
             href = a_tag.get("href", "")
             full_url = urljoin(BASE_URL, href) if href.startswith("/") else href
             urls.append(full_url)
@@ -124,6 +124,42 @@ class StreetEasyProvider(BaseProvider):
 
         return listings
 
+    async def _search_neighborhood_all_pages(
+        self, base_url: str, max_pages: int
+    ) -> tuple[str, int, int, List[Dict[str, Any]]]:
+        neighborhood = _neighborhood_from_url(base_url) or base_url
+        listings_out: List[Dict[str, Any]] = []
+        seen_urls: set[str] = set()
+        page = 1
+
+        while page <= max_pages:
+            try:
+                listings = await self._search_neighborhood(base_url, page)
+            except Exception as exc:
+                logger.warning(
+                    "StreetEasy search failed for %s page %d: %s",
+                    neighborhood,
+                    page,
+                    exc,
+                )
+                break
+
+            if not listings:
+                break
+
+            for item in listings:
+                url = item.get("source_listing_id") or item.get("url")
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    listings_out.append(item)
+
+            page += 1
+            if settings.INGESTION_PAGE_DELAY_SECONDS > 0:
+                await asyncio.sleep(settings.INGESTION_PAGE_DELAY_SECONDS)
+
+        pages_fetched = max(0, page - 1)
+        return neighborhood, len(listings_out), pages_fetched, listings_out
+
     async def search_all_locations(self) -> List[Dict[str, Any]]:
         """Search all neighborhoods independently, paginating each one fully."""
         if not self._search_urls:
@@ -131,43 +167,31 @@ class StreetEasyProvider(BaseProvider):
             return []
 
         max_pages = max(1, min(settings.MAX_PAGES, settings.STREETEASY_MAX_PAGES))
+        concurrency = max(1, settings.STREETEASY_LOCATION_CONCURRENCY)
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def run_for_url(base_url: str):
+            async with semaphore:
+                return await self._search_neighborhood_all_pages(base_url, max_pages)
+
+        results = await asyncio.gather(
+            *(run_for_url(base_url) for base_url in self._search_urls)
+        )
+
         all_listings: List[Dict[str, Any]] = []
         seen_urls: set[str] = set()
-
-        for base_url in self._search_urls:
-            neighborhood = _neighborhood_from_url(base_url) or base_url
-            nbhd_count = 0
-            page = 1
-
-            while page <= max_pages:
-                try:
-                    listings = await self._search_neighborhood(base_url, page)
-                except Exception as exc:
-                    logger.warning(
-                        "StreetEasy search failed for %s page %d: %s",
-                        neighborhood, page, exc,
-                    )
-                    break
-
-                if not listings:
-                    break
-
-                new_in_page = 0
-                for item in listings:
-                    url = item.get("source_listing_id") or item.get("url")
-                    if url and url not in seen_urls:
-                        seen_urls.add(url)
-                        all_listings.append(item)
-                        new_in_page += 1
-
-                nbhd_count += new_in_page
-                page += 1
-                await asyncio.sleep(1.5)
-
+        for neighborhood, nbhd_count, pages_fetched, listings in results:
             logger.info(
                 "StreetEasy %s: %d listings across %d pages",
-                neighborhood, nbhd_count, page - 1,
+                neighborhood,
+                nbhd_count,
+                pages_fetched,
             )
+            for item in listings:
+                url = item.get("source_listing_id") or item.get("url")
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    all_listings.append(item)
 
         logger.info(
             "StreetEasy total: %d unique listings from %d neighborhoods",
@@ -395,6 +419,8 @@ def _normalize_streeteasy_url(url: str) -> Optional[str]:
 
 def _looks_like_streeteasy_listing_path(path: str) -> bool:
     segments = [segment for segment in path.strip("/").split("/") if segment]
+    if len(segments) >= 2 and segments[0] == "rental":
+        return True
     if len(segments) < 3 or segments[0] != "building":
         return False
 

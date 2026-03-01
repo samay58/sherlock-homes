@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.core.config import settings
 from app.providers.registry import get_active_providers
@@ -46,7 +46,11 @@ def _generate_tiles(bbox: Tuple[float, float, float, float]):
         lat += TILE_LAT_STEP
 
 
-async def _fetch_summaries(provider, source_key: str) -> List[Dict[str, Any]]:
+async def _fetch_summaries(
+    provider,
+    source_key: str,
+    on_batch: Optional[Callable[[int], None]] = None,
+) -> List[Dict[str, Any]]:
     summaries: List[Dict[str, Any]] = []
     page = 1
     max_pages = settings.MAX_PAGES
@@ -62,10 +66,14 @@ async def _fetch_summaries(provider, source_key: str) -> List[Dict[str, Any]]:
         else:
             batch = await provider.search(bbox=None, page=page)
             more = False
-        summaries.extend([_apply_source_fields(item, source_key) for item in batch])
+        page_items = [_apply_source_fields(item, source_key) for item in batch]
+        summaries.extend(page_items)
+        if on_batch and page_items:
+            on_batch(len(page_items))
         if not more:
             break
-        await asyncio.sleep(1.5)
+        if settings.INGESTION_PAGE_DELAY_SECONDS > 0:
+            await asyncio.sleep(settings.INGESTION_PAGE_DELAY_SECONDS)
         page += 1
     return summaries
 
@@ -75,11 +83,14 @@ async def _enrich_summaries(
     source_key: str,
     supports_details: bool,
     summaries: List[Dict[str, Any]],
+    on_detail_call: Optional[Callable[[], None]] = None,
 ) -> Tuple[List[Dict[str, Any]], int]:
     enriched: List[Dict[str, Any]] = []
     detail_calls_made = 0
     max_detail_calls = settings.MAX_DETAIL_CALLS
-    limit_logged = False
+    detail_request_timeout = settings.INGESTION_DETAIL_REQUEST_TIMEOUT_SECONDS
+    detail_concurrency = max(1, settings.INGESTION_DETAIL_CONCURRENCY)
+    detail_delay_seconds = max(0.0, settings.INGESTION_DETAIL_DELAY_SECONDS)
 
     if summaries:
         logger.info(
@@ -88,6 +99,73 @@ async def _enrich_summaries(
             source_key,
             max_detail_calls,
         )
+
+    detail_results: Dict[int, Dict[str, Any]] = {}
+    detail_candidates: List[Tuple[int, str]] = []
+    if supports_details and max_detail_calls > 0:
+        for i, summary_listing in enumerate(summaries):
+            listing_id = summary_listing.get("source_listing_id") or summary_listing.get(
+                "listing_id"
+            )
+            if not listing_id:
+                continue
+            detail_candidates.append((i, str(listing_id)))
+
+        if len(detail_candidates) > max_detail_calls:
+            logger.info(
+                "Reached detail call limit (%d) for %s. Skipping remaining details.",
+                max_detail_calls,
+                source_key,
+            )
+            detail_candidates = detail_candidates[:max_detail_calls]
+
+        semaphore = asyncio.Semaphore(detail_concurrency)
+
+        async def fetch_detail(index: int, listing_id: str) -> Tuple[int, Dict[str, Any]]:
+            details: Dict[str, Any] = {}
+            try:
+                async with semaphore:
+                    details = await asyncio.wait_for(
+                        provider.get_details(listing_id),
+                        timeout=detail_request_timeout,
+                    )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Detail timeout for %s %s after %ss",
+                    source_key,
+                    listing_id,
+                    detail_request_timeout,
+                )
+            except Exception as exc:
+                logger.error(
+                    "Error fetching details for %s %s: %s",
+                    source_key,
+                    listing_id,
+                    exc,
+                    exc_info=True,
+                )
+            finally:
+                if detail_delay_seconds > 0:
+                    await asyncio.sleep(detail_delay_seconds)
+                if on_detail_call:
+                    on_detail_call()
+            return index, details
+
+        tasks = [
+            asyncio.create_task(fetch_detail(index, listing_id))
+            for index, listing_id in detail_candidates
+        ]
+        try:
+            for task in asyncio.as_completed(tasks):
+                index, details = await task
+                detail_results[index] = details
+                detail_calls_made += 1
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
 
     for i, summary_listing in enumerate(summaries):
         listing_id = summary_listing.get("source_listing_id") or summary_listing.get(
@@ -111,47 +189,22 @@ async def _enrich_summaries(
             enriched.append(_apply_source_fields(listing_to_add, source_key))
             continue
 
-        if supports_details and detail_calls_made < max_detail_calls:
-            try:
-                details = await provider.get_details(listing_id)
-                detail_calls_made += 1
-                await asyncio.sleep(0.5)
+        details = detail_results.get(i) or {}
+        if details:
+            # Preserve the search-tagged neighborhood over generic API response
+            saved_neighborhood = listing_to_add.get("neighborhood")
+            listing_to_add.update({k: v for k, v in details.items() if v is not None})
+            # Restore specific neighborhood if detail response gave a generic one
+            if saved_neighborhood and listing_to_add.get("neighborhood") != saved_neighborhood:
+                detail_hood = (listing_to_add.get("neighborhood") or "").lower()
+                generic = {"brooklyn", "manhattan", "new york", "queens", "bronx", "staten island"}
+                if detail_hood in generic:
+                    listing_to_add["neighborhood"] = saved_neighborhood
 
-                # Preserve the search-tagged neighborhood over generic API response
-                saved_neighborhood = listing_to_add.get("neighborhood")
-                listing_to_add.update(
-                    {k: v for k, v in details.items() if v is not None}
-                )
-                # Restore specific neighborhood if detail response gave a generic one
-                if saved_neighborhood and listing_to_add.get("neighborhood") != saved_neighborhood:
-                    detail_hood = (listing_to_add.get("neighborhood") or "").lower()
-                    generic = {"brooklyn", "manhattan", "new york", "queens", "bronx", "staten island"}
-                    if detail_hood in generic:
-                        listing_to_add["neighborhood"] = saved_neighborhood
-
-                if "photos" in details:
-                    listing_to_add["photos"] = details.get("photos") or []
-                elif not listing_to_add.get("photos"):
-                    listing_to_add["photos"] = []
-            except Exception as exc:
-                logger.error(
-                    "Error fetching details for %s %s: %s",
-                    source_key,
-                    listing_id,
-                    exc,
-                    exc_info=True,
-                )
-        elif (
-            supports_details
-            and detail_calls_made >= max_detail_calls
-            and not limit_logged
-        ):
-            logger.info(
-                "Reached detail call limit (%d) for %s. Skipping remaining details.",
-                max_detail_calls,
-                source_key,
-            )
-            limit_logged = True
+            if "photos" in details:
+                listing_to_add["photos"] = details.get("photos") or []
+            elif not listing_to_add.get("photos"):
+                listing_to_add["photos"] = []
 
         description = listing_to_add.get("description") or ""
         listing_to_add["flags"] = extract_flags(description) if description else {}
@@ -211,6 +264,12 @@ async def run_ingestion_job():
         detail_calls_total = 0
         upsert_total = 0
         all_enriched: List[Dict[str, Any]] = []
+        provider_timeout_seconds = max(30, settings.INGESTION_PROVIDER_TIMEOUT_SECONDS)
+
+        def publish_progress() -> None:
+            ingestion_state.last_run_summary_count = summary_count_total
+            ingestion_state.last_run_detail_calls = detail_calls_total
+            ingestion_state.last_run_upsert_count = upsert_total
 
         for spec in providers:
             provider = spec.factory()
@@ -218,8 +277,28 @@ async def run_ingestion_job():
             provider_enriched: List[Dict[str, Any]] = []
             try:
                 try:
-                    provider_summaries = await _fetch_summaries(provider, spec.key)
-                    summary_count_total += len(provider_summaries)
+                    def on_summary_batch(count: int) -> None:
+                        nonlocal summary_count_total
+                        summary_count_total += count
+                        publish_progress()
+
+                    provider_summaries = await asyncio.wait_for(
+                        _fetch_summaries(
+                            provider,
+                            spec.key,
+                            on_batch=on_summary_batch,
+                        ),
+                        timeout=provider_timeout_seconds,
+                    )
+                    if not provider_summaries:
+                        logger.info("No summaries fetched for %s", spec.key)
+                except asyncio.TimeoutError:
+                    msg = (
+                        f"Timeout during summary fetch ({spec.key}) after "
+                        f"{provider_timeout_seconds}s"
+                    )
+                    logger.error(msg)
+                    ingestion_state.last_run_error = msg
                 except Exception as exc:
                     logger.error(
                         "Error fetching %s listing summaries: %s",
@@ -260,7 +339,7 @@ async def run_ingestion_job():
                             len(provider_summaries),
                             spec.key,
                             len(unique_summaries),
-                        )
+                    )
                     # Prioritize in-budget listings, then by photo count
                     price_max = settings.SEARCH_PRICE_MAX
                     unique_summaries.sort(
@@ -271,13 +350,29 @@ async def run_ingestion_job():
                             -(len(s.get("photos", []))),
                         )
                     )
-                    provider_enriched, detail_calls_made = await _enrich_summaries(
-                        provider,
-                        spec.key,
-                        spec.supports_details,
-                        unique_summaries,
-                    )
-                    detail_calls_total += detail_calls_made
+                    def on_detail_call() -> None:
+                        nonlocal detail_calls_total
+                        detail_calls_total += 1
+                        publish_progress()
+
+                    try:
+                        provider_enriched, _ = await asyncio.wait_for(
+                            _enrich_summaries(
+                                provider,
+                                spec.key,
+                                spec.supports_details,
+                                unique_summaries,
+                                on_detail_call=on_detail_call,
+                            ),
+                            timeout=provider_timeout_seconds,
+                        )
+                    except asyncio.TimeoutError:
+                        msg = (
+                            f"Timeout during enrichment ({spec.key}) after "
+                            f"{provider_timeout_seconds}s"
+                        )
+                        logger.error(msg)
+                        ingestion_state.last_run_error = msg
             finally:
                 try:
                     if hasattr(provider, "close"):
@@ -290,6 +385,7 @@ async def run_ingestion_job():
             if provider_enriched:
                 upsert_listings(provider_enriched)
                 upsert_total += len(provider_enriched)
+                publish_progress()
                 all_enriched.extend(provider_enriched)
                 logger.info(
                     "Ingestion job upserted %d listings for %s",
@@ -297,9 +393,7 @@ async def run_ingestion_job():
                     spec.key,
                 )
 
-        ingestion_state.last_run_summary_count = summary_count_total
-        ingestion_state.last_run_detail_calls = detail_calls_total
-        ingestion_state.last_run_upsert_count = upsert_total
+        publish_progress()
 
         if all_enriched:
             try:

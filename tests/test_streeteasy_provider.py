@@ -25,6 +25,21 @@ def test_normalize_streeteasy_url_rejects_non_streeteasy_hosts():
     assert _normalize_streeteasy_url("https://example.com/foo") is None
 
 
+def test_normalize_streeteasy_url_accepts_modern_unit_path():
+    url = "https://streeteasy.com/building/four-williamsburg-wharf/702?featured=1"
+    assert (
+        _normalize_streeteasy_url(url)
+        == "https://streeteasy.com/building/four-williamsburg-wharf/702"
+    )
+
+
+def test_normalize_streeteasy_url_rejects_building_only_pages():
+    assert (
+        _normalize_streeteasy_url("https://streeteasy.com/building/four-williamsburg-wharf")
+        is None
+    )
+
+
 def test_with_page_param_adds_or_replaces_page():
     base = "https://streeteasy.com/for-rent/williamsburg"
     assert _with_page_param(base, 1) == base

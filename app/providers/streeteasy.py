@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://streeteasy.com"
 LISTING_URL_RE = re.compile(
-    r"https?://streeteasy\.com/building/[^\"'\s]+/rental/\d+"
+    r"https?://streeteasy\.com/building/[^\"'\s]+/[^\"'\s]+"
 )
 
 # Map SE neighborhood slugs to canonical names
@@ -95,8 +95,6 @@ class StreetEasyProvider(BaseProvider):
         # Also look for relative listing links
         for a_tag in soup.select("a[href*='/building/']"):
             href = a_tag.get("href", "")
-            if "/rental/" not in href:
-                continue
             full_url = urljoin(BASE_URL, href) if href.startswith("/") else href
             urls.append(full_url)
 
@@ -382,10 +380,30 @@ def _normalize_streeteasy_url(url: str) -> Optional[str]:
     if parts.port:
         netloc = f"{host}:{parts.port}"
 
+    if not _looks_like_streeteasy_listing_path(parts.path):
+        return None
+
     clean = parts._replace(
-        scheme="https", netloc=netloc, query="", fragment="", path=parts.path.rstrip("/")
+        scheme="https",
+        netloc=netloc,
+        query="",
+        fragment="",
+        path=parts.path.rstrip("/"),
     )
     return urlunsplit(clean)
+
+
+def _looks_like_streeteasy_listing_path(path: str) -> bool:
+    segments = [segment for segment in path.strip("/").split("/") if segment]
+    if len(segments) < 3 or segments[0] != "building":
+        return False
+
+    # Legacy format: /building/<slug>/<unit>/rental/<id>
+    if len(segments) >= 5 and segments[-2] == "rental" and segments[-1].isdigit():
+        return True
+
+    # Current format: /building/<slug>/<unit>
+    return len(segments) == 3
 
 
 def _with_page_param(base_url: str, page: int) -> str:

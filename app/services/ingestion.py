@@ -88,6 +88,17 @@ async def _enrich_summaries(
     enriched: List[Dict[str, Any]] = []
     detail_calls_made = 0
     max_detail_calls = settings.MAX_DETAIL_CALLS
+    provider_detail_cap = getattr(provider, "max_detail_calls", None)
+    if provider_detail_cap is not None:
+        try:
+            provider_cap = max(0, int(provider_detail_cap))
+            max_detail_calls = min(max_detail_calls, provider_cap)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Ignoring invalid provider detail cap for %s: %s",
+                source_key,
+                provider_detail_cap,
+            )
     detail_request_timeout = settings.INGESTION_DETAIL_REQUEST_TIMEOUT_SECONDS
     detail_concurrency = max(1, settings.INGESTION_DETAIL_CONCURRENCY)
     detail_delay_seconds = max(0.0, settings.INGESTION_DETAIL_DELAY_SECONDS)
@@ -99,6 +110,12 @@ async def _enrich_summaries(
             source_key,
             max_detail_calls,
         )
+        if provider_detail_cap is not None:
+            logger.info(
+                "Applying provider detail cap for %s: %d",
+                source_key,
+                max_detail_calls,
+            )
 
     detail_results: Dict[int, Dict[str, Any]] = {}
     detail_candidates: List[Tuple[int, str]] = []

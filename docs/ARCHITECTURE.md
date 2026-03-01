@@ -69,4 +69,5 @@ Matching (read-time scoring):
   - NYC rentals: `config/nyc_rental_criteria.yaml`
 - StreetEasy ingestion is enabled by including `streeteasy` in `INGESTION_SOURCES` and providing `STREETEASY_SEARCH_URLS` (comma-separated).
 - StreetEasy pagination is capped by `STREETEASY_MAX_PAGES` (in addition to the global `MAX_PAGES` ingestion cap).
+- StreetEasy runtime has provider-specific guardrails (`STREETEASY_REQUEST_TIMEOUT_SECONDS`, `STREETEASY_REQUEST_RETRIES`, `STREETEASY_MAX_DETAIL_CALLS`) so one slow provider pass does not collapse source counts.
 - Fly.io production keeps one warm machine (`min_machines_running=1`) so the in-process scheduler can execute recurring ingestion.

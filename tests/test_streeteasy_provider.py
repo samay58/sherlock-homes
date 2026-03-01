@@ -2,9 +2,14 @@ from urllib.parse import parse_qs, urlsplit
 
 from bs4 import BeautifulSoup
 
-from app.providers.streeteasy import (_enrich_from_streeteasy_html,
-                                      _normalize_streeteasy_url,
-                                      _with_page_param, _with_search_filters)
+from app.providers.streeteasy import (
+    _address_from_listing_url,
+    _enrich_from_streeteasy_html,
+    _enrich_from_streeteasy_payload,
+    _normalize_streeteasy_url,
+    _with_page_param,
+    _with_search_filters,
+)
 
 
 def test_normalize_streeteasy_url_strips_query_fragment_and_forces_https():
@@ -42,6 +47,15 @@ def test_normalize_streeteasy_url_rejects_building_only_pages():
     assert (
         _normalize_streeteasy_url("https://streeteasy.com/building/four-williamsburg-wharf")
         is None
+    )
+
+
+def test_address_from_listing_url_building_unit_path():
+    assert (
+        _address_from_listing_url(
+            "https://streeteasy.com/building/416-kent-avenue-brooklyn/2207n"
+        )
+        == "416 Kent Avenue Brooklyn #2207N"
     )
 
 
@@ -102,3 +116,32 @@ def test_enrich_from_streeteasy_html_sets_outdoor_for_terrace():
     _enrich_from_streeteasy_html(soup, data)
 
     assert data.get("has_outdoor_space_keywords") is True
+
+
+def test_enrich_from_streeteasy_payload_reads_targeting_fallbacks():
+    html = """
+    <html>
+      <head>
+        <meta property="og:title" content="416 Kent Avenue #2207N in Williamsburg, Brooklyn | StreetEasy" />
+      </head>
+      <body>
+        <script>
+          googletag.pubads().setTargeting(\"price\", \"4605\");
+          googletag.pubads().setTargeting(\"bd\", \"2\");
+          googletag.pubads().setTargeting(\"ba\", \"2.5\");
+          googletag.pubads().setTargeting(\"sqft\", \"1200\");
+          googletag.pubads().setTargeting(\"hood\", \"williamsburg\");
+        </script>
+      </body>
+    </html>
+    """
+    data = {}
+
+    _enrich_from_streeteasy_payload(html, data)
+
+    assert data.get("price") == 4605.0
+    assert data.get("beds") == 2
+    assert data.get("baths") == 2.5
+    assert data.get("sqft") == 1200
+    assert data.get("neighborhood") == "Williamsburg"
+    assert data.get("address") == "416 Kent Avenue #2207N"

@@ -143,6 +143,9 @@ class Settings(BaseSettings):
     STREETEASY_SEARCH_URLS: str = Field(default="")
     STREETEASY_MAX_PAGES: int = Field(default=5)
     STREETEASY_LOCATION_CONCURRENCY: int = Field(default=4)
+    STREETEASY_REQUEST_TIMEOUT_SECONDS: int = Field(default=45)
+    STREETEASY_REQUEST_RETRIES: int = Field(default=1)
+    STREETEASY_MAX_DETAIL_CALLS: int = Field(default=80)
     ZILLOW_LOCATION_CONCURRENCY: int = Field(default=4)
     CURATED_SOURCES_PATH: str = Field(default="config/curated_sources.yaml")
 

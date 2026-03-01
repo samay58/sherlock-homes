@@ -35,6 +35,31 @@ fly releases -a sherlock-homes-nyc --image
 curl -X POST https://sherlock-homes-nyc.fly.dev/admin/ingestion/run
 ```
 
+### Trigger StreetEasy-only ingestion diagnostics
+
+Use this when Zillow runtime obscures StreetEasy debugging.
+
+```bash
+fly ssh console -a sherlock-homes-nyc -C "python - <<'PY'
+import asyncio, time
+from collections import Counter
+from app.providers.streeteasy import StreetEasyProvider
+
+async def main():
+    p = StreetEasyProvider()
+    t0 = time.time()
+    items = await p.search_all_locations()
+    counts = Counter(item.get('neighborhood') or 'Unknown' for item in items)
+    print('street_easy_total', len(items))
+    print('elapsed_seconds', round(time.time() - t0, 2))
+    for hood, count in counts.most_common():
+        print(f'{hood}: {count}')
+    await p.close()
+
+asyncio.run(main())
+PY"
+```
+
 ### Check ingestion status endpoint
 
 ```bash
@@ -75,6 +100,22 @@ Useful log filter:
 fly logs -a sherlock-homes-nyc --no-tail \
   | rg "StreetEasy|Starting ingestion|upserted|summary|detail call"
 ```
+
+## StreetEasy Runtime Tunables
+
+StreetEasy now has provider-specific bounds to prevent long-tail hangs from blocking upserts:
+
+- `STREETEASY_REQUEST_TIMEOUT_SECONDS` (default `45`)
+- `STREETEASY_REQUEST_RETRIES` (default `1`)
+- `STREETEASY_MAX_DETAIL_CALLS` (default `80`)
+- `STREETEASY_LOCATION_CONCURRENCY` (default `4`)
+- `STREETEASY_MAX_PAGES` (default `5`)
+
+These work alongside global ingestion controls:
+
+- `INGESTION_PROVIDER_TIMEOUT_SECONDS`
+- `INGESTION_DETAIL_CONCURRENCY`
+- `INGESTION_DETAIL_REQUEST_TIMEOUT_SECONDS`
 
 ## Scheduler Reliability
 

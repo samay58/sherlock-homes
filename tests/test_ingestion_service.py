@@ -19,6 +19,10 @@ class _DetailProvider:
         return {"description": f"listing {listing_id}", "photos": []}
 
 
+class _DetailProviderWithCap(_DetailProvider):
+    max_detail_calls = 1
+
+
 def test_fetch_summaries_reports_incremental_batches(monkeypatch):
     monkeypatch.setattr(settings, "MAX_PAGES", 5)
     monkeypatch.setattr(settings, "INGESTION_PAGE_DELAY_SECONDS", 0.0)
@@ -70,3 +74,29 @@ def test_enrich_summaries_honors_detail_call_limit(monkeypatch):
     assert enriched[0]["description"] == "listing 1"
     assert enriched[1]["description"] == "listing 2"
     assert enriched[2].get("description") is None
+
+
+def test_enrich_summaries_honors_provider_specific_detail_cap(monkeypatch):
+    monkeypatch.setattr(settings, "MAX_DETAIL_CALLS", 5)
+    monkeypatch.setattr(settings, "INGESTION_DETAIL_CONCURRENCY", 2)
+    monkeypatch.setattr(settings, "INGESTION_DETAIL_REQUEST_TIMEOUT_SECONDS", 5)
+    monkeypatch.setattr(settings, "INGESTION_DETAIL_DELAY_SECONDS", 0.0)
+
+    summaries = [
+        {"source_listing_id": "1", "address": "A"},
+        {"source_listing_id": "2", "address": "B"},
+    ]
+
+    enriched, detail_calls_made = asyncio.run(
+        _enrich_summaries(
+            _DetailProviderWithCap(),
+            "fake-source",
+            True,
+            summaries,
+        )
+    )
+
+    assert len(enriched) == 2
+    assert detail_calls_made == 1
+    assert enriched[0]["description"] == "listing 1"
+    assert enriched[1].get("description") is None

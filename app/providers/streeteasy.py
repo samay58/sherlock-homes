@@ -51,7 +51,12 @@ class StreetEasyProvider(BaseProvider):
     def __init__(self, concurrency: int = 4):
         raw_urls = getattr(settings, "STREETEASY_SEARCH_URLS", "") or ""
         self._search_urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
-        self._client = ZenRowsUniversalClient(concurrency=concurrency, timeout=90)
+        self.max_detail_calls = max(0, settings.STREETEASY_MAX_DETAIL_CALLS)
+        self._client = ZenRowsUniversalClient(
+            concurrency=concurrency,
+            timeout=settings.STREETEASY_REQUEST_TIMEOUT_SECONDS,
+            max_retries=settings.STREETEASY_REQUEST_RETRIES,
+        )
 
     async def search(self, bbox=None, page: int = 1) -> Iterable[Dict[str, Any]]:  # type: ignore[override]
         """Search a single page across all configured neighborhood URLs."""
@@ -111,6 +116,10 @@ class StreetEasyProvider(BaseProvider):
 
             # Try to extract minimal info from card HTML near the link
             card_data = _extract_card_data(soup, normalized)
+            if not card_data.get("address"):
+                fallback_address = _address_from_listing_url(normalized)
+                if fallback_address:
+                    card_data["address"] = fallback_address
 
             listings.append(
                 {
@@ -233,11 +242,16 @@ class StreetEasyProvider(BaseProvider):
         # StreetEasy-specific BS4 parsing to fill gaps
         soup = BeautifulSoup(html, "html.parser")
         _enrich_from_streeteasy_html(soup, data)
+        _enrich_from_streeteasy_payload(html, data)
 
         data["source"] = "streeteasy"
         data["source_listing_id"] = normalized_id
         if not data.get("url"):
             data["url"] = normalized_id
+        if not data.get("address"):
+            fallback_address = _address_from_listing_url(normalized_id)
+            if fallback_address:
+                data["address"] = fallback_address
 
         return data
 
@@ -370,6 +384,96 @@ def _extract_card_data(soup: BeautifulSoup, listing_url: str) -> Dict[str, Any]:
         data["address"] = addr_el.get_text(strip=True)
 
     return data
+
+
+def _address_from_listing_url(url: str) -> Optional[str]:
+    parts = urlsplit(url)
+    segments = [segment for segment in parts.path.strip("/").split("/") if segment]
+    if len(segments) >= 3 and segments[0] == "building":
+        building_slug = segments[1]
+        unit = segments[2]
+        building = " ".join(token.capitalize() for token in building_slug.split("-"))
+        if not building:
+            return None
+        if unit:
+            return f"{building} #{unit.upper()}"
+        return building
+    return None
+
+
+def _enrich_from_streeteasy_payload(html: str, data: Dict[str, Any]) -> None:
+    if not html:
+        return
+
+    # StreetEasy's modern pages embed escaped JSON and ad-targeting metadata.
+    # Unescape once and parse stable targeting keys as robust fallbacks.
+    unescaped = html.replace('\\"', '"')
+    targeting_pairs = re.findall(
+        r'setTargeting\("([^"]+)",\s*"([^"]*)"\)',
+        unescaped,
+    )
+    targeting = {key: value for key, value in targeting_pairs}
+
+    if not data.get("price"):
+        price_value = targeting.get("price")
+        if price_value and price_value.lower() != "null":
+            parsed = _parse_price(price_value)
+            if parsed is not None:
+                data["price"] = parsed
+
+    if not data.get("beds"):
+        beds_value = targeting.get("bd")
+        if beds_value and beds_value.lower() != "null":
+            try:
+                data["beds"] = int(float(beds_value))
+            except ValueError:
+                pass
+
+    if not data.get("baths"):
+        baths_value = targeting.get("ba")
+        if baths_value and baths_value.lower() != "null":
+            try:
+                data["baths"] = float(baths_value)
+            except ValueError:
+                pass
+
+    if not data.get("sqft"):
+        sqft_value = targeting.get("sqft")
+        if sqft_value and sqft_value.lower() != "null":
+            try:
+                data["sqft"] = int(float(sqft_value))
+            except ValueError:
+                pass
+
+    if not data.get("neighborhood"):
+        hood = targeting.get("hood")
+        if hood:
+            data["neighborhood"] = SLUG_TO_NEIGHBORHOOD.get(
+                hood, hood.replace("-", " ").title()
+            )
+
+    if not data.get("price"):
+        offer_price = re.search(
+            r'"offers"\s*:\s*\{[^{}]{0,500}"price"\s*:\s*"([^"]+)"',
+            unescaped,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if offer_price:
+            parsed = _parse_price(offer_price.group(1))
+            if parsed is not None:
+                data["price"] = parsed
+
+    if not data.get("address"):
+        og_title = re.search(
+            r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"',
+            unescaped,
+            flags=re.IGNORECASE,
+        )
+        if og_title:
+            title = og_title.group(1)
+            address = title.split(" in ", 1)[0].strip()
+            if address:
+                data["address"] = address
 
 
 def _neighborhood_from_url(url: str) -> Optional[str]:
